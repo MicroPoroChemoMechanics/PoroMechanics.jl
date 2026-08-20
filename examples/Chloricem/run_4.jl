@@ -958,6 +958,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
         p = plot_Chloricem4(results, grid_ref; dlm=dlm)
         display(p)
     catch e
-        @warn "Plots.jl non disponible" exception = e
+        @warn "Plots.jl not available" exception = e
     end
 end

@@ -4,6 +4,7 @@
 *.jl.mem
 /Manifest.toml
 /docs/Manifest.toml
+/examples/Manifest.toml
 /deps/deps.jl
 LocalPreferences.toml
 

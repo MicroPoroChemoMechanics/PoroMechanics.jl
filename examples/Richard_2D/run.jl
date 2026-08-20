@@ -106,7 +106,7 @@ function krl(pc)
     return interp1(pc_tab, krl_tab, pc)
 end
 
-@printf("Sl(0)    = %.6f  (attendu 1)\n",    Sl(0.0))
+@printf("Sl(0)    = %.6f  (expected 1)\n",    Sl(0.0))
 @printf("Sl(577)  = %.6f  (air entry)\n", Sl(577.0))
 @printf("Sl(1000) = %.6f  (residual)\n",  Sl(1000.0))
 
@@ -245,7 +245,11 @@ control = VoronoiFVM.SolverControl(;
     Δt      = 1.0,
     Δt_max  = 1000.0,
     Δt_min  = 1.0e-6,
-    Δu_opt  = 1.0e3,
+    # The column starts fully saturated, where dS_l/dp_l = 0: the storage term
+    # drops out and the first step is elliptic, so its Δu does not shrink with
+    # Δt. Δu_opt has to clear that one-off jump (1962 Pa) or the controller
+    # halves Δt down to Δt_min and gives up.
+    Δu_opt  = 2.5e3,
     reltol  = 1.0e-6,
     abstol  = 1.0e-10,
     verbose = false,
@@ -270,7 +274,7 @@ function carte_saturation(it; titre="", clims=(0.0, 1.0))
     scatter(coords[1,:] .* 1e3, coords[2,:] .* 1e3;
         marker_z          = sl,
         clims             = clims,
-        c                 = :Blues_r,
+        c                 = cgrad(:Blues; rev = true),
         colorbar          = true,
         colorbar_title    = "Sₗ",
         markersize        = 1.2,
@@ -353,15 +357,15 @@ pc_ext = [pg_ref - tsol[U_P_L, i_ext, it]     for it in eachindex(t_all)]
 pc_inc = [pg_ref - tsol[U_P_L, i_inc, it]     for it in eachindex(t_all)]
 
 p_sl_ev = plot(; xlabel="t [s]", ylabel="Sₗ [-]",
-    title="Saturation — zone externe vs inclusion", legend=:bottomleft, size=(650, 320))
-plot!(p_sl_ev, t_all, sl_ext; lw=2, color=:steelblue,  label="Zone externe (x≈2.5 mm, y=H/2)")
+    title="Saturation — outer zone vs inclusion", legend=:bottomleft, size=(650, 320))
+plot!(p_sl_ev, t_all, sl_ext; lw=2, color=:steelblue,  label="Outer zone (x≈2.5 mm, y=H/2)")
 plot!(p_sl_ev, t_all, sl_inc; lw=2, color=:darkorange, label="Inclusion    (x=W/2,  y=H/2)")
 vline!(p_sl_ev, [360.0]; lw=1, ls=:dash, color=:grey, label="t=360 s")
 hline!(p_sl_ev, [Sl(1000.0)]; lw=0.8, ls=:dot, color=:grey, label="residual Sₗ")
 
 p_pc_ev = plot(; xlabel="t [s]", ylabel="pᶜ = −pₗ [Pa]",
     title="Capillary pressure — outer zone vs inclusion", legend=:topleft, size=(650, 320))
-plot!(p_pc_ev, t_all, pc_ext; lw=2, color=:steelblue,  label="Zone externe")
+plot!(p_pc_ev, t_all, pc_ext; lw=2, color=:steelblue,  label="Outer zone")
 plot!(p_pc_ev, t_all, pc_inc; lw=2, color=:darkorange, label="Inclusion")
 hline!(p_pc_ev, [577.0]; lw=0.8, ls=:dash, color=:red, label="air-entry pᶜ ≈ 577 Pa")
 vline!(p_pc_ev, [360.0]; lw=1, ls=:dash, color=:grey, label="t=360 s")
@@ -404,7 +408,7 @@ it360    = argmin(abs.(tsol.t .- 360.0))
 idx_base = findall(i -> coords[2, i] < 1e-6, 1:nn)
 pl_base_obs = tsol[U_P_L, idx_base, it360]
 @printf("\n1. Dirichlet BC at the base (t=360 s):\n")
-@printf("   pₗ_max = %.4f Pa  (attendu ≈ 0)\n", maximum(abs.(pl_base_obs)))
+@printf("   pₗ_max = %.4f Pa  (expected ≈ 0)\n", maximum(abs.(pl_base_obs)))
 maximum(abs.(pl_base_obs)) < 1.0 && println("   ✓ Dirichlet condition satisfied")
 
 # 2. Drainage delay
@@ -412,8 +416,8 @@ it3000     = length(tsol.t)
 sl_ext_fin = Sl(pg_ref - tsol[U_P_L, i_ext, it3000])
 sl_inc_fin = Sl(pg_ref - tsol[U_P_L, i_inc, it3000])
 @printf("\n2. Saturation at t=3000 s (y=H/2):\n")
-@printf("   Zone externe : Sₗ = %.6f\n", sl_ext_fin)
-@printf("   Inclusion    : Sₗ = %.6f\n", sl_inc_fin)
+@printf("   Outer zone : Sₗ = %.6f\n", sl_ext_fin)
+@printf("   Inclusion  : Sₗ = %.6f\n", sl_inc_fin)
 sl_inc_fin > sl_ext_fin &&
     println("   ✓ Inclusion more saturated than the outer zone (drainage delay)")
 
@@ -438,8 +442,8 @@ end
 t_desat_ext = temps_desaturation(i_ext)
 t_desat_inc = temps_desaturation(i_inc)
 @printf("\n4. Time at which desaturation starts (Sₗ < 0.99):\n")
-@printf("   Zone externe : t = %.1f s\n", t_desat_ext)
-@printf("   Inclusion    : t = %.1f s\n", t_desat_inc)
+@printf("   Outer zone : t = %.1f s\n", t_desat_ext)
+@printf("   Inclusion  : t = %.1f s\n", t_desat_inc)
 t_desat_inc > t_desat_ext &&
     @printf("   ✓ Inclusion delay: Δt = %.1f s\n",
             t_desat_inc - t_desat_ext)

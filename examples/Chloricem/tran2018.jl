@@ -1835,6 +1835,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
             display(f)
         end
     catch e
-        @warn "Plots.jl non disponible" exception = e
+        @warn "Plots.jl not available" exception = e
     end
 end

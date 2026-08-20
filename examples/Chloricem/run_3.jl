@@ -248,7 +248,7 @@ function ChloriceModel3(N_nodes::Int, cs, has_friedels::Bool; kwargs...)
         0.792e-9,                                # D_Ca
         0.18, 2.7, 2.0e-4, 0.27,                # Oh-Jang params
         96485.0, 8.314, 293.15,                  # Faraday, R_gas, T_K
-        # BCs (x=0 : solution NaCl externe 0.523 M)
+        # BCs (x=0: external NaCl solution, 0.523 M)
         523.0, 523.0, 1.0, 0.0,                 # c_cl_BC, c_na_BC, c_k_BC, c_ca_BC
         # ICs (intact concrete at OPC equilibrium)
         ic.c_cl, ic.c_na, ic.c_k, ic.c_ca,
@@ -315,7 +315,7 @@ function PoroMechanics.flux!(f, u, edge, m::ChloriceModel3, ::Any)
 end
 
 function PoroMechanics.bcondition!(f, u, bnode, m::ChloriceModel3, ::Any)
-    # x = 0 (region=1) : solution NaCl externe — 4 Dirichlet.
+    # x = 0 (region=1): external NaCl solution — 4 Dirichlet values.
     # x = L (region=2): zero flux by default (VoronoiFVM).
     boundary_dirichlet!(f, u, bnode; species=ICL, region=1, value=m.c_cl_BC)
     boundary_dirichlet!(f, u, bnode; species=INA, region=1, value=m.c_na_BC)
@@ -573,7 +573,7 @@ function run_Chloricem3(;
     inival[INA, :] .= m.c_na_init
     inival[IK, :] .= m.c_k_init
     inival[ICA, :] .= m.c_ca_init
-    # Nœud x = 0 : solution NaCl externe
+    # Node x = 0: external NaCl solution
     inival[ICL, 1] = m.c_cl_BC
     inival[INA, 1] = m.c_na_BC
     inival[IK, 1] = m.c_k_BC
@@ -613,7 +613,7 @@ function run_Chloricem3(;
         u_cur[INA, 1] = m.c_na_BC
         u_cur[IK, 1] = m.c_k_BC
         u_cur[ICA, 1] = m.c_ca_BC
-        m.c_oh_frozen[1] = 1.0   # EN externe : c_Na + c_K − c_Cl ≈ 1 mol/m³
+        m.c_oh_frozen[1] = 1.0   # external EN: c_Na + c_K − c_Cl ≈ 1 mol/m³
 
         if any(isnan, u_cur)
             idx = findall(isnan, u_cur)
@@ -685,7 +685,7 @@ function compare_reference_3(results, grid)
 
     @printf("\nDiagnostics Phase 3 :\n")
     @printf("  C_Cl(x=0)  = %.4f mol/dm³  (ref: 0.523)\n", C_Cl[1])
-    @printf("  c_OH(x=0)  = %.4f mol/dm³  (solution externe NaCl ≈ 0.001)\n", c_oh_dm3[1])
+    @printf("  c_OH(x=0)  = %.4f mol/dm³  (external NaCl solution ≈ 0.001)\n", c_oh_dm3[1])
     @printf("  φ(x=0)     = %.4f  (initial = 0.121)\n", phi[1])
     @printf("  n_CH(x=0)  = %.1f mol/m³  (initial = 1640)\n", n_ch[1])
     @printf("  n_ETT(x=0) = %.1f mol/m³\n", n_ett[1])
@@ -775,6 +775,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
         p = plot_Chloricem3(results, grid_ref)
         display(p)
     catch e
-        @warn "Plots.jl non disponible" exception = e
+        @warn "Plots.jl not available" exception = e
     end
 end
