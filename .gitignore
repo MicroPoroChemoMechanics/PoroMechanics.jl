@@ -1,0 +1,41 @@
+# Julia
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+/Manifest.toml
+/docs/Manifest.toml
+/deps/deps.jl
+LocalPreferences.toml
+
+# Documentation
+/docs/build/
+/docs/site/
+
+# Local scratch
+/local
+
+# Working notes (kept in MicroPoroChemoMechanics/InternalDocs)
+CLAUDE/
+CLAUDE.md
+
+# Simulation output and heavy data sets
+*.vtu
+*.vtk
+*.pvd
+*.h5
+*.jld2
+results/
+output/
+
+# Figures produced by the examples
+*.png
+*.pdf
+*.svg
+!docs/src/assets/*
+
+# Editors / OS
+.vscode
+.idea
+.continue
+.claude
+.DS_Store

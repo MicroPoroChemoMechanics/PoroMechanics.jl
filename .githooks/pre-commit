@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# Pre-commit hook: keep the tree Runic-formatted and in US English.
+#
+# Enable once, per clone:
+#     git config core.hooksPath .githooks
+#
+# It **fixes** rather than complains. An earlier version ran the same check as
+# CI and refused the commit, which left the contributor to run the converter
+# and start over — and under time pressure that turns into `--no-verify`, which
+# is exactly the red CI run the hook exists to prevent. Converting and
+# re-staging removes the step instead of adding one.
+#
+# Only staged, prose-bearing files are touched, and only their prose:
+# `spelling_tool.py` never rewrites Julia identifiers, keyword arguments or
+# fenced code blocks. What it changed is printed, so nothing happens silently.
+#
+# `Spelling.yml` in CI remains the authority: this hook is a convenience for a
+# configured clone, not a guarantee. Anything committed elsewhere — the GitHub
+# web editor, another machine, a merge — is still caught there.
+#
+# Portability, deliberately: the interpreter is `python3` on Linux and macOS
+# but `python` on Windows, and `py -3` on a Windows install that only has the
+# launcher on PATH. A hook that tests `python3` alone exits silently on
+# Windows — no protection, and no sign of it, which is worse than failing.
+# `mapfile` is likewise avoided: it is bash 4+, and macOS still ships 3.2.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+# ── Runic formatting ────────────────────────────────────────────────────────
+#
+# Same principle as the spelling section below: fix and re-stage rather than
+# refuse. `Format.yml` auto-formats pushes to `main` and commits the result,
+# which leaves the local clone one commit behind every time — formatting here
+# means the Action finds nothing to do and never creates that commit.
+#
+# This block runs *before* the spelling section, which exits early when it has
+# nothing to fix — the common case, and it would skip everything after it.
+#
+# Runic lives in a shared environment so every clone uses the same one:
+#     julia -e 'using Pkg; Pkg.activate("runic", shared=true); Pkg.add("Runic")'
+# If it is missing the commit is allowed: CI remains the authority, and a hook
+# that blocks work over a missing convenience gets bypassed with --no-verify.
+
+JL_FILES=()
+while IFS= read -r f; do
+    [ -n "$f" ] && [ -f "$f" ] && JL_FILES+=("$f")
+done < <(git diff --cached --name-only --diff-filter=ACM -- '*.jl')
+
+if [ ${#JL_FILES[@]} -gt 0 ]; then
+    if ! command -v julia >/dev/null 2>&1; then
+        echo "▸ Runic: julia not on PATH; formatting not checked here — CI will." >&2
+    elif ! julia --project=@runic --startup-file=no -e 'using Runic' >/dev/null 2>&1; then
+        echo "▸ Runic: shared @runic environment not found; skipping." >&2
+        echo "▸   julia -e 'using Pkg; Pkg.activate(\"runic\", shared=true); Pkg.add(\"Runic\")'" >&2
+    else
+        # Format the *staged* content, not the working tree. Formatting the
+        # file on disk and re-staging it would sweep any unstaged edit in the
+        # same file into the commit — verified: it does, which is why this
+        # goes through the index instead.
+        for f in "${JL_FILES[@]}"; do
+            # `mktemp --suffix` is GNU-only; macOS ships BSD mktemp, where it
+            # fails and the `|| exit 1` below would refuse every commit. A temp
+            # *directory* gives the same .jl names on both.
+            tmpdir=$(mktemp -d) || exit 1
+            staged="$tmpdir/staged.jl"
+            formatted="$tmpdir/formatted.jl"
+            git show ":$f" > "$staged"
+            cp "$staged" "$formatted"
+            if ! julia --project=@runic --startup-file=no -e '
+                    using Runic
+                    exit(Runic.main(["--inplace", ARGS[1]]))' "$formatted" >/dev/null 2>&1
+            then
+                rm -rf "$tmpdir"
+                echo "▸ Runic: could not format $f; commit refused." >&2
+                exit 1
+            fi
+            if ! cmp -s "$staged" "$formatted"; then
+                # Replace the staged blob.
+                blob=$(git hash-object -w "$formatted")
+                mode=$(git ls-files --stage -- "$f" | awk '{print $1}')
+                git update-index --cacheinfo "${mode:-100644}","$blob","$f"
+                # Mirror it into the working tree only when that file has no
+                # unstaged edits — otherwise the author's in-progress work
+                # would be overwritten.
+                if cmp -s "$staged" "$f"; then
+                    cp "$formatted" "$f"
+                    echo "▸ Runic: formatted $f"
+                else
+                    echo "▸ Runic: formatted the staged copy of $f" \
+                         "(working tree left alone — it has unstaged edits)"
+                fi
+            fi
+            rm -rf "$tmpdir"
+        done
+    fi
+fi
+
+
+TOOL=".github/scripts/spelling_tool.py"
+[ -f "$TOOL" ] || exit 0
+
+# ── Find a Python 3, whatever it is called here ─────────────────────────────
+PY=""
+for candidate in python3 python py; do
+    command -v "$candidate" >/dev/null 2>&1 || continue
+    if [ "$candidate" = "py" ]; then
+        # The Windows launcher needs to be told which version to run.
+        if py -3 -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+            PY="py -3"
+            break
+        fi
+    elif "$candidate" -c "import sys; sys.exit(0 if sys.version_info[0] == 3 else 1)" >/dev/null 2>&1; then
+        # `python` is Python 2 on some older systems; the version test is what
+        # makes accepting that name safe.
+        PY="$candidate"
+        break
+    fi
+done
+
+if [ -z "$PY" ]; then
+    echo "▸ US spelling: no Python 3 found (tried python3, python, py -3)." >&2
+    echo "▸ The commit is allowed, but nothing checked it — CI will." >&2
+    exit 0
+fi
+
+# ── Collect the staged, prose-bearing files ─────────────────────────────────
+FILES=()
+while IFS= read -r f; do
+    [ -n "$f" ] && [ -f "$f" ] && FILES+=("$f")
+done < <(
+    git diff --cached --name-only --diff-filter=ACM \
+        -- '*.jl' '*.md' '*.py' '*.js' '*.css'
+)
+[ ${#FILES[@]} -eq 0 ] && exit 0
+
+# The convention lives in `.spelling.json` at the repository root, and it has
+# to be passed explicitly: the tool resolves it from the *directory of each
+# path given*, without walking up, so a staged file in a subdirectory would
+# otherwise fail with "no convention configured". That failure is invisible
+# whenever the converter has something to change — it only surfaces on an
+# already-correct tree, which is to say on almost every ordinary commit.
+CONV=$($PY -c "import json,sys
+try:
+    print(json.load(open('.spelling.json')).get('convention',''))
+except Exception:
+    print('')" 2>/dev/null || echo "")
+# `${CONV^^}` would be bash 4+; macOS still ships 3.2.
+CONV_UC=$(printf '%s' "$CONV" | tr '[:lower:]' '[:upper:]')
+
+if [ -z "$CONV" ]; then
+    echo "▸ US spelling: no .spelling.json at the repository root; nothing checked." >&2
+    exit 0
+fi
+
+if $PY "$TOOL" check --convention "$CONV" "${FILES[@]}" >/dev/null 2>&1; then
+    exit 0
+fi
+
+echo "▸ ${CONV_UC} spelling: converting staged files…"
+$PY "$TOOL" convert "${FILES[@]}" --to "$CONV"
+
+# Re-stage only what the converter actually rewrote, so an unrelated unstaged
+# edit in the same file is never swept into the commit.
+CHANGED=0
+for f in "${FILES[@]}"; do
+    if ! git diff --quiet -- "$f"; then
+        git add -- "$f"
+        echo "    fixed and re-staged: $f"
+        CHANGED=1
+    fi
+done
+
+if [ "$CHANGED" -eq 0 ]; then
+    # The checker objected but the converter changed nothing: a word it cannot
+    # resolve on its own. Refuse rather than commit something CI will reject.
+    echo "▸ ${CONV_UC} spelling: the checker still objects and the converter had no fix." >&2
+    $PY "$TOOL" check --convention "$CONV" "${FILES[@]}" >&2 || true
+    echo "▸ Fix by hand, or add an exception, then commit again." >&2
+    exit 1
+fi
+
+echo "▸ ${CONV_UC} spelling: done — the commit now contains the corrected text."

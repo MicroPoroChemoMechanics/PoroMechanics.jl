@@ -1,0 +1,48 @@
+name: Documentation
+on:
+  push:
+    branches:
+      - main
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  # Skip intermediate builds: always.
+  # Cancel intermediate builds: only if it is a pull request build.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+jobs:
+  build:
+    #needs: test
+    runs-on: ubuntu-latest
+    permissions:
+        actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
+        pull-requests: read
+        contents: write
+        statuses: write
+    steps:
+      # 1. Checkout the repository
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - name: Install dependencies
+        shell: julia --project=docs/ --color=yes {0}
+        run: |
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()
+      - name: Build and deploy
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+        run: julia --project=docs/ docs/make.jl
+    #   - name: Run doctests
+    #     shell: julia --project=docs --color=yes {0}
+    #     run: |
+    #         using Documenter: DocMeta, doctest
+    #         using ChemistryLab
+    #         DocMeta.setdocmeta!(ChemistryLab, :DocTestSetup, :(using ChemistryLab, DynamicQuantities, OrderedCollections, ModelingToolkit); recursive=true)
+    #         doctest(ChemistryLab)

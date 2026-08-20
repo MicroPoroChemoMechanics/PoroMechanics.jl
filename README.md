@@ -1,0 +1,125 @@
+# PoroMechanics.jl
+
+> **Reactive transport and poromechanics of porous media in Julia** — coupled flow,
+> transport, chemistry and mechanics, on finite volume (FVM) and finite element (FEM)
+> backends. Despite the name, transport and reactive chemistry are first-class: the
+> package covers the full range from single-species diffusion to multi-ionic reactive
+> transport in cementitious materials.
+
+[![Build Status](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/workflows/CI.yml)
+[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/dev/)
+
+---
+
+## What is PoroMechanics.jl?
+
+**PoroMechanics.jl** is a Julia package for the numerical simulation of coupled phenomena in porous
+media. It covers:
+
+- Solute diffusion (Fick's law)
+- Unsaturated flow (Richards' equation)
+- Coupled non-isothermal drying (water, air, and heat transfer)
+- Biot poromechanics (hydro-mechanical coupling)
+- Reactive chloride transport (Langmuir adsorption, cementitious chemistry)
+
+The package relies on two numerical backends:
+
+| Problem class | Backend |
+|---|---|
+| Transport / diffusion / flow | [VoronoiFVM.jl](https://github.com/j-fu/VoronoiFVM.jl) |
+| Coupled mechanics (Biot, BBM…) | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
+
+## Architecture
+
+Each physical model is a concrete subtype of `AbstractPoroModel` that implements
+a generic method interface. Julia's multiple dispatch naturally replaces
+a C vtable system.
+
+```
+src/PoroMechanics.jl                 # AbstractPoroModel, AbstractPoroSolver, interface stubs
+examples/
+  M1_diffusion/            # Fick diffusion 1D — minimal reference model
+  M1_Richards/             # Richards flow 1D
+  Richard_2D/              # Richards flow 2D
+  darcy_column/            # Darcy column
+  M6_drying/               # Non-isothermal drying (coupled p_l, p_a, T)
+  M7_Biot/                 # Biot poroelasticity 2D (Ternay dam)
+  Chloricem/               # Reactive chloride transport + OPC chemistry
+test/runtests.jl           # Test suite
+docs/                      # Documentation (Documenter.jl)
+```
+
+### FVM interface (VoronoiFVM.jl)
+
+```julia
+PoroMechanics.storage!(f, u, node, model, data)    # accumulation term ∂M/∂t
+PoroMechanics.flux!(f, u, edge, model, data)       # inter-node flux (Darcy, Fick, Fourier…)
+PoroMechanics.bcondition!(f, u, node, model, data) # boundary conditions
+PoroMechanics.reaction!(f, u, node, model, data)   # source terms / algebraic constraints
+```
+
+### FEM interface (Ferrite.jl)
+
+```julia
+PoroMechanics.element_matrices!(ke1, ke2, cell, model, cv_u, cv_p)  # stiffness and storage matrices
+PoroMechanics.facet_load!(fe, facet, model, fv)                     # surface loading
+```
+
+## Installation
+
+PoroMechanics.jl and two of its dependencies (`ChemistryLab.jl`, `OptimaSolver.jl`) are
+distributed through the MicroPoroChemoMechanics registry:
+
+```julia
+using Pkg
+Pkg.Registry.add(RegistrySpec(url = "https://github.com/MicroPoroChemoMechanics/MPCM-Registry"))
+Pkg.add("PoroMechanics")
+```
+
+For local development:
+
+```julia
+Pkg.develop(path = "path/to/PoroMechanics.jl")
+```
+
+## Quick start
+
+```julia
+using PoroMechanics, VoronoiFVM, ExtendableGrids
+
+# 1. Define a physical model
+Base.@kwdef struct M1Model <: AbstractPoroModel
+    φ::Float64 = 0.30
+    D::Float64 = 1e-10
+    c_in::Float64 = 1.0
+end
+
+PoroMechanics.nspecies(::M1Model) = 1
+PoroMechanics.species_names(::M1Model) = [:c]
+
+PoroMechanics.storage!(f, u, node, m::M1Model, _) = (f[1] = m.φ * u[1])
+PoroMechanics.flux!(f, u, edge, m::M1Model, _)    = (f[1] = m.D * m.φ * (u[1,1] - u[1,2]))
+
+# 2. Run the simulation
+include("examples/M1_diffusion/run.jl")
+tsol, grid = run_M1()
+```
+
+## Tests
+
+```julia
+julia --project -e 'using Pkg; Pkg.test()'
+```
+
+CI runs on Julia 1.12 (minimum supported) and stable (1) on Ubuntu and Windows.
+
+## Authors
+
+Developed by [Jean-François Barthélémy](https://github.com/jfbarthelemy) and
+[Anthony Soive](https://github.com/anthonysoive), researchers at
+[Cerema](https://www.cerema.fr/en) in the [UMR MCD](https://mcd.univ-gustave-eiffel.fr/)
+research team.
+
+## License
+
+MIT — see [LICENSE](LICENSE). © 2026 Jean-François Barthélémy and Anthony Soive.
