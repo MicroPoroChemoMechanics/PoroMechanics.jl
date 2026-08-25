@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Non-isothermal drying (M6) · PoroMechanics.jl</title><meta name="title" content="Non-isothermal drying (M6) · PoroMechanics.jl"/><meta property="og:title" content="Non-isothermal drying (M6) · PoroMechanics.jl"/><meta property="twitter:title" content="Non-isothermal drying (M6) · PoroMechanics.jl"/><meta name="description" content="Documentation for PoroMechanics.jl."/><meta property="og:description" content="Documentation for PoroMechanics.jl."/><meta property="twitter:description" content="Documentation for PoroMechanics.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/examples/M6_drying/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/examples/M6_drying/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/examples/M6_drying/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/documentercitations/citations-hover.css" rel="stylesheet" type="text/css"/><link href="../../assets/documentercitations/citations.css" rel="stylesheet" type="text/css"/><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercitations/citations-data.js"></script><script src="../../assets/documentercitations/citations-hover.js"></script><script src="../../assets/documentercitations/citations-backlinks.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="PoroMechanics.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">PoroMechanics.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox" checked/><label class="tocitem" for="menuitem-3"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../M1_diffusion/">1D diffusion (M1)</a></li><li><a class="tocitem" href="../darcy_column/">Darcy column</a></li><li><a class="tocitem" href="../M1_Richards/">Richards 1D (M1)</a></li><li class="is-active"><a class="tocitem" href>Non-isothermal drying (M6)</a><ul class="internal"><li><a class="tocitem" href="#Physical-problem"><span>Physical problem</span></a></li><li><a class="tocitem" href="#Governing-equations"><span>Governing equations</span></a></li><li><a class="tocitem" href="#Retention-curves"><span>Retention curves</span></a></li><li><a class="tocitem" href="#Parameters"><span>Parameters</span></a></li><li><a class="tocitem" href="#PoroMechanics.jl-implementation"><span>PoroMechanics.jl implementation</span></a></li><li><a class="tocitem" href="#Results"><span>Results</span></a></li><li><a class="tocitem" href="#Key-points"><span>Key points</span></a></li></ul></li><li><a class="tocitem" href="../M7_Biot/">Biot poroelasticity (M7)</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Non-isothermal drying (M6)</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Non-isothermal drying (M6)</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/docs/src/examples/M6_drying.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Non-isothermal-Drying-(M6)"><a class="docs-heading-anchor" href="#Non-isothermal-Drying-(M6)">Non-isothermal Drying (M6)</a><a id="Non-isothermal-Drying-(M6)-1"></a><a class="docs-heading-anchor-permalink" href="#Non-isothermal-Drying-(M6)" title="Permalink"></a></h1><blockquote><p><strong>Source:</strong> <a href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/examples/M6_drying/run.jl"><code>examples/M6_drying/run.jl</code></a></p><p><strong>Reference solution:</strong> non-isothermal drying of a two-material barrier.</p><p><strong>Reference test case:</strong> engineered barrier — 2 materials: compacted clay + host rock</p></blockquote><hr/><h2 id="Physical-problem"><a class="docs-heading-anchor" href="#Physical-problem">Physical problem</a><a id="Physical-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Physical-problem" title="Permalink"></a></h2><p>We simulate <strong>non-isothermal two-phase flow</strong> in an unsaturated porous barrier subjected to a radioactive heat source. The benchmark represents an engineered barrier of a radioactive waste repository: a compacted clay plug (inner zone) surrounded by a host rock formation.</p><h3 id="Geometry-and-boundary-conditions"><a class="docs-heading-anchor" href="#Geometry-and-boundary-conditions">Geometry and boundary conditions</a><a id="Geometry-and-boundary-conditions-1"></a><a class="docs-heading-anchor-permalink" href="#Geometry-and-boundary-conditions" title="Permalink"></a></h3><pre><code class="nohighlight hljs">  x = 0 (left)                   x = 0.425 m             x = L = 1.225 m (right)
+  heat flux Q(t) →               (interface)              Dirichlet pₗ, pₐ, T
+        │                              │                         │
+        │  COMPACTED CLAY (mat1)       │    HOST ROCK (mat2)     │
+        │  φ  = 0.30                   │    φ  = 0.05            │
+        │  k  = 1×10⁻²⁰ m²            │    k  = 1×10⁻¹⁹ m²     │
+        │  λₛ = 1.12 W/(m·K)          │    λₛ = 1.62 W/(m·K)   │
+       x=0                           x_int                      x=L
+             ←── drying front ──────</code></pre><p><strong>Boundary conditions:</strong></p><table><tr><th style="text-align: left">Boundary</th><th style="text-align: left">Unknown</th><th style="text-align: left">Condition</th><th style="text-align: left">Value</th></tr><tr><td style="text-align: left"><span>$x = 0$</span> (left)</td><td style="text-align: left"><span>$T$</span></td><td style="text-align: left">Neumann</td><td style="text-align: left">heat flux <span>$Q(t)$</span> [W/m²]</td></tr><tr><td style="text-align: left"><span>$x = L$</span> (right)</td><td style="text-align: left"><span>$p_l$</span></td><td style="text-align: left">Dirichlet</td><td style="text-align: left"><span>$4.905 \times 10^6$</span> Pa</td></tr><tr><td style="text-align: left"><span>$x = L$</span> (right)</td><td style="text-align: left"><span>$p_a$</span></td><td style="text-align: left">Dirichlet</td><td style="text-align: left"><span>$4.892 \times 10^6$</span> Pa</td></tr><tr><td style="text-align: left"><span>$x = L$</span> (right)</td><td style="text-align: left"><span>$T$</span></td><td style="text-align: left">Dirichlet</td><td style="text-align: left"><span>$323$</span> K</td></tr></table><p>The heat flux at <span>$x = 0$</span> models radioactive decay: it is decreasing with time (from ~350 W/m² at 10 yr to ~60 W/m² at 300 yr) and is supplied as a piecewise-linear table <span>$F(t)$</span> [J/m²] from the reference case.</p><p><strong>Initial conditions:</strong></p><table><tr><th style="text-align: left">Zone</th><th style="text-align: center"><span>$p_l$</span> (Pa)</th><th style="text-align: center"><span>$p_a$</span> (Pa)</th><th style="text-align: center"><span>$T$</span> (K)</th></tr><tr><td style="text-align: left">Clay (mat1)</td><td style="text-align: center"><span>$-7.612 \times 10^7$</span></td><td style="text-align: center"><span>$9.226 \times 10^4$</span></td><td style="text-align: center">323</td></tr><tr><td style="text-align: left">Rock (mat2)</td><td style="text-align: center"><span>$4.905 \times 10^6$</span></td><td style="text-align: center"><span>$4.892 \times 10^6$</span></td><td style="text-align: center">323</td></tr></table><p>The clay is initially <strong>strongly under-saturated</strong> (<span>$p_c \approx 7.6 \times 10^7$</span> Pa, <span>$S_l \approx 0.78$</span>) while the host rock is nearly saturated (<span>$p_c \approx 0$</span>).</p><hr/><h2 id="Governing-equations"><a class="docs-heading-anchor" href="#Governing-equations">Governing equations</a><a id="Governing-equations-1"></a><a class="docs-heading-anchor-permalink" href="#Governing-equations" title="Permalink"></a></h2><h3 id="Primary-unknowns"><a class="docs-heading-anchor" href="#Primary-unknowns">Primary unknowns</a><a id="Primary-unknowns-1"></a><a class="docs-heading-anchor-permalink" href="#Primary-unknowns" title="Permalink"></a></h3><p>Three coupled unknowns per point:</p><p class="math-container">\[\mathbf{u} = (p_l,\; p_a,\; T)\]</p><h3 id="Derived-pressures"><a class="docs-heading-anchor" href="#Derived-pressures">Derived pressures</a><a id="Derived-pressures-1"></a><a class="docs-heading-anchor-permalink" href="#Derived-pressures" title="Permalink"></a></h3><p>The vapor pressure is given by the <strong>modified Kelvin equation</strong> coupling pore liquid pressure, temperature, and enthalpies of phase change:</p><p class="math-container">\[p_v = p_{v0}\,\exp\!\left(\frac{M_v/R}{T}\left[
+    \frac{p_l - p_{l0}}{\rho_l}
+    + \frac{L_0\,\theta}{T_0}
+    + (C_{pl} - C_{pv})\left(\theta - T\ln\frac{T}{T_0}\right)
+\right]\right), \qquad \theta = T - T_0\]</p><p class="math-container">\[p_g = p_v + p_a, \qquad p_c = p_g - p_l, \qquad p_{c0} = \frac{p_c}{1 - \alpha\,\theta}\]</p><p>The reduced capillary pressure <span>$p_{c0}$</span> accounts for the thermal shift of the retention curves (<span>$\alpha = 3 \times 10^{-3}$</span> K<span>$^{-1}$</span>).</p><h3 id="Conservation-equations"><a class="docs-heading-anchor" href="#Conservation-equations">Conservation equations</a><a id="Conservation-equations-1"></a><a class="docs-heading-anchor-permalink" href="#Conservation-equations" title="Permalink"></a></h3><p><strong>Total water (liquid + vapor):</strong></p><p class="math-container">\[\frac{\partial}{\partial t}\!\left(\rho_l\,\phi\,S_l + \rho_v\,\phi\,S_g\right)
++ \nabla \cdot (\mathbf{W}_l + \mathbf{W}_v) = 0\]</p><p><strong>Dry air:</strong></p><p class="math-container">\[\frac{\partial}{\partial t}\!\left(\rho_a\,\phi\,S_g\right)
++ \nabla \cdot \mathbf{W}_a = 0\]</p><p><strong>Entropy balance</strong> (equivalent to the energy balance):</p><p class="math-container">\[\frac{\partial S_{\rm sys}}{\partial t} + \nabla \cdot \mathbf{J}_s = 0\]</p><h3 id="Fluxes"><a class="docs-heading-anchor" href="#Fluxes">Fluxes</a><a id="Fluxes-1"></a><a class="docs-heading-anchor-permalink" href="#Fluxes" title="Permalink"></a></h3><p><strong>Liquid Darcy flux</strong> (zero gravity):</p><p class="math-container">\[\mathbf{W}_l = -K_l\,\nabla p_l, \qquad K_l = \frac{\rho_l\,k_{\rm int}\,k_{rl}(p_{c0})}{\mu_l}\]</p><p><strong>Vapor flux</strong> (Darcy + Fick):</p><p class="math-container">\[\mathbf{W}_v = -K_{D,v}\,\nabla p_g - K_{F,v}\,\nabla c_v\]</p><p><strong>Dry air flux</strong> (symmetric to vapor):</p><p class="math-container">\[\mathbf{W}_a = -K_{D,a}\,\nabla p_g - K_{F,a}\,\nabla c_a\]</p><p>The binary diffusivity (Millington-Quirk tortuosity model):</p><p class="math-container">\[D_{\rm eff} = \phi\,S_g\,\tau\,D_{av},
+\quad \tau = \phi^{1/3}\,S_g^{7/3},
+\quad D_{av} = D_{av0}\,\frac{p_{v0}+p_{a0}}{p_g}\left(\frac{T}{T_0}\right)^{1.88}\]</p><p><strong>Total entropy flux:</strong></p><p class="math-container">\[\mathbf{J}_s = \frac{\mathbf{Q}}{T} + s_l\,\mathbf{W}_l + s_v\,\mathbf{W}_v + s_a\,\mathbf{W}_a,
+\qquad \mathbf{Q} = -K_{\rm TH}\,\nabla T\]</p><p>The thermal conductivity uses the geometric mean (Johansen):</p><p class="math-container">\[K_{\rm TH} = \lambda_s^{1-\phi}\,\lambda_l^{\phi S_l}\,\lambda_g^{\phi S_g}\]</p><h3 id="Entropy-storage-term"><a class="docs-heading-anchor" href="#Entropy-storage-term">Entropy storage term</a><a id="Entropy-storage-term-1"></a><a class="docs-heading-anchor-permalink" href="#Entropy-storage-term" title="Permalink"></a></h3><p>The volumetric entropy of the system is:</p><p class="math-container">\[S_{\rm sys} = C_s\ln\frac{T}{T_0}
+    - \phi\!\int_0^{p_c}\frac{\partial S_l}{\partial T}(p_c&#39;)\,\mathrm{d}p_c&#39;
+    + M_l\,s_l + M_v\,s_v + M_a\,s_a\]</p><p>The <strong>capillary entropy</strong> integral <span>$\int_0^{p_c} \partial S_l/\partial T\,\mathrm{d}p_c&#39;$</span> is evaluated by 3-point Gauss quadrature.</p><h3 id="Why-the-entropy-flux-contains-s_v-\\mathbf{W}_v:-the-Philip-and-de-Vries-effect"><a class="docs-heading-anchor" href="#Why-the-entropy-flux-contains-s_v-\\mathbf{W}_v:-the-Philip-and-de-Vries-effect">Why the entropy flux contains <span>$s_v \mathbf{W}_v$</span>: the Philip &amp; de Vries effect</a><a id="Why-the-entropy-flux-contains-s_v-\\mathbf{W}_v:-the-Philip-and-de-Vries-effect-1"></a><a class="docs-heading-anchor-permalink" href="#Why-the-entropy-flux-contains-s_v-\\mathbf{W}_v:-the-Philip-and-de-Vries-effect" title="Permalink"></a></h3><p>The specific entropy of vapor is dominated by the latent heat term:</p><p class="math-container">\[s_v = C_{pv}\ln\frac{T}{T_0} - \frac{\ln(p_v/p_{v0})}{M_v/R} + \frac{L_0}{T_0}\]</p><p>At <span>$T = 323$</span> K this gives <span>$s_v \approx 8360$</span> J/(kg·K).</p><p>compared to <span>$s_l \approx 406$</span> J/(kg·K) for liquid water. The vapor carries 21 × more entropy per kg than liquid, so even its small mass flux significantly amplifies the apparent thermal conductivity — this is the <strong>thermal vapor distillation</strong> effect (Philip &amp; de Vries, 1957).</p><hr/><h2 id="Retention-curves"><a class="docs-heading-anchor" href="#Retention-curves">Retention curves</a><a id="Retention-curves-1"></a><a class="docs-heading-anchor-permalink" href="#Retention-curves" title="Permalink"></a></h2><p>The <span>$S_l(p_c)$</span> and <span>$k_{rl}(p_c)$</span> curves are defined analytically.</p><p><strong>Mat1 — Compacted clay:</strong></p><p class="math-container">\[S_l = \left(1 + \left(\frac{p_c}{1.5 \times 10^6}\right)^{1.0638}\right)^{-0.06},
+\qquad k_{rl} = \left(1 + \left(\frac{p_c}{3 \times 10^6}\right)^2\right)^{-1/2}\]</p><p><strong>Mat2 — Host rock:</strong></p><p class="math-container">\[S_l = \left(1 + \left(\frac{p_c}{10^7}\right)^{1.7}\right)^{-0.4117},
+\qquad k_{rl} = \left(1 + \left(\frac{p_c}{10^7}\right)^2\right)^{-1}\]</p><p><strong>Gas relative permeability</strong> (common to both):</p><p class="math-container">\[k_{rg} = (1 - S_l)^2\,(1 - S_l^{5/3})\]</p><p><strong>Regularization</strong> near <span>$S_l = 1$</span> for <span>$p_c &lt; p_{c3}$</span> (exponential blending):</p><p class="math-container">\[S_l(p_c) = 1 - \bigl(1 - S_l^{\rm raw}(p_{c3})\bigr)\,\exp\!\left(\frac{p_c - p_{c3}}{p_{c3}}\right)
+\quad \text{for } p_c &lt; p_{c3}\]</p><p>with <span>$p_{c3} = 10^6$</span> Pa (clay) and <span>$p_{c3} = 2 \times 10^5$</span> Pa (rock).</p><hr/><h2 id="Parameters"><a class="docs-heading-anchor" href="#Parameters">Parameters</a><a id="Parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Parameters" title="Permalink"></a></h2><table><tr><th style="text-align: center">Symbol</th><th style="text-align: center">Value</th><th style="text-align: center">Unit</th><th style="text-align: left">Description</th></tr><tr><td style="text-align: center"><span>$\rho_l$</span></td><td style="text-align: center">1000</td><td style="text-align: center">kg/m³</td><td style="text-align: left">Liquid density</td></tr><tr><td style="text-align: center"><span>$\mu_l$</span></td><td style="text-align: center"><span>$10^{-3}$</span></td><td style="text-align: center">Pa·s</td><td style="text-align: left">Liquid viscosity</td></tr><tr><td style="text-align: center"><span>$\mu_g$</span></td><td style="text-align: center"><span>$1.8 \times 10^{-5}$</span></td><td style="text-align: center">Pa·s</td><td style="text-align: left">Gas viscosity</td></tr><tr><td style="text-align: center"><span>$M_v/R$</span></td><td style="text-align: center"><span>$2.16 \times 10^{-3}$</span></td><td style="text-align: center">kg/J</td><td style="text-align: left">Vapor gas constant</td></tr><tr><td style="text-align: center"><span>$M_a/R$</span></td><td style="text-align: center"><span>$3.46 \times 10^{-3}$</span></td><td style="text-align: center">kg/J</td><td style="text-align: left">Air gas constant</td></tr><tr><td style="text-align: center"><span>$p_{v0}$</span></td><td style="text-align: center">2460</td><td style="text-align: center">Pa</td><td style="text-align: left">Saturated vapor pressure at <span>$T_0$</span></td></tr><tr><td style="text-align: center"><span>$T_0$</span></td><td style="text-align: center">293</td><td style="text-align: center">K</td><td style="text-align: left">Reference temperature</td></tr><tr><td style="text-align: center"><span>$D_{av0}$</span></td><td style="text-align: center"><span>$2.48 \times 10^{-3}$</span></td><td style="text-align: center">m²/s</td><td style="text-align: left">Binary air-vapor diffusivity</td></tr><tr><td style="text-align: center"><span>$\lambda_l$</span></td><td style="text-align: center">0.6</td><td style="text-align: center">W/(m·K)</td><td style="text-align: left">Liquid thermal conductivity</td></tr><tr><td style="text-align: center"><span>$\lambda_g$</span></td><td style="text-align: center">0.026</td><td style="text-align: center">W/(m·K)</td><td style="text-align: left">Gas thermal conductivity</td></tr><tr><td style="text-align: center"><span>$L_0$</span></td><td style="text-align: center"><span>$2.45 \times 10^6$</span></td><td style="text-align: center">J/kg</td><td style="text-align: left">Latent heat of vaporization</td></tr><tr><td style="text-align: center"><span>$\alpha$</span></td><td style="text-align: center"><span>$3 \times 10^{-3}$</span></td><td style="text-align: center">K<span>$^{-1}$</span></td><td style="text-align: left">Thermal shift coefficient for <span>$S_l$</span></td></tr></table><hr/><h2 id="PoroMechanics.jl-implementation"><a class="docs-heading-anchor" href="#PoroMechanics.jl-implementation">PoroMechanics.jl implementation</a><a id="PoroMechanics.jl-implementation-1"></a><a class="docs-heading-anchor-permalink" href="#PoroMechanics.jl-implementation" title="Permalink"></a></h2><h3 id="Model-definition"><a class="docs-heading-anchor" href="#Model-definition">Model definition</a><a id="Model-definition-1"></a><a class="docs-heading-anchor-permalink" href="#Model-definition" title="Permalink"></a></h3><pre><code class="language-julia hljs">using PoroMechanics
+using VoronoiFVM
+using ExtendableGrids
+using Plots
+using Printf
+
+struct M6Mat
+    phi::Float64;  k_int::Float64;  lam_s::Float64
+    C_s::Float64;  p_c3::Float64;   mat_type::Int
+end
+
+Base.@kwdef struct M6Model &lt;: AbstractPoroModel
+    rho_l::Float64   = 1000.0;  mu_l::Float64    = 1.0e-3;  mu_g::Float64    = 1.8e-5
+    M_vsR::Float64   = 0.00216; M_asR::Float64   = 0.00346
+    p_l0::Float64    = 1.0e5;   p_v0::Float64    = 2460.0;  p_a0::Float64    = 97540.0
+    T_0::Float64     = 293.0;   D_av0::Float64   = 0.00248
+    lam_l::Float64   = 0.6;     lam_g::Float64   = 0.026
+    C_pl::Float64    = 4180.0;  C_pv::Float64    = 1800.0;  C_pa::Float64    = 1000.0
+    L_0::Float64     = 2.45e6;  alpha_T::Float64 = 0.003
+    x_int::Float64   = 0.425;   L::Float64       = 1.225
+    mat1::M6Mat = M6Mat(0.30, 1.0e-20, 1.12, 2.3e6, 1.0e6, 1)  # compacted clay
+    mat2::M6Mat = M6Mat(0.05, 1.0e-19, 1.62, 2.0e6, 2.0e5, 2)  # host rock
+    p_l_ini1::Float64 = -7.611655e7; p_a_ini1::Float64 = 9.225595e4
+    p_l_ini2::Float64 =  4.905e6;    p_a_ini2::Float64 = 4.891671e6
+    T_ini::Float64    =  323.0
+end
+
+PoroMechanics.nspecies(::M6Model)      = 3
+PoroMechanics.species_names(::M6Model) = [:p_l, :p_a, :T]
+
+const U_PL = 1;  const U_PA = 2;  const U_TEM = 3</code></pre><h3 id="Retention-curves-2"><a class="docs-heading-anchor" href="#Retention-curves-2">Retention curves</a><a class="docs-heading-anchor-permalink" href="#Retention-curves-2" title="Permalink"></a></h3><pre><code class="language-julia hljs">Sl_raw1(pc) = pc &lt;= 0 ? 1.0 : (1.0 + (pc/1.5e6)^1.06383)^(-0.06)
+Sl_raw2(pc) = pc &lt;= 0 ? 1.0 : (1.0 + (pc/10.0e6)^1.7)^(-0.4117)
+krl1(pc) = pc &lt;= 0 ? 1.0 : (1.0 + (pc/3.0e6)^2)^(-0.5)
+krl2(pc) = pc &lt;= 0 ? 1.0 : (1.0 + (pc/10.0e6)^2)^(-1.0)
+krg_fn(sl) = sl &gt;= 1 ? 0.0 : (1-clamp(sl,0,1-1e-12))^2 * (1-clamp(sl,0,1-1e-12)^(5/3))
+
+function Sl_reg(pc, p_c3, Sl_raw)
+    pc &lt;= 0 &amp;&amp; return 1.0
+    pc &gt;= p_c3 &amp;&amp; return Sl_raw(pc)
+    return 1.0 - (1.0 - Sl_raw(p_c3)) * exp((pc - p_c3) / p_c3)
+end
+
+Sl_m(mat::M6Mat, pc) = mat.mat_type == 1 ? Sl_reg(pc, mat.p_c3, Sl_raw1) :
+                                            Sl_reg(pc, mat.p_c3, Sl_raw2)
+krl_m(mat::M6Mat, pc) = mat.mat_type == 1 ? krl1(pc) : krl2(pc)
+
+m0 = M6Model()
+pc_clay = range(1e4, 2e8; length=300)
+pc_rock = range(1e4, 1e7; length=300)
+
+p_sl = plot(; xlabel=&quot;pᶜ₀ [Pa]&quot;, ylabel=&quot;Sₗ [-]&quot;, title=&quot;Retention curves&quot;,
+             xscale=:log10, legend=:topright, size=(520,300))
+plot!(p_sl, pc_clay, Sl_m.(Ref(m0.mat1), pc_clay); lw=2, color=:steelblue,  label=&quot;Clay (mat1)&quot;)
+plot!(p_sl, pc_rock, Sl_m.(Ref(m0.mat2), pc_rock); lw=2, color=:darkorange, label=&quot;Rock (mat2)&quot;)
+p_sl</code></pre><img src="e54e789e.svg" alt="Example block output"/><h3 id="Kelvin-equation-and-heat-flux"><a class="docs-heading-anchor" href="#Kelvin-equation-and-heat-flux">Kelvin equation and heat flux</a><a id="Kelvin-equation-and-heat-flux-1"></a><a class="docs-heading-anchor-permalink" href="#Kelvin-equation-and-heat-flux" title="Permalink"></a></h3><pre><code class="language-julia hljs">function p_vapor(m::M6Model, pl, T)
+    θ = T - m.T_0
+    m.p_v0 * exp(m.M_vsR / T * (
+        (pl - m.p_l0) / m.rho_l + m.L_0 * θ / m.T_0
+        + (m.C_pl - m.C_pv) * (θ - T * log(T / m.T_0))))
+end
+
+# Verify: p_v(p_l0, T_0) must equal p_v0
+@printf(&quot;p_v(p_l0, T_0) = %.2f Pa  (expected %.2f Pa)\n&quot;, p_vapor(m0, m0.p_l0, m0.T_0), m0.p_v0)
+
+# Radioactive decay heat flux Q(t)
+const _t_F   = [0.0, 3.1536e8, 6.3072e8, 9.4608e8, 1.26144e9, 1.5768e9,
+                2.20752e9, 2.83824e9, 3.78432e9, 4.7304e9, 6.3072e9, 9.4608e9]
+const _F_val = [0.0, 1.1006064e11, 1.978884e11, 2.6852904e11, 3.2734368e11,
+                3.7504188e11, 4.4410572e11, 4.90779e11, 5.3902908e11,
+                5.71526928e11, 6.09764328e11, 6.61641048e11]
+function heat_flux(t)
+    t &lt;= 0 &amp;&amp; return 0.0;  t &gt;= _t_F[end] &amp;&amp; return (_F_val[end]-_F_val[end-1])/(_t_F[end]-_t_F[end-1])
+    for i in 2:lastindex(_t_F); t &lt;= _t_F[i] &amp;&amp; return (_F_val[i]-_F_val[i-1])/(_t_F[i]-_t_F[i-1]); end
+    0.0
+end
+
+yr = 3.1536e7
+t_v = range(1e6, 9.5e9; length=500)
+plot(t_v ./ yr, heat_flux.(t_v);
+     xlabel=&quot;t [yr]&quot;, ylabel=&quot;Q(t) [W/m²]&quot;,
+     title=&quot;Radioactive decay heat flux at x = 0&quot;,
+     xscale=:log10, lw=2, color=:crimson, legend=false, size=(580,300))</code></pre><img src="abe189aa.svg" alt="Example block output"/><h3 id="VoronoiFVM-callbacks"><a class="docs-heading-anchor" href="#VoronoiFVM-callbacks">VoronoiFVM callbacks</a><a id="VoronoiFVM-callbacks-1"></a><a class="docs-heading-anchor-permalink" href="#VoronoiFVM-callbacks" title="Permalink"></a></h3><pre><code class="language-julia hljs"># Gauss quadrature (3-point) for the capillary entropy integral
+const gauss_a = (0.93246951420, 0.66120938646, 0.23861918608)
+const gauss_w = (0.17132449237, 0.36076157304, 0.46791393457)
+
+function dSl_raw1_fn(pc); pc &lt;= 0 &amp;&amp; return 0.0; u=(pc/1.5e6)^1.06383; -0.06*(1+u)^(-1.06)*1.06383*u/pc; end
+function dSl_raw2_fn(pc); pc &lt;= 0 &amp;&amp; return 0.0; u=(pc/10e6)^1.7; -0.4117*(1+u)^(-1.4117)*1.7*u/pc; end
+function dSl_reg(pc,p_c3,Sl_raw,dSl_raw); pc&lt;=0&amp;&amp;return 0.0; pc&gt;=p_c3&amp;&amp;return dSl_raw(pc); -(1-Sl_raw(p_c3))*exp((pc-p_c3)/p_c3)/p_c3; end
+dSl_m(mat::M6Mat, pc) = mat.mat_type==1 ? dSl_reg(pc,mat.p_c3,Sl_raw1,dSl_raw1_fn) : dSl_reg(pc,mat.p_c3,Sl_raw2,dSl_raw2_fn)
+get_mat(m::M6Model, x) = x &lt; m.x_int ? m.mat1 : m.mat2
+
+function compute_dUsdT(m::M6Model, mat, pc, θ)
+    pc &lt;= 0 &amp;&amp; return 0.0;  at = 1 - m.alpha_T*θ;  at&lt;=0 &amp;&amp; return 0.0
+    h = pc/2;  dU = 0.0
+    for j in 1:3
+        for xi in [h*(1+gauss_a[j]), h*(1-gauss_a[j])]
+            pc0 = xi/at;  dU += gauss_w[j] * dSl_m(mat, pc0) * pc0 * m.alpha_T / at
+        end
+    end
+    dU * h
+end
+
+function PoroMechanics.storage!(f, u, node, m::M6Model, ::Any)
+    mat=get_mat(m,node.coord[1]); φ=mat.phi; Cs=mat.C_s
+    pl=u[U_PL]; pa=u[U_PA]; T=u[U_TEM]; θ=T-m.T_0
+    pv=p_vapor(m,pl,T); pc=pv+pa-pl; at=1-m.alpha_T*θ; pc0=pc/at
+    sl=Sl_m(mat,pc0); sg=1-sl
+    ρv=pv*m.M_vsR/T; ρa=pa*m.M_asR/T
+    Ml=m.rho_l*φ*sl; Mv=ρv*φ*sg; Ma=ρa*φ*sg
+    s_l=m.C_pl*log(T/m.T_0)
+    s_v=m.C_pv*log(T/m.T_0)-log(pv/m.p_v0)/m.M_vsR+m.L_0/m.T_0
+    s_a=m.C_pa*log(T/m.T_0)-log(pa/m.p_a0)/m.M_asR
+    dU=compute_dUsdT(m,mat,pc,θ)
+    f[U_PL]=Ml+Mv;  f[U_PA]=Ma
+    f[U_TEM]=Cs*log(T/m.T_0)-φ*dU+Ml*s_l+Mv*s_v+Ma*s_a
+end
+
+function PoroMechanics.flux!(f, u, edge, m::M6Model, ::Any)
+    x_m=(edge.coord[1,1]+edge.coord[1,2])/2; mat=get_mat(m,x_m)
+    φ=mat.phi; ki=mat.k_int; λs=mat.lam_s
+    pl1,pl2=u[U_PL,1],u[U_PL,2]; pa1,pa2=u[U_PA,1],u[U_PA,2]; T1,T2=u[U_TEM,1],u[U_TEM,2]
+    plm=(pl1+pl2)/2; pam=(pa1+pa2)/2; Tm=(T1+T2)/2
+    θm=Tm-m.T_0; at=1-m.alpha_T*θm
+    pvm=p_vapor(m,plm,Tm); pgm=pvm+pam; pcm=pgm-plm; pc0m=pcm/at
+    slm=Sl_m(mat,pc0m); sgm=1-slm
+    ρvm=pvm*m.M_vsR/Tm; ρam=pam*m.M_asR/Tm; ρgm=ρvm+ρam; cvm=ρvm/ρgm; cam=1-cvm
+    Kl=m.rho_l*ki/m.mu_l*krl_m(mat,pc0m); krg=krg_fn(slm)
+    KDv=ρvm*ki/m.mu_g*krg; KDa=ρam*ki/m.mu_g*krg
+    τ=φ^(1/3)*max(sgm,0)^(7/3); Dav=m.D_av0*(m.p_v0+m.p_a0)/pgm*(Tm/m.T_0)^1.88
+    Def=φ*sgm*τ*Dav; KFv=ρgm*Def; KFa=KFv
+    bar=Def*cvm*cam/Tm; KDv+=bar*(m.M_asR-m.M_vsR); KDa+=bar*(m.M_vsR-m.M_asR)
+    KTH=λs^(1-φ)*m.lam_l^(φ*slm)*m.lam_g^(φ*sgm)
+    pv1=p_vapor(m,pl1,T1); pg1=pv1+pa1; pv2=p_vapor(m,pl2,T2); pg2=pv2+pa2
+    ρg1=pv1*m.M_vsR/T1+pa1*m.M_asR/T1; ρg2=pv2*m.M_vsR/T2+pa2*m.M_asR/T2
+    cv1=pv1*m.M_vsR/T1/ρg1; ca1=1-cv1; cv2=pv2*m.M_vsR/T2/ρg2; ca2=1-cv2
+    Wl=Kl*(pl1-pl2); Wv=KDv*(pg1-pg2)+KFv*(cv1-cv2); Wa=KDa*(pg1-pg2)+KFa*(ca1-ca2)
+    s_lm=m.C_pl*log(Tm/m.T_0)
+    s_vm=m.C_pv*log(Tm/m.T_0)-log(pvm/m.p_v0)/m.M_vsR+m.L_0/m.T_0
+    s_am=m.C_pa*log(Tm/m.T_0)-log(pam/m.p_a0)/m.M_asR
+    f[U_PL]=Wl+Wv; f[U_PA]=Wa; f[U_TEM]=KTH/Tm*(T1-T2)+s_lm*Wl+s_vm*Wv+s_am*Wa
+end
+
+mutable struct M6Data; t::Float64; end
+
+function PoroMechanics.bcondition!(f, u, node, m::M6Model, data)
+    boundary_dirichlet!(f,u,node; species=U_PL,  region=2, value=m.p_l_ini2)
+    boundary_dirichlet!(f,u,node; species=U_PA,  region=2, value=m.p_a_ini2)
+    boundary_dirichlet!(f,u,node; species=U_TEM, region=2, value=m.T_ini)
+    if node.region == 1
+        Q = heat_flux(data.t)
+        boundary_neumann!(f,u,node; species=U_TEM, region=1, value=Q/max(u[U_TEM],200.0))
+    end
+end</code></pre><h3 id="Simulation"><a class="docs-heading-anchor" href="#Simulation">Simulation</a><a id="Simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Simulation" title="Permalink"></a></h3><pre><code class="language-julia hljs">m = M6Model()
+Nx1, Nx2 = 43, 80
+x1    = collect(range(0.0, m.x_int; length=Nx1))
+x2    = collect(range(m.x_int, m.L; length=Nx2))
+x_all = vcat(x1, x2[2:end])
+grid  = simplexgrid(x_all)
+grid[CellRegions][1:Nx1-1] .= 1
+grid[CellRegions][Nx1:end] .= 2
+
+data = M6Data(0.0)
+_storage!(f,u,node,d) = PoroMechanics.storage!(f,u,node,m,d)
+_flux!(f,u,edge,d)    = PoroMechanics.flux!(f,u,edge,m,d)
+_bcond!(f,u,node,d)   = PoroMechanics.bcondition!(f,u,node,m,d)
+
+sys = VoronoiFVM.System(grid;
+        storage=_storage!, flux=_flux!, bcondition=_bcond!,
+        species=[U_PL,U_PA,U_TEM], data=data)
+
+inival = unknowns(sys)
+for i in eachindex(x_all)
+    if x_all[i] &lt; m.x_int
+        inival[U_PL,i]=m.p_l_ini1;  inival[U_PA,i]=m.p_a_ini1
+    else
+        inival[U_PL,i]=m.p_l_ini2;  inival[U_PA,i]=m.p_a_ini2
+    end
+    inival[U_TEM,i] = m.T_ini
+end
+inival[U_PL,end]=m.p_l_ini2; inival[U_PA,end]=m.p_a_ini2
+
+ctrl = VoronoiFVM.SolverControl(;
+    Δt=1e2, Δt_max=3.1536e7, Δt_min=1e-2,
+    Δu_opt=1e4, reltol=1e-6, abstol=1e-10, verbose=false)
+
+tsave = [0.0, yr, 2yr, 4yr, 6yr, 8yr, 10yr, 20yr, 40yr, 50yr, 100yr]
+
+# Wrapping the loop in `let` avoids Julia&#39;s global-scope variable shadowing
+# (assigning to `u` inside a for loop would otherwise create a new local).
+results = let u = copy(inival)
+    res = Tuple{Float64, Matrix{Float64}}[]
+    for k in 2:lastindex(tsave)
+        data.t = tsave[k]
+        seg = solve(sys; inival=u, times=[tsave[k-1], tsave[k]], control=ctrl)
+        u = seg[:,:,end]
+        push!(res, (tsave[k], copy(u)))
+    end
+    res
+end
+@printf(&quot;Done: %d time segments\n&quot;, length(results))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Done: 10 time segments</code></pre><hr/><h2 id="Results"><a class="docs-heading-anchor" href="#Results">Results</a><a id="Results-1"></a><a class="docs-heading-anchor-permalink" href="#Results" title="Permalink"></a></h2><h3 id="Temperature-profiles"><a class="docs-heading-anchor" href="#Temperature-profiles">Temperature profiles</a><a id="Temperature-profiles-1"></a><a class="docs-heading-anchor-permalink" href="#Temperature-profiles" title="Permalink"></a></h3><pre><code class="language-julia hljs">times_plot = [1yr, 10yr, 40yr, 100yr]
+colors_t   = [:steelblue, :darkorange, :crimson, :green]
+
+p_T = plot(; xlabel=&quot;x [m]&quot;, ylabel=&quot;T [K]&quot;,
+            title=&quot;Temperature profiles — progressive heating&quot;,
+            legend=:topright, size=(680, 360))
+hline!(p_T, [m.T_ini]; lw=1, ls=:dot, color=:grey, label=&quot;T₀ = 323 K&quot;)
+for (k, t_tgt) in enumerate(times_plot)
+    idx = argmin(abs.([r[1] for r in results] .- t_tgt))
+    plot!(p_T, x_all, results[idx][2][U_TEM, :];
+          lw=2, color=colors_t[k], label=&quot;t = $(round(Int,t_tgt/yr)) yr&quot;)
+end
+vline!(p_T, [m.x_int]; lw=1, ls=:dash, color=:black, label=&quot;interface&quot;)
+p_T</code></pre><img src="97281d14.svg" alt="Example block output"/><h3 id="Saturation-profiles"><a class="docs-heading-anchor" href="#Saturation-profiles">Saturation profiles</a><a id="Saturation-profiles-1"></a><a class="docs-heading-anchor-permalink" href="#Saturation-profiles" title="Permalink"></a></h3><pre><code class="language-julia hljs">p_sl2 = plot(; xlabel=&quot;x [m]&quot;, ylabel=&quot;Sₗ [-]&quot;,
+              title=&quot;Saturation profiles — thermal drying&quot;,
+              legend=:topright, size=(680, 360))
+
+for (k, t_tgt) in enumerate(times_plot)
+    idx = argmin(abs.([r[1] for r in results] .- t_tgt))
+    u   = results[idx][2]
+    sl_prof = [begin
+        pl=u[U_PL,i]; pa=u[U_PA,i]; T=u[U_TEM,i]
+        pv=p_vapor(m,pl,T); pc0=(pv+pa-pl)/(1-m.alpha_T*(T-m.T_0))
+        Sl_m(get_mat(m,x_all[i]), pc0)
+    end for i in eachindex(x_all)]
+    plot!(p_sl2, x_all, sl_prof; lw=2, color=colors_t[k], label=&quot;t = $(round(Int,t_tgt/yr)) yr&quot;)
+end
+sl_ini = [begin
+    pl=inival[U_PL,i]; pa=inival[U_PA,i]; T=inival[U_TEM,i]
+    pv=p_vapor(m,pl,T); pc0=(pv+pa-pl)/(1-m.alpha_T*(T-m.T_0))
+    Sl_m(get_mat(m,x_all[i]), pc0)
+end for i in eachindex(x_all)]
+plot!(p_sl2, x_all, sl_ini; lw=1.5, ls=:dot, color=:grey, label=&quot;t = 0&quot;)
+vline!(p_sl2, [m.x_int]; lw=1, ls=:dash, color=:black, label=&quot;interface&quot;)
+p_sl2</code></pre><img src="5e6b8b4d.svg" alt="Example block output"/><h3 id="Summary-at-the-clay/rock-interface"><a class="docs-heading-anchor" href="#Summary-at-the-clay/rock-interface">Summary at the clay/rock interface</a><a id="Summary-at-the-clay/rock-interface-1"></a><a class="docs-heading-anchor-permalink" href="#Summary-at-the-clay/rock-interface" title="Permalink"></a></h3><pre><code class="language-julia hljs">i_int  = argmin(abs.(x_all .- m.x_int))
+i_mid2 = argmin(abs.(x_all .- 0.825))
+
+println(&quot;t (yr) | pₗ[int] (Pa)    | T[int] (K)  | Sₗ[int] (-) | T[0.825m] (K)&quot;)
+println(&quot;-&quot;^72)
+for (t, u) in results
+    pl=u[U_PL,i_int]; pa=u[U_PA,i_int]; T=u[U_TEM,i_int]
+    pv=p_vapor(m,pl,T); pc0=(pv+pa-pl)/(1-m.alpha_T*(T-m.T_0))
+    sl=Sl_m(get_mat(m,x_all[i_int]),pc0)
+    @printf(&quot;%5.0f  | %+14.4e  | %10.3f  | %11.6f  | %10.3f\n&quot;,
+            t/yr, pl, T, sl, u[U_TEM,i_mid2])
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">t (yr) | pₗ[int] (Pa)    | T[int] (K)  | Sₗ[int] (-) | T[0.825m] (K)
+------------------------------------------------------------------------
+    1  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+    2  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+    4  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+    6  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+    8  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+   10  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+   20  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+   40  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+   50  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000
+  100  |    +4.9050e+06  |    323.000  |    1.000000  |    323.000</code></pre><hr/><h2 id="Key-points"><a class="docs-heading-anchor" href="#Key-points">Key points</a><a id="Key-points-1"></a><a class="docs-heading-anchor-permalink" href="#Key-points" title="Permalink"></a></h2><ul><li><strong>Entropy formulation</strong> — the thermal equation is written as an entropy balance rather than an energy balance, following Dangla (1998). This eliminates the need for a divergence term in the energy equation and simplifies the coupling with mass balances.</li><li><strong>Philip &amp; de Vries vapor term</strong> — <code>s_v * Wv</code> in the entropy flux captures latent-heat transport by vapor. At <span>$S_l \approx 0.78$</span> in the clay, this can increase the apparent thermal conductivity by 10–30%.</li><li><strong>Automatic Jacobian</strong> — VoronoiFVM uses <code>ForwardDiff.jl</code> to compute the full <span>$6 \times 6$</span> Jacobian block per edge automatically, so no analytical Jacobian is written by hand.</li><li><strong>Two-material dispatch</strong> — material properties are selected at runtime by <code>get_mat(m, x)</code>, which returns <code>m.mat1</code> or <code>m.mat2</code> depending on the node or edge position. This avoids any conditional branching inside the hot loops.</li><li><strong>Bi-material interface</strong> — the very different retention curves (clay vs. rock) create a saturation jump at <span>$x = 0.425$</span> m. The clay remains much wetter than the rock for the same capillary pressure.</li></ul><h3 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h3><ul><li>Dangla, P. (1998). <em>Couplages hygro-mécaniques dans les milieux poreux non saturés</em>. Thèse ENPC, Paris.</li><li>Philip, J.R. &amp; de Vries, D.A. (1957). Moisture movement in porous materials under temperature gradients. <em>Trans. Am. Geophys. Union</em>, 38(2), 222–232.</li><li>van Genuchten, M.Th. (1980). A closed-form equation for predicting the hydraulic conductivity of unsaturated soils. <em>Soil Sci. Soc. Am. J.</em>, 44, 892–898.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../M1_Richards/">« Richards 1D (M1)</a><a class="docs-footer-nextpage" href="../M7_Biot/">Biot poroelasticity (M7) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Tuesday 25 August 2026 14:22">Tuesday 25 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
