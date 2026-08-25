@@ -1,5 +1,9 @@
 # physdata.jl — invariant physico-chemical data (cemdata18 + literature)
 #
+# NOTE — this belongs in ChemistryLab.jl. These are database values, not transport
+# parameters: equilibrium constants, free-water diffusivities and molar volumes. They sit
+# here only until ChemistryLab.jl exposes them.
+#
 # Constants that depend neither on the material nor on the test:
 #   DLMConstants       : surface equilibrium constants on C-S-H (Tran & Soive 2018)
 #   IonicDiffusivities : free-water diffusion coefficients (Atkins 1987, Oelkers 1988)

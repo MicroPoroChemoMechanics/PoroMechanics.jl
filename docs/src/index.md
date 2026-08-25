@@ -28,6 +28,23 @@ written by hand: the finite volume callbacks are differentiated automatically wi
   [lothenbach2019](@cite) through [ChemistryLab.jl](https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl),
   Friedel's salt binding, and surface complexation on C-S-H [tran2018](@cite).
 
+## Scope, and where the chemistry belongs
+
+PoroMechanics.jl is today a *chemo*-poro-mechanics code: next to transport and mechanics it
+carries chemistry of its own — surface complexation on C-S-H (double layer model), mineral
+dissolution and precipitation kinetics, and the physico-chemical data tables the reactive
+examples read.
+
+That is a transitional state, not a design choice. Thermodynamic equilibrium is already
+delegated to [ChemistryLab.jl](https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl),
+which owns the databases, the speciation and the Gibbs minimization. The rest is meant to
+follow it upstream, leaving this package to describe transport and mechanics and to call
+ChemistryLab.jl for everything chemical.
+
+The clearest sign that the code currently sits in the wrong repository: the double layer
+model exists here in three near-identical variants, one per example family. A single
+implementation, in ChemistryLab.jl, is where it should live.
+
 ## Backends
 
 | Problem class | Library |

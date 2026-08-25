@@ -45,6 +45,13 @@ const ICA4 = 4   # c_Ca   z = +2
 const V_REV_4 = 1.0e-3   # [m³] = 1 dm³
 
 # ── DLM parameters ────────────────────────────────────────────────────────────
+#
+# NOTE — this belongs in ChemistryLab.jl.
+# Surface complexation is chemistry, not transport. It lives here only because
+# ChemistryLab.jl does not expose it yet; when it does, delete this and call it.
+# Three near-identical copies of the model currently exist in this directory
+# (run_4.jl, tran2018.jl, chloricem_ternary.jl), which is the argument for moving it.
+
 
 """
 Parameters of the DLM (Double Layer Model) for C-S-H.

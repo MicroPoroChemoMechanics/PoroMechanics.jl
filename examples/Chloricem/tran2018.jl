@@ -155,6 +155,10 @@ end
 
 DLM equilibrium for the C-S-H with the Mg²⁺ extension (seawater).
 
+!!! note
+    This belongs in ChemistryLab.jl — surface complexation is chemistry, not transport.
+    It lives here only until ChemistryLab.jl exposes it.
+
 Bisection on β ∈ [−10, 10] of σ₀(β) = σ_DL(β).
 Retourne `(β, S_Cl, S_Na, S_K, S_Ca, S_Mg)` en mol/m³_concrete.
 Returns zeros when `n_csh ≤ 0` (DLM disabled).

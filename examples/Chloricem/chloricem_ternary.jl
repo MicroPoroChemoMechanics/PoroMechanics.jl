@@ -94,6 +94,13 @@ const EXCLUDE_NONCSHQ_T = [
 # ════════════════════════════════════════════════════════════════════════════════
 
 # ── DLM parameters — ternary complex + Yoshida 2021 ───────────────────────────
+#
+# NOTE — this belongs in ChemistryLab.jl.
+# Surface complexation is chemistry, not transport. It lives here only because
+# ChemistryLab.jl does not expose it yet; when it does, delete this and call it.
+# Three near-identical copies of the model currently exist in this directory
+# (run_4.jl, tran2018.jl, chloricem_ternary.jl), which is the argument for moving it.
+
 
 """
 DLM parameters for the ternary complex ≡SiOCaCl (Thermoddem 2023) and the
@@ -131,6 +138,11 @@ end
 
 """
 Kinetic parameters for dissolution/precipitation of the mineral phases.
+
+!!! note
+    This belongs in ChemistryLab.jl, which has carried a kinetics module since its v0.3.0.
+    The rate law is reimplemented here because this package is pinned to an earlier
+    ChemistryLab; it should be dropped in favour of the upstream one.
 Source: toughreact.py → _MINERAL_KINETICS (Soive, Ravi thesis).
 
 Neutral rate law, no pH dependence and no activation energy (Ea=0):

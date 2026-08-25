@@ -44,6 +44,14 @@ equilibria, then surface complexation on C-S-H. Only the earlier stages are vali
 against reference profiles; the later ones and the ternary binder variants are implemented
 but not yet checked against TOUGHREACT/Thermoddem results.
 
+### Scope
+
+This release is a *chemo*-poro-mechanics code: alongside transport and mechanics it carries
+surface complexation on C-S-H, mineral kinetics, and the physico-chemical data tables the
+reactive examples read. Thermodynamic equilibrium is already delegated to `ChemistryLab.jl`,
+and the rest is intended to follow it upstream — leaving this package to describe transport
+and mechanics, and to call `ChemistryLab.jl` for everything chemical.
+
 ### Requirements
 
 Julia 1.12 or later. The floor comes from `ChemistryLab.jl` and `OptimaSolver.jl`, whose
