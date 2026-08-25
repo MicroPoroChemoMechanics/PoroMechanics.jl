@@ -20,10 +20,16 @@ makedocs(;
     authors = "Jean-François Barthélémy and Anthony Soive",
     sitename = "PoroMechanics.jl",
     format = Documenter.HTML(;
+        # MathJax3(config) merges only at the top level: any :tex given here replaces
+        # Documenter's whole default, so inlineMath and tags have to be repeated.
         mathengine = Documenter.MathJax3(
             Dict(
                 :loader => Dict("load" => ["[tex]/mhchem"]),
-                :tex => Dict("packages" => Dict("[+]" => ["mhchem"])),
+                :tex => Dict(
+                    "inlineMath" => [["\$", "\$"], ["\\(", "\\)"]],
+                    "tags" => "ams",
+                    "packages" => ["base", "ams", "autoload", "mhchem"],
+                ),
             )
         ),
         canonical = "https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl",
