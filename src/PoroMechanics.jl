@@ -12,7 +12,7 @@ equations and knows nothing about time stepping or assembly:
 
 ## Layer 1 — Core abstractions (this module)
 - [`AbstractPoroModel`](@ref) — supertype of every physics model. Material parameters
-  live in the concrete struct; multiple dispatch selects the constitutive behaviour.
+  live in the concrete struct; multiple dispatch selects the constitutive behavior.
 - [`AbstractPoroSolver`](@ref) — supertype for time-stepping strategies (Monolithic, SNIA…).
 
 ## Layer 2 — Physics models
@@ -28,7 +28,7 @@ with `ForwardDiff.jl`.
 - **Transport / diffusion / flow** → `VoronoiFVM.jl`
 - **Coupled mechanics** (Biot, BBM…) → `Ferrite.jl`
 
-# Licence
+# License
 MIT — see `LICENSE`.
 """
 module PoroMechanics

@@ -34,6 +34,10 @@ output/
 *.svg
 !docs/src/assets/*
 
+# Python
+__pycache__/
+*.pyc
+
 # Editors / OS
 .vscode
 .idea

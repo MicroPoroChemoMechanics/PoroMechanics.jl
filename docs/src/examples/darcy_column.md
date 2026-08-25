@@ -8,7 +8,7 @@
 
 ## Physical problem
 
-We simulate the pressurisation of a vertical saturated soil column.
+We simulate the pressurization of a vertical saturated soil column.
 The pore pressure $p$ [Pa] is the unknown.
 
 **PDE:**

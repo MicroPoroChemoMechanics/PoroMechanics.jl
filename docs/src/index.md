@@ -1,26 +1,44 @@
 # PoroMechanics.jl
 
-**PoroMechanics.jl** simulates coupled phenomena in porous media: flow, solute and
-reactive transport, cement chemistry, and poromechanics — on finite volume and finite
-element backends.
+*Reactive transport and poromechanics of porous media.*
 
-## Covered domains
+PoroMechanics.jl simulates coupled phenomena in porous media — flow, solute and reactive
+transport, cement chemistry, and poromechanics — on two numerical backends: finite volumes
+for transport, finite elements for coupled mechanics.
 
-- Flow in porous media (Richards, Darcy)
-- Solute transport (Fick)
-- Non-isothermal drying (M6)
-- Poromechanics (BBM, M7)
-- Structural mechanics
-- Cement chemistry
+A physics model is a plain Julia struct holding its material parameters. Multiple dispatch
+on that struct selects the constitutive behavior, so a model file stays a description of
+its own equations and knows nothing about time stepping or assembly. Jacobians are never
+written by hand: the finite volume callbacks are differentiated automatically with
+[ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl).
+
+## Key features
+
+- **Unsaturated flow** — Richards' equation [richards1931](@cite) with Van Genuchten
+  retention [vangenuchten1980](@cite) and Mualem relative permeability [mualem1976](@cite).
+- **Solute and multi-ionic transport** — Fick diffusion, Nernst-Planck transport with an
+  electroneutrality constraint, effective diffusivity from the Oh-Jang tortuosity model
+  [ohjang2004](@cite).
+- **Non-isothermal drying** — liquid water, dry air and heat, coupled through a modified
+  Kelvin equation and an entropy balance, with latent-heat transport by vapor
+  [philip1957](@cite).
+- **Poromechanics** — Biot poroelasticity [biot1941](@cite) on unstructured meshes.
+- **Reactive transport in cementitious materials** — operator splitting in the style of
+  TOUGHREACT [xu2004](@cite), with thermodynamic equilibrium from cemdata18
+  [lothenbach2019](@cite) through [ChemistryLab.jl](https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl),
+  Friedel's salt binding, and surface complexation on C-S-H [tran2018](@cite).
 
 ## Backends
 
-| Model type | Library |
-|---|---|
-| Diffusion / transport (M1, M2, M6, Richards…) | [VoronoiFVM.jl](https://github.com/j-fu/VoronoiFVM.jl) |
-| Coupled mechanics (M7, BBM, M10…) | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
+| Problem class | Library |
+| :--- | :--- |
+| Transport, diffusion, flow | [VoronoiFVM.jl](https://github.com/j-fu/VoronoiFVM.jl) |
+| Coupled mechanics | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
 
 ## Installation
+
+PoroMechanics.jl and two of its dependencies are distributed through the
+MicroPoroChemoMechanics registry:
 
 ```julia
 using Pkg
@@ -28,42 +46,11 @@ Pkg.Registry.add(RegistrySpec(url = "https://github.com/MicroPoroChemoMechanics/
 Pkg.add("PoroMechanics")
 ```
 
-## Quick start
+## Where to go next
 
-```julia
-using PoroMechanics
-
-# A physics model is a subtype of AbstractPoroModel:
-struct MyDiffusionModel <: AbstractPoroModel
-    D::Float64   # diffusion coefficient
-end
-
-function PoroMechanics.storage!(f, u, node, m::MyDiffusionModel, data)
-    f[1] = u[1]        # ∂c/∂t
-end
-
-function PoroMechanics.flux!(f, u, edge, m::MyDiffusionModel, data)
-    f[1] = -m.D * (u[1,1] - u[1,2])   # -D ∇c · n
-end
-```
-
-## Validated examples
-
-| Example | Physics | Backend | Unknown(s) |
-|---|---|---|---|
-| [Darcy 1D](examples/darcy_column.md) | Linear saturated flow | VoronoiFVM | $p$ |
-| [Richards 1D — M1](examples/M1_Richards.md) | Unsaturated imbibition (Van Genuchten) | VoronoiFVM | $p_l$ |
-| [Non-isothermal Drying — M6](examples/M6_drying.md) | Thermo-hydraulic coupling, 2 materials, radioactive waste barrier | VoronoiFVM | $p_l$, $p_a$, $T$ |
-| [Biot 2D — Ternay dam (M7)](examples/M7_Biot.md) | Saturated poroelasticity, 2-material FEM | Ferrite | $\mathbf{u}$, $p_l$ |
-
-## Documentation
-
-```@contents
-Pages = ["examples/darcy_column.md", "examples/M1_Richards.md", "examples/M6_drying.md", "examples/M7_Biot.md"]
-```
-
-## API Reference
-
-```@autodocs
-Modules = [PoroMechanics]
-```
+| Section | For |
+| :--- | :--- |
+| [Getting Started](quickstart.md) | writing and running a first model, end to end |
+| [Examples](examples/M1_diffusion.md) | one worked problem per physics, with its equations, data and reference solution |
+| [API](api.md) | every exported name |
+| [References](references.md) | the literature the models are built from |

@@ -1,69 +1,49 @@
 # PoroMechanics.jl
 
-> **Reactive transport and poromechanics of porous media in Julia** — coupled flow,
-> transport, chemistry and mechanics, on finite volume (FVM) and finite element (FEM)
-> backends. Despite the name, transport and reactive chemistry are first-class: the
-> package covers the full range from single-species diffusion to multi-ionic reactive
-> transport in cementitious materials.
+*Reactive transport and poromechanics of porous media.*
 
-[![Build Status](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/workflows/CI.yml)
-[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/dev/)
+[![Docs - Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/stable/)
+[![Docs - Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/dev/)
 
----
+[![CI](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/MicroPoroChemoMechanics/PoroMechanics.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/MicroPoroChemoMechanics/PoroMechanics.jl)
 
-## What is PoroMechanics.jl?
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/LICENSE)
+[![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-pink)](https://github.com/fredrikekre/Runic.jl)
 
-**PoroMechanics.jl** is a Julia package for the numerical simulation of coupled phenomena in porous
-media. It covers:
+## Introduction
 
-- Solute diffusion (Fick's law)
-- Unsaturated flow (Richards' equation)
-- Coupled non-isothermal drying (water, air, and heat transfer)
-- Biot poromechanics (hydro-mechanical coupling)
-- Reactive chloride transport (Langmuir adsorption, cementitious chemistry)
+PoroMechanics.jl simulates coupled phenomena in porous media — flow, solute and reactive
+transport, cement chemistry, and poromechanics — on two numerical backends: finite volumes
+for transport, finite elements for coupled mechanics. Despite the name, transport and
+reactive chemistry are first-class: the package covers the range from single-species
+diffusion to multi-ionic reactive transport in cementitious materials.
 
-The package relies on two numerical backends:
+A physics model is a plain Julia struct holding its material parameters. Multiple dispatch
+on that struct selects the constitutive behavior, so a model file stays a description of
+its own equations and knows nothing about time stepping or assembly. Jacobians are never
+written by hand: the finite volume callbacks are differentiated automatically with
+[ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl).
+
+### Key features
+
+- **Unsaturated flow**: Richards' equation with Van Genuchten retention and Mualem relative
+  permeability; transient Darcy flow.
+- **Solute and multi-ionic transport**: Fick diffusion, Nernst-Planck transport closed by an
+  electroneutrality constraint, effective diffusivity from the Oh-Jang tortuosity model.
+- **Non-isothermal drying**: liquid water, dry air and heat coupled through a modified
+  Kelvin equation and an entropy balance, with latent-heat transport by vapor.
+- **Poromechanics**: Biot poroelasticity on unstructured meshes, assembled once and reused
+  across time steps.
+- **Reactive transport in cementitious materials**: operator splitting (SNIA) with
+  thermodynamic equilibrium from cemdata18 through
+  [ChemistryLab.jl](https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl), Friedel's
+  salt binding, and surface complexation on C-S-H.
 
 | Problem class | Backend |
-|---|---|
-| Transport / diffusion / flow | [VoronoiFVM.jl](https://github.com/j-fu/VoronoiFVM.jl) |
-| Coupled mechanics (Biot, BBM…) | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
-
-## Architecture
-
-Each physical model is a concrete subtype of `AbstractPoroModel` that implements
-a generic method interface. Julia's multiple dispatch naturally replaces
-a C vtable system.
-
-```
-src/PoroMechanics.jl                 # AbstractPoroModel, AbstractPoroSolver, interface stubs
-examples/
-  M1_diffusion/            # Fick diffusion 1D — minimal reference model
-  M1_Richards/             # Richards flow 1D
-  Richard_2D/              # Richards flow 2D
-  darcy_column/            # Darcy column
-  M6_drying/               # Non-isothermal drying (coupled p_l, p_a, T)
-  M7_Biot/                 # Biot poroelasticity 2D (Ternay dam)
-  Chloricem/               # Reactive chloride transport + OPC chemistry
-test/runtests.jl           # Test suite
-docs/                      # Documentation (Documenter.jl)
-```
-
-### FVM interface (VoronoiFVM.jl)
-
-```julia
-PoroMechanics.storage!(f, u, node, model, data)    # accumulation term ∂M/∂t
-PoroMechanics.flux!(f, u, edge, model, data)       # inter-node flux (Darcy, Fick, Fourier…)
-PoroMechanics.bcondition!(f, u, node, model, data) # boundary conditions
-PoroMechanics.reaction!(f, u, node, model, data)   # source terms / algebraic constraints
-```
-
-### FEM interface (Ferrite.jl)
-
-```julia
-PoroMechanics.element_matrices!(ke1, ke2, cell, model, cv_u, cv_p)  # stiffness and storage matrices
-PoroMechanics.facet_load!(fe, facet, model, fv)                     # surface loading
-```
+| :--- | :--- |
+| Transport, diffusion, flow | [VoronoiFVM.jl](https://github.com/j-fu/VoronoiFVM.jl) |
+| Coupled mechanics | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
 
 ## Installation
 
@@ -76,39 +56,70 @@ Pkg.Registry.add(RegistrySpec(url = "https://github.com/MicroPoroChemoMechanics/
 Pkg.add("PoroMechanics")
 ```
 
+Julia 1.12 or later is required, a floor inherited from `ChemistryLab.jl` and
+`OptimaSolver.jl`.
+
 For local development:
 
 ```julia
 Pkg.develop(path = "path/to/PoroMechanics.jl")
 ```
 
-## Quick start
+## Example
+
+A physics model is a struct plus the callbacks its physics needs — here Fick diffusion of a
+solute through a saturated porous medium:
 
 ```julia
 using PoroMechanics, VoronoiFVM, ExtendableGrids
 
-# 1. Define a physical model
-Base.@kwdef struct M1Model <: AbstractPoroModel
-    φ::Float64 = 0.30
-    D::Float64 = 1e-10
-    c_in::Float64 = 1.0
+Base.@kwdef struct FickModel <: AbstractPoroModel
+    φ::Float64    = 0.30     # porosity [-]
+    D::Float64    = 1e-10    # effective diffusion coefficient [m²/s]
+    c_in::Float64 = 1.0      # concentration imposed at x = 0 [mol/m³]
 end
 
-PoroMechanics.nspecies(::M1Model) = 1
-PoroMechanics.species_names(::M1Model) = [:c]
+PoroMechanics.storage!(f, u, node, m::FickModel, _) = (f[1] = m.φ * u[1])
+PoroMechanics.flux!(f, u, edge, m::FickModel, _)    = (f[1] = m.D * m.φ * (u[1, 1] - u[1, 2]))
 
-PoroMechanics.storage!(f, u, node, m::M1Model, _) = (f[1] = m.φ * u[1])
-PoroMechanics.flux!(f, u, edge, m::M1Model, _)    = (f[1] = m.D * m.φ * (u[1,1] - u[1,2]))
+function PoroMechanics.bcondition!(f, u, bnode, m::FickModel, _)
+    boundary_dirichlet!(f, u, bnode; species = 1, region = 1, value = m.c_in)
+end
 
-# 2. Run the simulation
-include("examples/M1_diffusion/run.jl")
-tsol, grid = run_M1()
+m    = FickModel()
+grid = simplexgrid(range(0, 1.0; length = 101))
+sys  = VoronoiFVM.System(
+    grid;
+    storage    = (f, u, node, d)  -> PoroMechanics.storage!(f, u, node, m, d),
+    flux       = (f, u, edge, d)  -> PoroMechanics.flux!(f, u, edge, m, d),
+    bcondition = (f, u, bnode, d) -> PoroMechanics.bcondition!(f, u, bnode, m, d),
+    species    = [1],
+)
+
+inival = unknowns(sys; inival = 0.0)
+inival[1, 1] = m.c_in
+tsol = solve(sys; inival, times = (0.0, 1.0e8))
 ```
+
+No Jacobian appears anywhere: `VoronoiFVM.solve` differentiates the callbacks and owns the
+Newton loop and the adaptive time stepping.
+
+## Documentation
+
+- [**STABLE**](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/stable/) &mdash; **most recently tagged version of the documentation.**
+- [**DEV**](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/dev/) &mdash; **development version of the documentation.**
+
+| Section | For |
+| :--- | :--- |
+| **Getting Started** | writing and running a first model, end to end |
+| **Examples** | one worked problem per physics, with its equations, material data and reference solution |
+| **API** | every exported name |
+| **References** | the literature the models are built from |
 
 ## Running the examples
 
 The examples need more packages than the library itself (plotting, mesh generation,
-chemistry), so they have their own environment:
+chemistry), so they live in their own environment:
 
 ```julia
 using Pkg
@@ -119,12 +130,12 @@ Pkg.instantiate()
 include("examples/M1_diffusion/run.jl"); run_M1()
 ```
 
-`examples/Richard_2D` also needs a tabulated retention curve. A synthetic one is
-generated by `examples/Richard_2D/make_retention_table.jl`; point the
-`RICHARDS_2D_DATA` environment variable at your own measurements to replace it.
+`examples/Richard_2D` also needs a tabulated retention curve. A synthetic one is generated
+by `examples/Richard_2D/make_retention_table.jl`; point the `RICHARDS_2D_DATA` environment
+variable at your own measurements to replace it.
 
-Load one example per Julia session: Ferrite and VoronoiFVM both export `update!`,
-so importing them together leaves the name ambiguous.
+Load one example per Julia session: Ferrite and VoronoiFVM both export `update!`, so
+importing them together leaves the name ambiguous.
 
 ## Tests
 
@@ -132,7 +143,28 @@ so importing them together leaves the name ambiguous.
 julia --project -e 'using Pkg; Pkg.test()'
 ```
 
-CI runs on Julia 1.12 (minimum supported) and stable (1) on Ubuntu and Windows.
+CI runs Julia 1.12 (minimum supported) and stable on Ubuntu and Windows.
+
+## Release notes
+
+See [CHANGELOG.md](CHANGELOG.md).
+
+## Citation
+
+If you use PoroMechanics.jl in your research, please cite it:
+
+```bibtex
+@software{poromechanics_jl,
+  author    = {Barth{\'e}l{\'e}my, Jean-Fran{\c{c}}ois and Soive, Anthony},
+  title     = {{PoroMechanics.jl}: Reactive transport and poromechanics of porous media},
+  version   = {0.1.0},
+  url       = {https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl},
+}
+```
+
+The [CITATION.cff](CITATION.cff) file is also available for tools such as
+[Zenodo](https://zenodo.org/) and [citeas.org](https://citeas.org/). A DOI will be minted
+with the first tagged release.
 
 ## Authors
 
@@ -144,3 +176,8 @@ research team.
 ## License
 
 MIT — see [LICENSE](LICENSE). © 2026 Jean-François Barthélémy and Anthony Soive.
+
+## Acknowledgements
+
+Parts of this codebase were developed with the assistance of Anthropic's *Claude Code*,
+under the authors' review and numerical validation.

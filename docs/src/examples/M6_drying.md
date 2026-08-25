@@ -65,7 +65,7 @@ Three coupled unknowns per point:
 
 ### Derived pressures
 
-The vapour pressure is given by the **modified Kelvin equation** coupling pore liquid
+The vapor pressure is given by the **modified Kelvin equation** coupling pore liquid
 pressure, temperature, and enthalpies of phase change:
 
 ```math
@@ -85,7 +85,7 @@ curves ($\alpha = 3 \times 10^{-3}$ K$^{-1}$).
 
 ### Conservation equations
 
-**Total water (liquid + vapour):**
+**Total water (liquid + vapor):**
 
 ```math
 \frac{\partial}{\partial t}\!\left(\rho_l\,\phi\,S_l + \rho_v\,\phi\,S_g\right)
@@ -113,13 +113,13 @@ curves ($\alpha = 3 \times 10^{-3}$ K$^{-1}$).
 \mathbf{W}_l = -K_l\,\nabla p_l, \qquad K_l = \frac{\rho_l\,k_{\rm int}\,k_{rl}(p_{c0})}{\mu_l}
 ```
 
-**Vapour flux** (Darcy + Fick):
+**Vapor flux** (Darcy + Fick):
 
 ```math
 \mathbf{W}_v = -K_{D,v}\,\nabla p_g - K_{F,v}\,\nabla c_v
 ```
 
-**Dry air flux** (symmetric to vapour):
+**Dry air flux** (symmetric to vapor):
 
 ```math
 \mathbf{W}_a = -K_{D,a}\,\nabla p_g - K_{F,a}\,\nabla c_a
@@ -161,7 +161,7 @@ is evaluated by 3-point Gauss quadrature.
 
 ### Why the entropy flux contains $s_v \mathbf{W}_v$: the Philip & de Vries effect
 
-The specific entropy of vapour is dominated by the latent heat term:
+The specific entropy of vapor is dominated by the latent heat term:
 
 ```math
 s_v = C_{pv}\ln\frac{T}{T_0} - \frac{\ln(p_v/p_{v0})}{M_v/R} + \frac{L_0}{T_0}
@@ -169,9 +169,9 @@ s_v = C_{pv}\ln\frac{T}{T_0} - \frac{\ln(p_v/p_{v0})}{M_v/R} + \frac{L_0}{T_0}
 
 At $T = 323$ K this gives $s_v \approx 8360$ J/(kg·K).
 
-compared to $s_l \approx 406$ J/(kg·K) for liquid water. The vapour carries 21 × more
+compared to $s_l \approx 406$ J/(kg·K) for liquid water. The vapor carries 21 × more
 entropy per kg than liquid, so even its small mass flux significantly amplifies the
-apparent thermal conductivity — this is the **thermal vapour distillation** effect
+apparent thermal conductivity — this is the **thermal vapor distillation** effect
 (Philip & de Vries, 1957).
 
 ---
@@ -200,7 +200,7 @@ S_l = \left(1 + \left(\frac{p_c}{10^7}\right)^{1.7}\right)^{-0.4117},
 k_{rg} = (1 - S_l)^2\,(1 - S_l^{5/3})
 ```
 
-**Regularisation** near $S_l = 1$ for $p_c < p_{c3}$ (exponential blending):
+**Regularization** near $S_l = 1$ for $p_c < p_{c3}$ (exponential blending):
 
 ```math
 S_l(p_c) = 1 - \bigl(1 - S_l^{\rm raw}(p_{c3})\bigr)\,\exp\!\left(\frac{p_c - p_{c3}}{p_{c3}}\right)
@@ -218,14 +218,14 @@ with $p_{c3} = 10^6$ Pa (clay) and $p_{c3} = 2 \times 10^5$ Pa (rock).
 | $\rho_l$ | 1000 | kg/m³ | Liquid density |
 | $\mu_l$ | $10^{-3}$ | Pa·s | Liquid viscosity |
 | $\mu_g$ | $1.8 \times 10^{-5}$ | Pa·s | Gas viscosity |
-| $M_v/R$ | $2.16 \times 10^{-3}$ | kg/J | Vapour gas constant |
+| $M_v/R$ | $2.16 \times 10^{-3}$ | kg/J | Vapor gas constant |
 | $M_a/R$ | $3.46 \times 10^{-3}$ | kg/J | Air gas constant |
-| $p_{v0}$ | 2460 | Pa | Saturated vapour pressure at $T_0$ |
+| $p_{v0}$ | 2460 | Pa | Saturated vapor pressure at $T_0$ |
 | $T_0$ | 293 | K | Reference temperature |
-| $D_{av0}$ | $2.48 \times 10^{-3}$ | m²/s | Binary air-vapour diffusivity |
+| $D_{av0}$ | $2.48 \times 10^{-3}$ | m²/s | Binary air-vapor diffusivity |
 | $\lambda_l$ | 0.6 | W/(m·K) | Liquid thermal conductivity |
 | $\lambda_g$ | 0.026 | W/(m·K) | Gas thermal conductivity |
-| $L_0$ | $2.45 \times 10^6$ | J/kg | Latent heat of vaporisation |
+| $L_0$ | $2.45 \times 10^6$ | J/kg | Latent heat of vaporization |
 | $\alpha$ | $3 \times 10^{-3}$ | K$^{-1}$ | Thermal shift coefficient for $S_l$ |
 
 ---
@@ -537,8 +537,8 @@ end
 - **Entropy formulation** — the thermal equation is written as an entropy balance rather
   than an energy balance, following Dangla (1998). This eliminates the need for a divergence
   term in the energy equation and simplifies the coupling with mass balances.
-- **Philip & de Vries vapour term** — `s_v * Wv` in the entropy flux captures latent-heat
-  transport by vapour. At $S_l \approx 0.78$ in the clay, this can increase the apparent
+- **Philip & de Vries vapor term** — `s_v * Wv` in the entropy flux captures latent-heat
+  transport by vapor. At $S_l \approx 0.78$ in the clay, this can increase the apparent
   thermal conductivity by 10–30%.
 - **Automatic Jacobian** — VoronoiFVM uses `ForwardDiff.jl` to compute the full $6 \times 6$
   Jacobian block per edge automatically, so no analytical Jacobian is written by hand.

@@ -115,9 +115,9 @@ PoroMechanics.nspecies(::M7Model)      = 3   # u₁, u₂, p_l
 PoroMechanics.species_names(::M7Model) = [:u1, :u2, :p]
 ```
 
-### Discretisation: P1/P1 mixed elements
+### Discretization: P1/P1 mixed elements
 
-The problem is discretised on triangular elements with **P1 interpolation for both
+The problem is discretized on triangular elements with **P1 interpolation for both
 displacement and pressure** (equal-order approximation). The `DofHandler` orders the
 displacement DOFs first, then pressure:
 
@@ -242,7 +242,7 @@ downstream Dirichlet values.
   can be factored once if $\Delta t$ is constant.
 - **P1/P1 mixed elements** — equal-order interpolation for $\mathbf{u}$ and $p_l$ is
   not inf-sup stable in general, but works well here because the Biot storage term
-  $N > 0$ regularises the pressure block (no spurious pressure modes).
+  $N > 0$ regularizes the pressure block (no spurious pressure modes).
 - **`is_beton::Bool` dispatch** — the material type is determined from the Ferrite
   `cellset` at assembly time and passed directly to `PoroMechanics.element_matrices!` as a
   `Bool` flag, avoiding any runtime dictionary look-up.

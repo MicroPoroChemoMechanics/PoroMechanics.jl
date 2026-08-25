@@ -1,31 +1,46 @@
-using Documenter
 using PoroMechanics
+using Documenter
+using DocumenterCitations
+
+include("pages.jl")
+
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style = :authoryear)
+
+DocMeta.setdocmeta!(
+    PoroMechanics,
+    :DocTestSetup,
+    :(using PoroMechanics);
+    recursive = true,
+)
+
+ENV["GKSwstype"] = "100"   # headless GR backend — prevents Plots from hanging in doc builds
 
 makedocs(;
-    modules  = [PoroMechanics],
+    modules = [PoroMechanics],
+    authors = "Jean-François Barthélémy and Anthony Soive",
     sitename = "PoroMechanics.jl",
-    authors  = "Jean-François Barthélémy and Anthony Soive",
-    format   = Documenter.HTML(;
-        prettyurls       = get(ENV, "CI", "false") == "true",
-        canonical        = "https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl",
-        edit_link        = "main",
-        assets           = String[],
+    format = Documenter.HTML(;
+        mathengine = Documenter.MathJax3(
+            Dict(
+                :loader => Dict("load" => ["[tex]/mhchem"]),
+                :tex => Dict("packages" => Dict("[+]" => ["mhchem"])),
+            )
+        ),
+        canonical = "https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl",
+        repolink = "https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl",
+        edit_link = "main",
+        assets = ["assets/custom.css"],
+        prettyurls = (get(ENV, "CI", nothing) == "true"),
+        collapselevel = 1,
+        size_threshold_warn = 200_000,
     ),
-    pages = [
-        "Home" => "index.md",
-        "Examples" => [
-            "1D Diffusion (M1)"             => "examples/M1_diffusion.md",
-            "Darcy 1D"                      => "examples/darcy_column.md",
-            "Richards 1D (M1)"              => "examples/M1_Richards.md",
-            "Non-isothermal Drying (M6)"    => "examples/M6_drying.md",
-            "Biot 2D — Ternay (M7)"         => "examples/M7_Biot.md",
-        ],
-    ],
-    warnonly = true,
+    pages = pages,
+    plugins = [bib],
+    warnonly = [:docs_block, :missing_docs],
 )
 
 deploydocs(;
-    repo         = "github.com/MicroPoroChemoMechanics/PoroMechanics.jl",
-    devbranch    = "main",
-    push_preview = true,
+    repo = "github.com/MicroPoroChemoMechanics/PoroMechanics.jl.git",
+    devbranch = "main",
+    push_preview = false,
 )
