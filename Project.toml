@@ -1,7 +1,7 @@
 name = "PoroMechanics"
 uuid = "94bcc773-f804-4bb8-b95f-e7382a05e63d"
 version = "0.1.0"
-authors = ["Jean-François Barthélémy and Anthony Soive"]
+authors = ["Anthony Soive and Jean-François Barthélémy"]
 license = "MIT"
 
 [deps]

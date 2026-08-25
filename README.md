@@ -189,14 +189,14 @@ with the first tagged release.
 
 ## Authors
 
-Developed by [Jean-François Barthélémy](https://github.com/jfbarthelemy) and
-[Anthony Soive](https://github.com/anthonysoive), researchers at
+Developed by [Anthony Soive](https://github.com/anthonysoive) and
+[Jean-François Barthélémy](https://github.com/jfbarthelemy), researchers at
 [Cerema](https://www.cerema.fr/en) in the [UMR MCD](https://mcd.univ-gustave-eiffel.fr/)
 research team.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). © 2026 Jean-François Barthélémy and Anthony Soive.
+MIT — see [LICENSE](LICENSE). © 2026 Anthony Soive and Jean-François Barthélémy.
 
 ## Acknowledgements
 

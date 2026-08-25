@@ -17,7 +17,7 @@ ENV["GKSwstype"] = "100"   # headless GR backend — prevents Plots from hanging
 
 makedocs(;
     modules = [PoroMechanics],
-    authors = "Jean-François Barthélémy and Anthony Soive",
+    authors = "Anthony Soive and Jean-François Barthélémy",
     sitename = "PoroMechanics.jl",
     format = Documenter.HTML(;
         # MathJax3(config) merges only at the top level: any :tex given here replaces

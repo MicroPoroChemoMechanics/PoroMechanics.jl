@@ -3,14 +3,14 @@
     "description": "Simulation of coupled phenomena in porous media: unsaturated flow (Richards, Darcy), solute diffusion, non-isothermal drying coupling liquid water, dry air and heat, Biot poroelasticity, and multi-ionic reactive transport in cementitious materials with thermodynamic equilibrium from cemdata18. Physics models are declared as plain structs implementing a small callback interface, on two numerical backends: finite volumes (VoronoiFVM.jl) for transport, finite elements (Ferrite.jl) for coupled mechanics. Jacobians are obtained by automatic differentiation rather than written by hand.",
     "creators": [
         {
-            "name": "Barthélémy, Jean-François",
-            "affiliation": "Cerema, UMR MCD",
-            "orcid": "0000-0002-1968-8939"
-        },
-        {
             "name": "Soive, Anthony",
             "affiliation": "Cerema, UMR MCD",
             "orcid": "0000-0002-2368-6848"
+        },
+        {
+            "name": "Barthélémy, Jean-François",
+            "affiliation": "Cerema, UMR MCD",
+            "orcid": "0000-0002-1968-8939"
         }
     ],
     "upload_type": "software",
