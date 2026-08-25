@@ -176,7 +176,7 @@ If you use PoroMechanics.jl in your research, please cite it:
 
 ```bibtex
 @software{poromechanics_jl,
-  author    = {Barth{\'e}l{\'e}my, Jean-Fran{\c{c}}ois and Soive, Anthony},
+  author    = {Soive, Anthony and Barth{\'e}l{\'e}my, Jean-Fran{\c{c}}ois},
   title     = {{PoroMechanics.jl}: Reactive transport and poromechanics of porous media},
   version   = {0.1.0},
   url       = {https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl},

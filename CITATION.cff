@@ -20,7 +20,8 @@ keywords:
   - "cement"
   - "chloride ingress"
 version: "0.1.0"
-# date-released and doi are filled in at release time, once the Zenodo DOI exists.
+date-released: "2026-08-25"
+# doi is filled in at release time, once the Zenodo DOI exists.
 url: "https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl"
 repository-code: "https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl"
 license: "MIT"
