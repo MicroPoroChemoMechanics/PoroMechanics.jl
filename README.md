@@ -1,5 +1,9 @@
 # PoroMechanics.jl
 
+<p align="center">
+  <img src="docs/src/assets/logo.png" alt="PoroMechanics.jl" width="180"/>
+</p>
+
 *Reactive transport and poromechanics of porous media.*
 
 [![Docs - Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/stable/)

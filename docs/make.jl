@@ -29,7 +29,7 @@ makedocs(;
         canonical = "https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl",
         repolink = "https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl",
         edit_link = "main",
-        assets = ["assets/custom.css"],
+        assets = ["assets/favicon.ico", "assets/custom.css"],
         prettyurls = (get(ENV, "CI", nothing) == "true"),
         collapselevel = 1,
         size_threshold_warn = 200_000,
