@@ -33,12 +33,34 @@ MIT — see `LICENSE`.
 """
 module PoroMechanics
 
+using VoronoiFVM: VoronoiFVM
+
 # ── Public re-exports ──────────────────────────────────────────────────────────
 export AbstractPoroModel, AbstractPoroSolver
 export storage!, flux!, bcondition!, reaction!, assemble_element!
 export element_matrices!, facet_load!
 
+# Constitutive layer
+export AbstractRetention, VanGenuchten, ExponentialCutoff
+export saturation, dsaturation_dpc
+export AbstractRelativePermeability, Mualem, PowerLawKrl
+export relative_permeability, gas_relative_permeability
+export AbstractTortuosity, OhJang, tortuosity
+
+# Backends
+export fvm_system
+
 # ── Core abstractions ──────────────────────────────────────────────────────────
+
+# ── Constitutive layer ─────────────────────────────────────────────────────────
+# Material laws, owned by the package: retention curves, relative permeabilities,
+# tortuosity models. They know nothing about grids, assembly or time stepping, and
+# their coefficients are type-parameterised so that a result can be differentiated
+# with respect to the parameters themselves.
+
+include("Constitutive/Retention.jl")
+include("Constitutive/RelativePermeability.jl")
+include("Constitutive/Tortuosity.jl")
 
 """
     AbstractPoroModel
@@ -155,6 +177,11 @@ Default: no traction (zero Neumann). Override for pressure or traction loads.
 function facet_load!(fe, facet, model::AbstractPoroModel, fv)
     return nothing
 end
+
+# ── Backends ───────────────────────────────────────────────────────────────────
+# Glue to the solver packages. The physics lives above; these only wire it up.
+
+include("Backends/FVM.jl")
 
 # ── Helper: number of species ──────────────────────────────────────────────────
 

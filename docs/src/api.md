@@ -42,3 +42,38 @@ facet_load!
 PoroMechanics.nspecies
 PoroMechanics.species_names
 ```
+
+## Constitutive layer
+
+Material laws owned by the package. Every law carries its coefficients as *type
+parameters*, so a result can be differentiated with respect to the parameters themselves
+and not only with respect to the unknowns — the property that makes inverse calibration
+and sensitivity analysis possible.
+
+### Retention curves
+
+```@docs
+AbstractRetention
+VanGenuchten
+ExponentialCutoff
+saturation
+dsaturation_dpc
+```
+
+### Relative permeability
+
+```@docs
+AbstractRelativePermeability
+Mualem
+PowerLawKrl
+relative_permeability
+gas_relative_permeability
+```
+
+### Tortuosity
+
+```@docs
+AbstractTortuosity
+OhJang
+tortuosity
+```
