@@ -34,14 +34,15 @@ const NONEXECUTED = ["biot_consolidation"]   # needs Ferrite + a Gmsh mesh
 
 mkpath(VALIDATION_DIR)
 
-# The benchmark scripts `include("biot_common.jl")`. Documenter runs an `@example` block
-# with the working directory set to the built page's folder, so the shared file has to sit
-# next to the generated markdown; Documenter copies non-markdown files from src to build.
-cp(
-    joinpath(BENCHMARKS_DIR, "biot_common.jl"),
-    joinpath(VALIDATION_DIR, "biot_common.jl");
-    force = true,
-)
+# The benchmark scripts include shared files by relative path. Documenter runs an `@example`
+# block with the working directory set to the built page's folder, so those files have to
+# sit next to the generated markdown; Documenter copies non-markdown files from src to build.
+
+const BENCHMARK_SHARED = ["laplace.jl", "biot_common.jl", "richards_common.jl"]
+
+for f in BENCHMARK_SHARED
+    cp(joinpath(BENCHMARKS_DIR, f), joinpath(VALIDATION_DIR, f); force = true)
+end
 
 for name in LITERATE_BENCHMARKS
     Literate.markdown(
