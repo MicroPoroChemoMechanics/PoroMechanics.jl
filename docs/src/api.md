@@ -55,6 +55,7 @@ and sensitivity analysis possible.
 ```@docs
 AbstractRetention
 VanGenuchten
+Gardner
 ExponentialCutoff
 saturation
 dsaturation_dpc
@@ -65,6 +66,7 @@ dsaturation_dpc
 ```@docs
 AbstractRelativePermeability
 Mualem
+GardnerKrl
 PowerLawKrl
 relative_permeability
 gas_relative_permeability
@@ -161,6 +163,20 @@ node_dof_maps
 combine!
 ```
 
+#### Axisymmetric elastoplasticity
+
+Ferrite v1 has no axisymmetric element, so the kinematics are written out: the hoop strain
+``\varepsilon_{\theta\theta} = u_r/r`` makes the strain a genuine 3D tensor even though the
+mesh is 2D, and a constitutive model that reads ``-\mathrm{tr}(\sigma)/3`` gets the wrong
+mean stress without it.
+
+```@docs
+axisymmetric_strain
+axisymmetric_shape_strain
+assemble_axisymmetric!
+newton_solve!
+```
+
 ## Materials
 
 ### Barcelona Basic Model
@@ -179,6 +195,13 @@ mean_pressure
 equivalent_stress
 bbm_moduli
 hardening_modulus
+PoroMechanics.dyield_dp
+PoroMechanics.dyield_dq
+PoroMechanics.deviator
+deviatoric_tolerance
+PoroMechanics.return_residual
+PoroMechanics.solve_return_map
 elastoplastic_tangent
 algorithmic_tangent
+ContinuumTangent
 ```

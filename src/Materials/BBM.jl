@@ -259,6 +259,23 @@ function solve_return_map(
     return p, Δγ, q, pc_star, Δεv_p, converged
 end
 
+"""
+    deviatoric_tolerance(m, p_tr) -> q_tol
+
+Below what deviatoric stress a state counts as hydrostatic.
+
+This is not defensive padding: at ``q = 0`` the invariant ``q = \\sqrt{3/2\\,e{:}e}`` is the
+apex of a cone and is **not differentiable**, so ``\\partial q/\\partial\\sigma
+= 3e/(2q)`` is a unit tensor pointing in the direction of `e` — whatever that direction
+happens to be. Under isotropic loading `e` is pure round-off, so the expression yields a
+full-magnitude tensor with a random orientation, and it poisons the tangent rather than
+vanishing from it.
+
+The tolerance is relative to the stress the material actually carries, because an absolute
+one would be meaningless across the range of pressures a soil sees.
+"""
+deviatoric_tolerance(m::BBM, p_tr) = 1.0e-10 * max(abs(p_tr), m.p_ref)
+
 # ── The response ──────────────────────────────────────────────────────────────
 
 """
@@ -272,8 +289,36 @@ The tangent returned on a plastic step is the **algorithmic** one — the exact 
 the discrete return map, from [`algorithmic_tangent`](@ref). The continuum tangent is kept
 as [`elastoplastic_tangent`](@ref) for comparison; the two differ by ``O(\\Delta\\gamma)``.
 """
+function material_response(m::BBM, ε::Tensors.SymmetricTensor{2}, state::BBMState, Δt)
+    return bbm_response(m, ε, state, Δt, Val(:algorithmic))
+end
+
+"""
+    ContinuumTangent(model)
+
+A material that answers exactly like `model` but returns the **continuum** tangent instead
+of the algorithmic one.
+
+It exists to be measured against, not to be used: it is how the claim that the algorithmic
+tangent is worth its derivation gets tested rather than asserted. Wrapping rather than
+adding a flag to [`BBM`](@ref) keeps the choice out of the model, where it does not belong —
+a constitutive law should not carry a switch that changes only how fast the solver reaches
+the answer it would have given anyway.
+"""
+struct ContinuumTangent{M <: AbstractMaterial} <: AbstractMaterial
+    model::M
+end
+
+initial_state(w::ContinuumTangent, args...) = initial_state(w.model, args...)
+
 function material_response(
-        m::BBM, ε::Tensors.SymmetricTensor{2, dim}, state::BBMState, Δt
+        w::ContinuumTangent{<:BBM}, ε::Tensors.SymmetricTensor{2}, state::BBMState, Δt
+    )
+    return bbm_response(w.model, ε, state, Δt, Val(:continuum))
+end
+
+function bbm_response(
+        m::BBM, ε::Tensors.SymmetricTensor{2, dim}, state::BBMState, Δt, which::Val
     ) where {dim}
     s = state.suction
     Δε = ε - state.ε
@@ -298,12 +343,19 @@ function material_response(
 
     ## Rebuild the stress: the deviator keeps its direction and is scaled by q/q_tr.
     dev_tr = deviator(σ_tr)
-    scale = q_tr > 0 ? q / q_tr : zero(q)
+    q_tol = deviatoric_tolerance(m, p_tr)
+    scale = q_tr > q_tol ? q / q_tr : zero(q)
     σ = scale * dev_tr - p * one(σ_tr)
 
-    C = algorithmic_tangent(
-        m, C_e, p, Δγ, p_tr, q_tr, s, state.pc_star, K, G, dev_tr, Val(dim)
-    )
+    C = if which === Val(:algorithmic)
+        algorithmic_tangent(
+            m, C_e, p, Δγ, p_tr, q_tr, s, state.pc_star, K, G, dev_tr, Val(dim)
+        )
+    else
+        elastoplastic_tangent(
+            m, C_e, p, q, s, pc_star, Δγ, K, G, dev_tr, q_tr, Val(dim)
+        )
+    end
     new = BBMState(σ, ε, pc_star, state.εv_p + Δεv_p, s)
     return σ, C, new
 end
@@ -328,9 +380,9 @@ returns `NaN`.
 the discrete return map, differs from this one by terms of order ``\\Delta\\gamma``. Measured
 on a plastic isotropic step, the gap against a finite-difference Jacobian falls from 65 % at
 ``\\Delta\\varepsilon_v = 4\\times10^{-3}`` to 15 % at ``2.5\\times10^{-4}`` — correct in the
-limit, and enough to drive a global Newton, but at a linear rather than quadratic rate. The
-algorithmic tangent is not implemented yet; it is the next piece of work on this model, and
-pretending otherwise would show up as a slow global solve rather than a wrong answer.
+limit, and enough to drive a global Newton, but at a linear rather than quadratic rate.
+[`algorithmic_tangent`](@ref) is what [`material_response`](@ref) actually returns; this one
+is kept because the comparison between the two is the measurement that justifies it.
 """
 function elastoplastic_tangent(
         m::BBM, C_e, p, q, s, pc_star, Δγ, K, G, dev_tr, q_tr, ::Val{dim}
@@ -402,7 +454,12 @@ function algorithmic_tangent(
 
     ## ∂p_tr/∂σ_tr = −I/3 (compression positive), ∂q_tr/∂σ_tr = 3 dev/(2q)
     dptr_dσ = -Iden / 3
-    dqtr_dσ = q_tr > 0 ? (3 * dev_tr / (2 * q_tr)) : zero(dev_tr)
+    ## At the apex the deviatoric direction is undefined, and dropping the term is not an
+    ## approximation: a deviatoric perturbation of a hydrostatic trial state is already
+    ## carried exactly by the `a * Idev` term below, and the `dx_dqtr` contributions are
+    ## higher order in it.
+    q_tol = deviatoric_tolerance(m, p_tr)
+    dqtr_dσ = q_tr > q_tol ? (3 * dev_tr / (2 * q_tr)) : zero(dev_tr)
 
     dp_dσtr = dx_dptr[1] * dptr_dσ + dx_dqtr[1] * dqtr_dσ
     dΔγ_dσtr = dx_dptr[2] * dptr_dσ + dx_dqtr[2] * dqtr_dσ

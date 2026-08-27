@@ -7,6 +7,7 @@
 using Tensors
 using ForwardDiff
 using LinearAlgebra: norm
+import Ferrite
 
 const I3 = one(SymmetricTensor{2, 3})
 
@@ -209,4 +210,83 @@ end
     end
     @test all(errs .> 1.0e-3)             # genuinely different from the algorithmic one
     @test issorted(errs; rev = true)      # and converging to it as the step shrinks
+end
+
+@testset "Newton global axisymétrique" begin
+    ## A uniform problem has an answer that is known independently: every quadrature point
+    ## sees the same strain, so the finite element stress must be the material point's. That
+    ## is what verifies the assembly, the Gauss-point state bookkeeping and the solver at
+    ## once, without needing an analytical solution for the BBM — which does not exist.
+    grid = Ferrite.generate_grid(
+        Ferrite.Quadrilateral, (2, 2), Ferrite.Vec(1.0, 0.0), Ferrite.Vec(2.0, 1.0)
+    )
+    ip = Ferrite.Lagrange{Ferrite.RefQuadrilateral, 1}()^2
+    dh = Ferrite.DofHandler(grid)
+    Ferrite.add!(dh, :u, ip)
+    Ferrite.close!(dh)
+    qr = Ferrite.QuadratureRule{Ferrite.RefQuadrilateral}(2)
+    cv = Ferrite.CellValues(qr, ip, Ferrite.Lagrange{Ferrite.RefQuadrilateral, 1}())
+    nq = Ferrite.getnquadpoints(cv)
+
+    I3 = one(SymmetricTensor{2, 3})
+    σ0, pc0, εv_tot, nsteps = -1.0e3 * I3, 4.0e4, 0.045, 8
+
+    function drive(mat)
+        mk() = [[initial_state(mat, σ0, pc0) for _ in 1:nq] for _ in 1:Ferrite.getncells(grid)]
+        states, old = mk(), mk()
+        K = Ferrite.allocate_matrix(dh)
+        f = zeros(Ferrite.ndofs(dh))
+        u = zeros(Ferrite.ndofs(dh))
+        history = Vector{Vector{Float64}}()
+        for k in 1:nsteps
+            εv = εv_tot * k / nsteps
+            ch = Ferrite.ConstraintHandler(dh)
+            for (set, comp) in (("left", 1), ("right", 1), ("bottom", 2), ("top", 2))
+                Ferrite.add!(
+                    ch, Ferrite.Dirichlet(
+                        :u, Ferrite.getfacetset(grid, set), (x, t) -> -εv / 3 * x[comp], [comp]
+                    )
+                )
+            end
+            Ferrite.close!(ch)
+            Ferrite.update!(ch, 0.0)
+            push!(history, newton_solve!(u, K, f, dh, cv, mat, states, old, ch, 1.0))
+            for c in eachindex(states)
+                old[c] .= states[c]
+            end
+        end
+        return old[1][1], history
+    end
+
+    ## The same path at the material point, as the reference.
+    ref = initial_state(BBM(), σ0, pc0)
+    for k in 1:nsteps
+        ref = material_response(BBM(), -(εv_tot * k / nsteps / 3) * I3, ref, 1.0)[3]
+    end
+
+    st_fe, hist = drive(BBM())
+    @test mean_pressure(st_fe.σ) ≈ mean_pressure(ref.σ) rtol = 1.0e-10
+    @test st_fe.pc_star ≈ ref.pc_star rtol = 1.0e-10
+    @test st_fe.εv_p ≈ ref.εv_p rtol = 1.0e-10
+    @test ref.εv_p > 0.01                      # the path is genuinely plastic
+
+    ## Quadratic convergence on the plastic steps that follow the elastic–plastic
+    ## transition. Squaring the residual roughly doubles the number of correct digits, so
+    ## three successive norms must satisfy e₃ ≲ e₂²/e₁ up to a constant.
+    for nr in hist[(end - 1):end]
+        @test length(nr) <= 6
+        e1, e2, e3 = nr[(end - 2):end]
+        @test e3 < 10 * e2^2 / e1
+    end
+
+    ## Every step converges, and the elastic ones take a single iteration because the
+    ## imposed field is linear and therefore exactly representable.
+    @test all(nr -> last(nr) < 1.0e-8, hist)
+    @test all(nr -> length(nr) == 2, hist[1:4])
+
+    ## The continuum tangent reaches the same answer, far more slowly. This is the
+    ## measurement that justifies deriving the algorithmic one.
+    st_c, hist_c = drive(ContinuumTangent(BBM()))
+    @test mean_pressure(st_c.σ) ≈ mean_pressure(ref.σ) rtol = 1.0e-5
+    @test sum(length, hist_c) > 2 * sum(length, hist)
 end
