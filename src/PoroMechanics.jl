@@ -41,9 +41,9 @@ export storage!, flux!, bcondition!, reaction!, assemble_element!
 export element_matrices!, facet_load!
 
 # Constitutive layer
-export AbstractRetention, VanGenuchten, ExponentialCutoff
+export AbstractRetention, VanGenuchten, ExponentialCutoff, Gardner
 export saturation, dsaturation_dpc
-export AbstractRelativePermeability, Mualem, PowerLawKrl
+export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl
 export relative_permeability, gas_relative_permeability
 export AbstractTortuosity, OhJang, tortuosity
 

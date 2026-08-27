@@ -21,7 +21,7 @@ const GENERATED_DIR = joinpath(@__DIR__, "src", "examples")
 const BENCHMARKS_DIR = joinpath(@__DIR__, "..", "benchmarks")
 const VALIDATION_DIR = joinpath(@__DIR__, "src", "validation")
 
-const LITERATE_BENCHMARKS = ["terzaghi", "mandel"]
+const LITERATE_BENCHMARKS = ["terzaghi", "mandel", "gardner_infiltration"]
 
 const LITERATE_EXAMPLES = [
     "fickian_diffusion",

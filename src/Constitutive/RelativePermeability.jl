@@ -110,3 +110,32 @@ function gas_relative_permeability(sl)
     s = clamp(sl, zero(T), one(T) - T(1.0e-12))
     return (one(T) - s)^2 * (one(T) - s^(T(5) / T(3)))
 end
+
+# ── Gardner ───────────────────────────────────────────────────────────────────
+
+"""
+    GardnerKrl(α)
+
+Exponential relative permeability [gardner1958](@cite):
+
+```math
+k_{rl}(p_c) = \\exp(-\\alpha\\, p_c), \\qquad p_c > 0
+```
+
+`α` [Pa⁻¹] need not equal the `α` of the matching [`Gardner`](@ref) retention curve.
+
+Substituting this law into the steady Richards equation turns it into a *linear* ordinary
+differential equation for ``\\exp(\\alpha p_l)``, so the steady profile above a water table
+has a closed form — see the Gardner infiltration benchmark.
+"""
+struct GardnerKrl{T} <: AbstractRelativePermeability
+    α::T
+end
+
+Base.eltype(::GardnerKrl{T}) where {T} = T
+
+function relative_permeability(k::GardnerKrl, pc)
+    T = promote_type(typeof(pc), eltype(k))
+    pc <= 0 && return one(T)
+    return exp(-k.α * pc)
+end

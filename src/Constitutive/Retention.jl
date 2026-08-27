@@ -116,3 +116,38 @@ function dsaturation_dpc(r::ExponentialCutoff, pc)
     sl3 = saturation(r.raw, r.p_c3)
     return -(one(T) - sl3) * exp((pc - r.p_c3) / r.p_c3) / r.p_c3
 end
+
+# ── Gardner ───────────────────────────────────────────────────────────────────
+
+"""
+    Gardner(α)
+
+Exponential retention curve [gardner1958](@cite):
+
+```math
+S_l(p_c) = \\exp(-\\alpha\\, p_c), \\qquad p_c > 0
+```
+
+`α` [Pa⁻¹] is the inverse of a characteristic capillary pressure.
+
+The exponential model is the one nonlinearity for which the steady Richards equation
+integrates in closed form, which is what makes it a verification case rather than a
+fitting curve. Real soils are usually better described by [`VanGenuchten`](@ref).
+"""
+struct Gardner{T} <: AbstractRetention
+    α::T
+end
+
+Base.eltype(::Gardner{T}) where {T} = T
+
+function saturation(r::Gardner, pc)
+    T = promote_type(typeof(pc), eltype(r))
+    pc <= 0 && return one(T)
+    return exp(-r.α * pc)
+end
+
+function dsaturation_dpc(r::Gardner, pc)
+    T = promote_type(typeof(pc), eltype(r))
+    pc <= 0 && return zero(T)
+    return -r.α * exp(-r.α * pc)
+end

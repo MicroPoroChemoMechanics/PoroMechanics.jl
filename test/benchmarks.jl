@@ -16,6 +16,10 @@ module _Mandel
     include("../benchmarks/mandel.jl")
 end
 
+module _Gardner
+    include("../benchmarks/gardner_infiltration.jl")
+end
+
 @testset "Terzaghi 1D consolidation" begin
     ## Tolerance sits an order of magnitude above the measured error, so ordinary
     ## floating-point or solver-version drift does not trip it, while a real regression
@@ -104,4 +108,43 @@ end
     ## ...and it must be a rise then a fall, not a monotone decay
     @test _Mandel.p_centre[i_num] > _Mandel.p_centre[1]
     @test _Mandel.p_centre[end] < _Mandel.p_centre[i_num]
+end
+
+@testset "Gardner steady infiltration" begin
+    m = _Gardner.model
+
+    @test _Gardner.err_L2 < 1.0e-4
+
+    ## The closed form must satisfy the equation it was derived from: recover the imposed
+    ## flux by differentiating the profile. This checks the reference itself, independently
+    ## of the finite volume solution it is used to validate.
+    Ks = _Gardner.saturated_conductivity(m)
+    for z in (0.2, 0.8, 1.5)
+        h = 1.0e-6
+        dpdz = (_Gardner.gardner_profile(m, z + h) - _Gardner.gardner_profile(m, z - h)) / 2h
+        krl = _Gardner.krl(m, m.p_g - _Gardner.gardner_profile(m, z))
+        q = -Ks * krl * (dpdz + m.rho_l * abs(m.gravite))
+        @test isapprox(q, m.q_top; rtol = 1.0e-6)
+    end
+
+    ## Water table condition, and a profile drier than hydrostatic because water is
+    ## being added at the top.
+    @test _Gardner.gardner_profile(m, 0.0) ≈ 0.0 atol = 1.0e-12
+    for z in (0.5, 1.0, 2.0)
+        @test _Gardner.gardner_profile(m, z) > -m.rho_l * abs(m.gravite) * z
+    end
+
+    ## Upward flux cannot be sustained indefinitely: above a finite height the closed form
+    ## ceases to exist, and must say so rather than return a number.
+    dry = _Gardner.GardnerColumn(; q_top = 1.0e-7)
+    @test isnan(_Gardner.gardner_profile(dry, 50.0))
+
+    ## Second order in space on a uniform grid.
+    errs = map((50, 100, 200)) do N
+        mm, zz, pp, _ = _Gardner.run_gardner(; N = N)
+        ref = [_Gardner.gardner_profile(mm, zi) for zi in zz]
+        norm(pp .- ref) / norm(ref)
+    end
+    @test 3.8 < errs[1] / errs[2] < 4.2
+    @test 3.8 < errs[2] / errs[3] < 4.2
 end

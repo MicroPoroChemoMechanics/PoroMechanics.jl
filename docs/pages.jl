@@ -11,6 +11,7 @@ pages = [
     "Validation" => [
         "Terzaghi consolidation" => "validation/terzaghi.md",
         "Mandel's problem"       => "validation/mandel.md",
+        "Gardner infiltration"   => "validation/gardner_infiltration.md",
     ],
     "API" => "api.md",
     "References" => "references.md",
