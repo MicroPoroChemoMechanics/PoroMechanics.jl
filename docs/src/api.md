@@ -180,4 +180,5 @@ equivalent_stress
 bbm_moduli
 hardening_modulus
 elastoplastic_tangent
+algorithmic_tangent
 ```

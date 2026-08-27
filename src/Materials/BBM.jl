@@ -268,8 +268,9 @@ Tension-positive strain in, tension-positive stress out. The suction is read fro
 state, so a wetting or drying step is applied by handing in a state whose `suction` has
 changed — which is exactly how a collapse test is driven.
 
-The tangent returned on a plastic step is the **continuum** elastoplastic tangent — see
-[`elastoplastic_tangent`](@ref) for what that does and does not buy.
+The tangent returned on a plastic step is the **algorithmic** one — the exact Jacobian of
+the discrete return map, from [`algorithmic_tangent`](@ref). The continuum tangent is kept
+as [`elastoplastic_tangent`](@ref) for comparison; the two differ by ``O(\\Delta\\gamma)``.
 """
 function material_response(
         m::BBM, ε::Tensors.SymmetricTensor{2, dim}, state::BBMState, Δt
@@ -300,7 +301,9 @@ function material_response(
     scale = q_tr > 0 ? q / q_tr : zero(q)
     σ = scale * dev_tr - p * one(σ_tr)
 
-    C = elastoplastic_tangent(m, C_e, p, q, s, pc_star, Δγ, K, G, dev_tr, q_tr, Val(dim))
+    C = algorithmic_tangent(
+        m, C_e, p, Δγ, p_tr, q_tr, s, state.pc_star, K, G, dev_tr, Val(dim)
+    )
     new = BBMState(σ, ε, pc_star, state.εv_p + Δεv_p, s)
     return σ, C, new
 end
@@ -348,4 +351,65 @@ function elastoplastic_tangent(
     Cn = C_e ⊡ n
     denom = (n ⊡ Cn) + Hp
     return abs(denom) < eps(typeof(denom)) ? C_e : C_e - (Cn ⊗ Cn) / denom
+end
+
+"""
+    algorithmic_tangent(m, C_e, p, Δγ, p_tr, q_tr, s, pc_star_n, K, G, dev_tr, ::Val{dim})
+
+The **algorithmic** tangent: the exact Jacobian ``\\mathrm{d}\\sigma/\\mathrm{d}\\varepsilon`` of
+the discrete return map, as opposed to the continuum tangent of
+[`elastoplastic_tangent`](@ref).
+
+The returned stress is a function of the trial state through the converged unknowns,
+
+```math
+\\sigma = \\frac{\\mathrm{dev}\\,\\sigma^{tr}}{1 + 6G\\Delta\\gamma} - p\\,\\mathbf{I}
+```
+
+and ``(p, \\Delta\\gamma)`` depend on ``(p^{tr}, q^{tr})`` implicitly, through ``R = 0``. The
+implicit function theorem gives those sensitivities from the *same* 2×2 Jacobian Newton
+already assembled,
+
+```math
+\\frac{\\partial x}{\\partial p^{tr}} = -\\left(\\frac{\\partial R}{\\partial x}\\right)^{-1}
+  \\frac{\\partial R}{\\partial p^{tr}}
+```
+
+so the tangent costs two extra back-substitutions, not a second solve. Chaining with
+``\\partial\\sigma^{tr}/\\partial\\varepsilon = C^e`` closes it.
+
+This is what makes a global Newton converge quadratically. It is also where Julia earns its
+place on this model: `ForwardDiff` supplies ``\\partial R/\\partial x`` and
+``\\partial R/\\partial p^{tr}`` exactly, where Bil differentiates the same residual by hand.
+"""
+function algorithmic_tangent(
+        m::BBM, C_e, p, Δγ, p_tr, q_tr, s, pc_star_n, K, G, dev_tr, ::Val{dim}
+    ) where {dim}
+    x = [p, Δγ]
+    R(y, ptr, qtr) = collect(return_residual(m, y, ptr, qtr, s, pc_star_n, K, G))
+
+    J = ForwardDiff.jacobian(y -> R(y, p_tr, q_tr), x)
+    Rp = ForwardDiff.derivative(t -> R(x, t, q_tr), p_tr)
+    Rq = ForwardDiff.derivative(t -> R(x, p_tr, t), q_tr)
+
+    ## Sensitivities of (p, Δγ) to the trial invariants
+    dx_dptr = -(J \ Rp)
+    dx_dqtr = -(J \ Rq)
+
+    Iden = one(Tensors.SymmetricTensor{2, dim})
+    Isym = one(Tensors.SymmetricTensor{4, dim})
+    Idev = Isym - (Iden ⊗ Iden) / 3
+
+    ## ∂p_tr/∂σ_tr = −I/3 (compression positive), ∂q_tr/∂σ_tr = 3 dev/(2q)
+    dptr_dσ = -Iden / 3
+    dqtr_dσ = q_tr > 0 ? (3 * dev_tr / (2 * q_tr)) : zero(dev_tr)
+
+    dp_dσtr = dx_dptr[1] * dptr_dσ + dx_dqtr[1] * dqtr_dσ
+    dΔγ_dσtr = dx_dptr[2] * dptr_dσ + dx_dqtr[2] * dqtr_dσ
+
+    a = 1 / (1 + 6G * Δγ)
+    da_dΔγ = -6G * a^2
+
+    dσ_dσtr = a * Idev + (da_dΔγ * dev_tr) ⊗ dΔγ_dσtr - Iden ⊗ dp_dσtr
+    return dσ_dσtr ⊡ C_e
 end

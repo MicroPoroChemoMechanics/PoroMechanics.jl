@@ -150,7 +150,7 @@ end
     @test st_after.εv_p > 1.0e-3                                     # appreciably so
 end
 
-@testset "BBM — the elastoplastic tangent" begin
+@testset "BBM — the tangent" begin
     m = BBM()
 
     ## On an elastic step the tangent is exactly the elastic one, and automatic
@@ -161,9 +161,7 @@ end
     @test st2.εv_p ≈ 0.0 atol = 1.0e-14
     @test Tensors.gradient(e -> material_response(m, e, st, 1.0)[1], ε_el) ≈ C
 
-    ## On a plastic step it is the *continuum* tangent, so it agrees with the true Jacobian
-    ## of the step only in the limit. What is asserted is that the gap shrinks with the
-    ## step — which is what makes it usable, and what distinguishes it from being wrong.
+    ## Machinery for comparing against the true Jacobian of a plastic step.
     stp, _ = isotropic_path(m, 4.0e4, 0.0; nstep = 9)
     idx = [(1, 1), (2, 2), (3, 3), (1, 2), (1, 3), (2, 3)]
     to_mat(C4) = [C4[i, j, k, l] for (i, j) in idx, (k, l) in idx]
@@ -180,11 +178,35 @@ end
         return M
     end
 
-    errs = map((4.0e-3, 1.0e-3, 2.5e-4)) do dε
+    ## **The algorithmic tangent is exact**, at every step size — it is the Jacobian of the
+    ## discrete return map, not an approximation to it. What is left is finite-difference
+    ## noise, which is why the tolerance is 1e-6 and not 1e-12.
+    for dε in (4.0e-3, 1.0e-3, 2.5e-4)
         ε1 = -((-tr(stp.ε)) + dε) / 3 * I3
         _, Cp, _ = material_response(m, ε1, stp, 1.0)
-        norm(fd_tangent(ε1, stp) - to_mat(Cp)) / norm(to_mat(Cp))
+        @test norm(fd_tangent(ε1, stp) - to_mat(Cp)) / norm(to_mat(Cp)) < 1.0e-6
     end
-    @test issorted(errs; rev = true)      # the gap closes as the step shrinks
-    @test errs[end] < 0.25                # and is modest at a usable step size
+
+    ## The continuum tangent, kept for comparison, is a different object: correct only in
+    ## the limit, with a gap that closes as the step shrinks. Asserting both makes the
+    ## distinction between them a property of the code rather than a claim in a comment.
+    errs = map((4.0e-3, 1.0e-3, 2.5e-4)) do dε
+        ε1 = -((-tr(stp.ε)) + dε) / 3 * I3
+        σ1, _, _ = material_response(m, ε1, stp, 1.0)
+        p_n = mean_pressure(stp.σ)
+        K, G = bbm_moduli(m, p_n)
+        λ_l = K - 2G / 3
+        C_e = elastic_stiffness(LinearElastic(λ_l, G), Val(3))
+        σ_tr = stp.σ + C_e ⊡ (ε1 - stp.ε)
+        p_tr, q_tr = mean_pressure(σ_tr), equivalent_stress(σ_tr)
+        pp, Δγ, qq, pcs, _, _ = PoroMechanics.solve_return_map(
+            m, p_tr, q_tr, 0.0, stp.pc_star, K, G
+        )
+        Cc = elastoplastic_tangent(
+            m, C_e, pp, qq, 0.0, pcs, Δγ, K, G, Tensors.dev(σ_tr), q_tr, Val(3)
+        )
+        norm(fd_tangent(ε1, stp) - to_mat(Cc)) / norm(to_mat(Cc))
+    end
+    @test all(errs .> 1.0e-3)             # genuinely different from the algorithmic one
+    @test issorted(errs; rev = true)      # and converging to it as the step shrinks
 end
