@@ -18,6 +18,10 @@ include("pages.jl")
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const GENERATED_DIR = joinpath(@__DIR__, "src", "examples")
 
+const DEMOS_DIR = joinpath(@__DIR__, "..", "demos")
+const DEMOS_OUT = joinpath(@__DIR__, "src", "demos")
+const LITERATE_DEMOS = ["parameter_identification"]
+
 const BENCHMARKS_DIR = joinpath(@__DIR__, "..", "benchmarks")
 const VALIDATION_DIR = joinpath(@__DIR__, "src", "validation")
 
@@ -48,6 +52,18 @@ for name in LITERATE_BENCHMARKS
     Literate.markdown(
         joinpath(BENCHMARKS_DIR, name * ".jl"),
         VALIDATION_DIR;
+        name = name,
+        documenter = true,
+        credit = false,
+        codefence = ("```@example $name" => "```"),
+    )
+end
+
+mkpath(DEMOS_OUT)
+for name in LITERATE_DEMOS
+    Literate.markdown(
+        joinpath(DEMOS_DIR, name * ".jl"),
+        DEMOS_OUT;
         name = name,
         documenter = true,
         credit = false,

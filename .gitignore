@@ -49,3 +49,5 @@ __pycache__/
 # Example pages are generated from examples/*/run.jl by Literate (docs/make.jl)
 docs/src/examples/
 docs/src/validation/
+
+docs/src/demos/

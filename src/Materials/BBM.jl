@@ -121,7 +121,15 @@ deviator(σ::Tensors.SymmetricTensor{2}) = Tensors.dev(σ)
 """Von Mises equivalent stress ``q = \\sqrt{\\tfrac{3}{2}\\,s:s}`` [Pa]."""
 function equivalent_stress(σ::Tensors.SymmetricTensor{2})
     s = Tensors.dev(σ)
-    return sqrt(3 * (s ⊡ s) / 2)
+    j2 = s ⊡ s
+    ## `q` is the apex of a cone at `j2 = 0`, where `sqrt` has an infinite slope. Evaluated
+    ## in floating point that is harmless — the value is right — but a derivative
+    ## propagated through it comes back `NaN`, which is how differentiating an isotropic
+    ## path with respect to a *parameter* fails. Below the threshold the deviator is
+    ## round-off, its direction is meaningless, and zero is both the right value and the
+    ## right derivative.
+    j2 <= eps(one(j2)) * (σ ⊡ σ) && return zero(j2)
+    return sqrt(3 * j2 / 2)
 end
 
 # ── The LC curve ──────────────────────────────────────────────────────────────

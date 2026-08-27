@@ -17,6 +17,9 @@ pages = [
         "Transient drainage"     => "validation/gardner_transient.md",
         "BBM — Bil reference cases" => "validation/bbm_bil.md",
     ],
+    "Differentiability" => [
+        "Parameter identification" => "demos/parameter_identification.md",
+    ],
     "API" => "api.md",
     "References" => "references.md",
 ]

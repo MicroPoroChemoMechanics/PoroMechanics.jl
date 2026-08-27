@@ -295,18 +295,22 @@ end
 function _stress_control(
         respond, σ_target, state; tol = 1.0e-10, maxiter = 50, maxhalve = 12
     )
-    scale = max(norm(σ_target), one(eltype(σ_target)))
+    ## The residual is measured squared, and the tolerance squared with it. Taking a norm
+    ## would put a `sqrt` on a quantity that goes to zero at convergence, and `sqrt` has an
+    ## infinite slope there: the value would be right and any derivative carried through it
+    ## would be `NaN`. Nothing here needs the norm itself, only comparisons.
+    scale2 = max(σ_target ⊡ σ_target, one(eltype(σ_target)))
     ε = state.ε
     σ, C, st = respond(ε)
-    res = norm(σ - σ_target)
+    res = (σ - σ_target) ⊡ (σ - σ_target)
     iters = 0
-    while res > tol * scale && iters < maxiter
+    while res > tol^2 * scale2 && iters < maxiter
         iters += 1
         Δε = Tensors.inv(C) ⊡ (σ - σ_target)
         α = one(res)
         for _ in 1:maxhalve
             σt, Ct, stt = respond(ε - α * Δε)
-            rt = norm(σt - σ_target)
+            rt = (σt - σ_target) ⊡ (σt - σ_target)
             if rt < res
                 ε, σ, C, st, res = ε - α * Δε, σt, Ct, stt, rt
                 break

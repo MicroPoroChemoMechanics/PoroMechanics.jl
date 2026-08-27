@@ -35,6 +35,7 @@ using PoroMechanics
 
     # ── Validation against closed-form solutions ──────────────────────────────
     include("benchmarks.jl")
+    include("differentiability.jl")
 
     # ── Examples still produce the profiles they used to ───────────────────────
     include("regression.jl")
