@@ -14,6 +14,7 @@ pages = [
         "Cryer's sphere"         => "validation/cryer.md",
         "De Leeuw's cylinder"    => "validation/deleeuw.md",
         "Gardner infiltration"   => "validation/gardner_infiltration.md",
+        "Transient drainage"     => "validation/gardner_transient.md",
     ],
     "API" => "api.md",
     "References" => "references.md",

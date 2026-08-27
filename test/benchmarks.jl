@@ -28,6 +28,10 @@ module _Gardner
     include("../benchmarks/gardner_infiltration.jl")
 end
 
+module _GardnerTransient
+    include("../benchmarks/gardner_transient.jl")
+end
+
 @testset "Terzaghi 1D consolidation" begin
     ## Tolerance sits an order of magnitude above the measured error, so ordinary
     ## floating-point or solver-version drift does not trip it, while a real regression
@@ -236,4 +240,50 @@ end
     e_coarse = _DeLeeuw.worst_error(; nel = 80, dT = 2.0e-3)
     e_fine = _DeLeeuw.worst_error(; nel = 80, dT = 1.0e-3)
     @test 1.8 < e_coarse / e_fine < 2.2
+end
+
+@testset "Gardner transient drainage" begin
+    M = _GardnerTransient
+    m = M.model
+
+    @test maximum(M.errors) < 5.0e-4
+
+    ## The change of variable that makes this solvable: the retention and permeability
+    ## curves must share their exponent, or the equation is not linear in K*.
+    @test m.retention.α == m.rel_perm.α == m.alpha
+
+    ## The reference must return the initial steady state at t → 0 and the final one at
+    ## t → ∞ — the two limit theorems, on the profile rather than a single point.
+    for zi in (0.4, 1.0, 1.8)
+        @test isapprox(
+            M.transient_pressure(m, zi, 1.0e-3),
+            log(M.kstar_steady(m, zi, M.Q_BEFORE)) / m.alpha; rtol = 1.0e-6
+        )
+        @test isapprox(
+            M.transient_pressure(m, zi, 1.0e9),
+            log(M.kstar_steady(m, zi, M.Q_AFTER)) / m.alpha; rtol = 1.0e-6
+        )
+    end
+
+    ## Heavier infiltration wets the column: pressures rise everywhere above the water table.
+    for zi in (0.4, 1.0, 1.8)
+        @test log(M.kstar_steady(m, zi, M.Q_AFTER)) > log(M.kstar_steady(m, zi, M.Q_BEFORE))
+    end
+    ## ...and monotonically in time, since a single flux step drives it.
+    for zi in (0.5, 1.5)
+        ps = [M.transient_pressure(m, zi, t) for t in (1.0e4, 1.0e5, 1.0e6, 1.0e7)]
+        @test issorted(ps)
+    end
+
+    ## The steady limit of this problem is the companion benchmark's solution.
+    @test isapprox(
+        log(M.kstar_steady(m, 1.0, M.Q_AFTER)) / m.alpha,
+        _Gardner.gardner_profile(_Gardner.GardnerColumn(; q_top = M.Q_AFTER), 1.0);
+        rtol = 1.0e-10
+    )
+
+    ## Second order in space, cleanly. Two levels only — the reference costs a BigFloat
+    ## Stehfest inversion per node, so a third level would dominate the suite's runtime.
+    e = [M.errors_at(; N = N, Δt = 2.0e3)[end] for N in (100, 200)]
+    @test 3.8 < e[1] / e[2] < 4.2
 end
