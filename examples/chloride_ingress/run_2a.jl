@@ -1,4 +1,4 @@
-# Chloricem example — Phase 2a: multi-species Nernst-Planck transport + Langmuir
+# chloride_ingress example — Phase 2a: multi-species Nernst-Planck transport + Langmuir
 #
 # Validation: chloride profile against a published C++ reference solution.
 # Phase 2a: saturated medium (s_l = 1), 4 ions (Cl⁻, Na⁺, K⁺, OH⁻) + potential ψ,
@@ -22,7 +22,7 @@
 #   ψ = 0 [V]
 #
 # Usage :
-#   julia --project examples/Chloricem/run_2a.jl
+#   julia --project examples/chloride_ingress/run_2a.jl
 
 using PoroMechanics
 using VoronoiFVM
@@ -44,11 +44,11 @@ const Z_IONS = (-1.0, +1.0, +1.0, -1.0)   # z_Cl, z_Na, z_K, z_OH
 # ── Physical parameters ───────────────────────────────────────────────────────
 
 """
-Parameters of the Chloricem model — Phase 2a (multi-species Nernst-Planck).
+Parameters of the chloride_ingress model — Phase 2a (multi-species Nernst-Planck).
 
 All quantities are SI (m, s, mol, mol/m³, V).
 """
-Base.@kwdef struct ChloriceModel2a <: AbstractPoroModel
+Base.@kwdef struct ChlorideModel2a <: AbstractPoroModel
     # ── Geometry ──────────────────────────────────────────────────────────────
     L::Float64       = 0.05           # [m] (= 0.5 dm)
 
@@ -90,24 +90,23 @@ Base.@kwdef struct ChloriceModel2a <: AbstractPoroModel
     psi_init::Float64  =   0.0
 end
 
-PoroMechanics.nspecies(::ChloriceModel2a) = 5
-PoroMechanics.species_names(::ChloriceModel2a) = [:c_cl, :c_na, :c_k, :c_oh, :psi]
+PoroMechanics.nspecies(::ChlorideModel2a) = 5
+PoroMechanics.species_names(::ChlorideModel2a) = [:c_cl, :c_na, :c_k, :c_oh, :psi]
 
 # ── Oh-Jang (2004) tortuosity ─────────────────────────────────────────────────
 
-function tortuosity_OhJang(phi::T, s_l::T, m::ChloriceModel2a) where {T<:Real}
-    phi_cap = phi > 0 ? T(0.5) * phi : zero(T)
-    phi_c   = T(m.phi_c)
-    n       = T(m.n_OJ)
-    ds      = T(m.ds_OJ)
-    dsn     = ds^(1 / n)
-    m_p     = T(0.5) * ((phi_cap - phi_c) + dsn * (1 - phi_c - phi_cap)) / (1 - phi_c)
-    tau_paste = (m_p + sqrt(m_p^2 + dsn * phi_c / (1 - phi_c)))^n
-    return tau_paste * T(m.tau_agg) * s_l^T(4.5)
+"""
+    tortuosity_OhJang(phi, s_l, m::ChlorideModel2a)
+
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+"""
+function tortuosity_OhJang(phi, s_l, m::ChlorideModel2a)
+    oj = OhJang(; phi_c = m.phi_c, n = m.n_OJ, ds = m.ds_OJ, tau_agg = m.tau_agg)
+    return tortuosity(oj, phi, s_l)
 end
 
 # Effective diffusion coefficient of ion i [m²/s], saturation = 1
-D_eff_ion(D_free::Float64, m::ChloriceModel2a) =
+D_eff_ion(D_free::Float64, m::ChlorideModel2a) =
     D_free * tortuosity_OhJang(m.phi, 1.0, m)
 
 # ── Langmuir adsorption (Cl⁻ only) ────────────────────────────────────────────
@@ -118,7 +117,7 @@ D_eff_ion(D_free::Float64, m::ChloriceModel2a) =
 Amount of adsorbed Cl⁻ [mol/m³] — Langmuir isotherm (curve Adscl).
 Facteur 1000 : normalisation implicite c_ref = 1 mol/dm³ = 1000 mol/m³.
 """
-n_ads(c::T, m::ChloriceModel2a) where {T<:Real} =
+n_ads(c::T, m::ChlorideModel2a) where {T<:Real} =
     T(m.n_csh) * T(m.alpha) * c / (T(1000.0) * (1 + T(m.beta) * c))
 
 # ── Bernoulli function (Scharfetter-Gummel) ───────────────────────────────────
@@ -145,7 +144,7 @@ Storage term:
   Na⁺, K⁺, OH⁻ : φ·c_i
   ψ : 0                          (algebraic equation, no time derivative)
 """
-function PoroMechanics.storage!(f, u, ::Any, m::ChloriceModel2a, ::Any)
+function PoroMechanics.storage!(f, u, ::Any, m::ChlorideModel2a, ::Any)
     f[ICL] = m.phi * u[ICL] + n_ads(u[ICL], m)
     f[INA] = m.phi * u[INA]
     f[IK]  = m.phi * u[IK]
@@ -157,7 +156,7 @@ end
 Electroneutrality constraint (algebraic equation for ψ):
     -c_Cl + c_Na + c_K - c_OH = 0
 """
-function PoroMechanics.reaction!(f, u, ::Any, ::ChloriceModel2a, ::Any)
+function PoroMechanics.reaction!(f, u, ::Any, ::ChlorideModel2a, ::Any)
     f[IPS] = -u[ICL] + u[INA] + u[IK] - u[IOH]
 end
 
@@ -171,7 +170,7 @@ For ion i between nodes 1 and 2:
 VoronoiFVM convention: f = K·(u₁ - u₂); the divergence is taken by the solver.
 For ψ: no spatial flux (f[IPS] = 0).
 """
-function PoroMechanics.flux!(f, u, ::Any, m::ChloriceModel2a, ::Any)
+function PoroMechanics.flux!(f, u, ::Any, m::ChlorideModel2a, ::Any)
     FoRT = m.Faraday / (m.R_gas * m.T_K)   # F/(RT)  [V⁻¹]  ≈ 38.9 V⁻¹ at 20 °C
     Δψ   = u[IPS, 1] - u[IPS, 2]
 
@@ -196,7 +195,7 @@ Boundary conditions at x = 0 (region 1):
 
 x = L (region 2): zero Neumann by default for every species.
 """
-function PoroMechanics.bcondition!(f, u, bnode, m::ChloriceModel2a, ::Any)
+function PoroMechanics.bcondition!(f, u, bnode, m::ChlorideModel2a, ::Any)
     boundary_dirichlet!(f, u, bnode; species=ICL, region=1, value=m.c_cl_BC)
     boundary_dirichlet!(f, u, bnode; species=IPS, region=1, value=m.psi_BC)
 end
@@ -204,7 +203,7 @@ end
 # ── Solve ─────────────────────────────────────────────────────────────────────
 
 """
-    run_Chloricem2a(; N, t_end, n_save, verbose) -> (tsol, grid, model)
+    run_chloride_ingress2a(; N, t_end, n_save, verbose) -> (tsol, grid, model)
 
 Simulates multi-ionic penetration (Nernst-Planck) into a saturated concrete.
 
@@ -217,15 +216,15 @@ Simulates multi-ionic penetration (Nernst-Planck) into a saturated concrete.
 # Returns
 - `tsol`  : solution transiente (VoronoiFVM.TransientSolution)
 - `grid`  : 1D grid
-- `model` : the ChloriceModel2a instance
+- `model` : the ChlorideModel2a instance
 """
-function run_Chloricem2a(;
+function run_chloride_ingress2a(;
     N       = 100,
     t_end   = 3.1536e7,
     n_save  = 12,
     verbose = false,
 )
-    m = ChloriceModel2a()
+    m = ChlorideModel2a()
 
     # ── Uniform 1D grid ───────────────────────────────────────────────────────
     grid = simplexgrid(range(0.0, m.L; length = N + 1))
@@ -280,7 +279,7 @@ function run_Chloricem2a(;
     tsol = solve(sys; inival, times, control = ctrl)
 
     τ = tortuosity_OhJang(m.phi, 1.0, m)
-    @info "Chloricem Phase 2a done" steps=length(tsol.t) τ=round(τ; sigdigits=3) D_eff_Cl=round(D_eff_ion(m.D_Cl, m); sigdigits=3) c_cl_max=round(maximum(tsol[ICL, :, end]); sigdigits=4)
+    @info "chloride_ingress Phase 2a done" steps=length(tsol.t) τ=round(τ; sigdigits=3) D_eff_Cl=round(D_eff_ion(m.D_Cl, m); sigdigits=3) c_cl_max=round(maximum(tsol[ICL, :, end]); sigdigits=4)
 
     return tsol, grid, m
 end
@@ -293,7 +292,7 @@ end
 Prints the chloride profile and the potential field at t_final.
 Compares c_Cl with the C++ reference solution.
 """
-function compare_reference_2a(tsol, grid, ::ChloriceModel2a)
+function compare_reference_2a(tsol, grid, ::ChlorideModel2a)
     x_m  = grid[Coordinates][1, :]
     x_dm = x_m .* 10.0
 
@@ -338,7 +337,7 @@ end
 # ── Visualisation ─────────────────────────────────────────────────────────────
 
 """
-    plot_Chloricem2a(tsol, grid, m; n_curves=4, save_path=nothing)
+    plot_chloride_ingress2a(tsol, grid, m; n_curves=4, save_path=nothing)
 
 Plots two panels:
 - **Left**  : c_Cl profiles at `n_curves` times + C++ reference + final c_OH profile
@@ -348,14 +347,14 @@ Requires Plots.jl loaded in the session (`using Plots`).
 
 # Exemple
 ```julia
-tsol, grid, m = run_Chloricem2a()
+tsol, grid, m = run_chloride_ingress2a()
 using Plots
-p = plot_Chloricem2a(tsol, grid, m)
+p = plot_chloride_ingress2a(tsol, grid, m)
 display(p)
 savefig(p, "chloricem_phase2a.png")
 ```
 """
-function plot_Chloricem2a(tsol, grid, m::ChloriceModel2a;
+function plot_chloride_ingress2a(tsol, grid, m::ChlorideModel2a;
     n_curves  = 4,
     save_path = nothing,
 )
@@ -428,13 +427,13 @@ end
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    @info "Chloricem — Phase 2a: Nernst-Planck transport, 4 ions + electroneutrality"
-    tsol, grid, m = run_Chloricem2a(; verbose=false)
+    @info "chloride_ingress — Phase 2a: Nernst-Planck transport, 4 ions + electroneutrality"
+    tsol, grid, m = run_chloride_ingress2a(; verbose=false)
     compare_reference_2a(tsol, grid, m)
 
     try
         using Plots
-        p = plot_Chloricem2a(tsol, grid, m)
+        p = plot_chloride_ingress2a(tsol, grid, m)
         display(p)
     catch e
         @warn "Plots.jl not available — plot skipped" exception=e

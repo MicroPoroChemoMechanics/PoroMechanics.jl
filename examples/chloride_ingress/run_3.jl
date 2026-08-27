@@ -1,4 +1,4 @@
-# Chloricem example — Phase 3: TOUGHREACT / SNIA on 4 primary ions
+# chloride_ingress example — Phase 3: TOUGHREACT / SNIA on 4 primary ions
 #
 # TOUGHREACT approach (Xu et al., 2004 / Steefel & MacQuarrie, 1996):
 #
@@ -23,7 +23,7 @@
 #   - Faithful implementation of TOUGHREACT: Fick transport + Gibbs chemistry
 #
 # Usage :
-#   julia --project examples/Chloricem/run_3.jl
+#   julia --project examples/chloride_ingress/run_3.jl
 
 using PoroMechanics
 using VoronoiFVM
@@ -52,13 +52,13 @@ const V_REV_3 = 1.0e-3   # [m³]  = 1 dm³
 # ── Model ─────────────────────────────────────────────────────────────────────
 
 """
-Parameters of the Chloricem model — Phase 3 (TOUGHREACT).
+Parameters of the chloride_ingress model — Phase 3 (TOUGHREACT).
 
 4 transported species: Cl⁻, Na⁺, K⁺, Ca²⁺ (pure Fick's law).
 `c_oh_frozen`: c(OH⁻) from the last chemical step — for logs and plots only, it
 plays no part in the transport.
 """
-mutable struct ChloriceModel3 <: AbstractPoroModel
+mutable struct ChlorideModel3 <: AbstractPoroModel
     # ── Geometry ──────────────────────────────────────────────────────────────
     L::Float64
 
@@ -223,7 +223,7 @@ function compute_opc_ic(
 end
 
 """
-    ChloriceModel3(N_nodes, cs, has_friedels; kwargs...) -> ChloriceModel3
+    ChlorideModel3(N_nodes, cs, has_friedels; kwargs...) -> ChlorideModel3
 
 Constructor with thermodynamic initialisation.
 Calls `compute_opc_ic(cs, has_friedels; kwargs...)` — the `kwargs` are
@@ -231,9 +231,9 @@ Calls `compute_opc_ic(cs, has_friedels; kwargs...)` — the `kwargs` are
 (see `compute_opc_ic`). The alkalis Na₂O and K₂O are converted into
 Na⁺ + OH⁻ and K⁺ + OH⁻ before equilibration.
 """
-function ChloriceModel3(N_nodes::Int, cs, has_friedels::Bool; kwargs...)
+function ChlorideModel3(N_nodes::Int, cs, has_friedels::Bool; kwargs...)
     ic = compute_opc_ic(cs, has_friedels; kwargs...)
-    return ChloriceModel3(
+    return ChlorideModel3(
         0.05,                                    # L [m]
         fill(ic.phi, N_nodes),                 # phi
         fill(ic.n_ch, N_nodes),                 # n_ch
@@ -260,30 +260,30 @@ function ChloriceModel3(N_nodes::Int, cs, has_friedels::Bool; kwargs...)
     )
 end
 
-PoroMechanics.nspecies(::ChloriceModel3) = 4
-PoroMechanics.species_names(::ChloriceModel3) = [:c_Cl, :c_Na, :c_K, :c_Ca]
+PoroMechanics.nspecies(::ChlorideModel3) = 4
+PoroMechanics.species_names(::ChlorideModel3) = [:c_Cl, :c_Na, :c_K, :c_Ca]
 
 # ── Fonctions utilitaires ─────────────────────────────────────────────────────
 
-function tortuosity_OhJang_3(phi::T, m::ChloriceModel3) where {T<:Real}
-    phi_cap = phi > 0 ? T(0.5) * phi : zero(T)
-    phi_c = T(m.phi_c)
-    n = T(m.n_OJ)
-    ds = T(m.ds_OJ)
-    dsn = ds^(1 / n)
-    m_p = T(0.5) * ((phi_cap - phi_c) + dsn * (1 - phi_c - phi_cap)) / (1 - phi_c)
-    tau_paste = (m_p + sqrt(m_p^2 + dsn * phi_c / (1 - phi_c)))^n
-    return tau_paste * T(m.tau_agg)
+"""
+    tortuosity_OhJang_3(phi, m::ChlorideModel3)
+
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+"""
+function tortuosity_OhJang_3(phi, m::ChlorideModel3)
+    ## Saturated medium: S_l = 1, so the saturation factor is one.
+    oj = OhJang(; phi_c = m.phi_c, n = m.n_OJ, ds = m.ds_OJ, tau_agg = m.tau_agg)
+    return tortuosity(oj, phi, 1)
 end
 
-@inline function _node_idx_3(x::Float64, m::ChloriceModel3)
+@inline function _node_idx_3(x::Float64, m::ChlorideModel3)
     N = length(m.phi) - 1
     return clamp(round(Int, x / (m.L / N)) + 1, 1, N + 1)
 end
 
 # ── Interface VoronoiFVM ──────────────────────────────────────────────────────
 
-function PoroMechanics.storage!(f, u, node, m::ChloriceModel3, ::Any)
+function PoroMechanics.storage!(f, u, node, m::ChlorideModel3, ::Any)
     i   = _node_idx_3(node.coord[1], m)
     phi = m.phi[i]
 
@@ -301,7 +301,7 @@ function PoroMechanics.storage!(f, u, node, m::ChloriceModel3, ::Any)
     f[ICA] = (phi + m.K_d_Ca) * u[ICA]
 end
 
-function PoroMechanics.flux!(f, u, edge, m::ChloriceModel3, ::Any)
+function PoroMechanics.flux!(f, u, edge, m::ChlorideModel3, ::Any)
     # Pure Fick's law — no electromigration (TOUGHREACT approach)
     x_mid = (edge.coord[1, 1] + edge.coord[1, 2]) / 2.0
     i = _node_idx_3(x_mid, m)
@@ -314,7 +314,7 @@ function PoroMechanics.flux!(f, u, edge, m::ChloriceModel3, ::Any)
     f[ICA] = m.D_Ca * tau * (u[ICA, 1] - u[ICA, 2])
 end
 
-function PoroMechanics.bcondition!(f, u, bnode, m::ChloriceModel3, ::Any)
+function PoroMechanics.bcondition!(f, u, bnode, m::ChlorideModel3, ::Any)
     # x = 0 (region=1): external NaCl solution — 4 Dirichlet values.
     # x = L (region=2): zero flux by default (VoronoiFVM).
     boundary_dirichlet!(f, u, bnode; species=ICL, region=1, value=m.c_cl_BC)
@@ -395,7 +395,7 @@ For every interior node:
   4. u[ICL..ICA, i] is read back from the full speciation.
   5. m.c_oh_frozen[i] is updated (for logs/plots).
 """
-function chemistry_step3!(m::ChloriceModel3, u::Matrix, cs, has_friedels::Bool)
+function chemistry_step3!(m::ChlorideModel3, u::Matrix, cs, has_friedels::Bool)
     N = size(u, 2)
     T_q = m.T_K * us"K"
 
@@ -510,17 +510,17 @@ end
 # ── Solve (operator splitting) ────────────────────────────────────────────────
 
 """
-    run_Chloricem3(; N, t_end, n_save, verbose) -> (results, model)
+    run_chloride_ingress3(; N, t_end, n_save, verbose) -> (results, model)
 
-SNIA Chloricem — Phase 3 (TOUGHREACT): Fick transport on 4 primary ions,
+SNIA chloride_ingress — Phase 3 (TOUGHREACT): Fick transport on 4 primary ions,
 chimie Gibbs via equilibrate().
 
 # Returns
 - `results` : `[(t, u_matrix, phi_vec, n_ch_vec, n_ett_vec, n_ms_vec, n_fs_vec, c_oh_vec), …]`
   where `c_oh_vec` = `m.c_oh_frozen` after the chemical step.
-- `model`   : the final `ChloriceModel3` state
+- `model`   : the final `ChlorideModel3` state
 """
-function run_Chloricem3(;
+function run_chloride_ingress3(;
     N=100,
     t_end=3.1536e7,   # 1 year [s]
     n_save=12,
@@ -532,15 +532,8 @@ function run_Chloricem3(;
     # ── Diagnostic transport ──────────────────────────────────────────────────
     # Computes τ and D_eff for the initial porosity, BEFORE any chemistry.
     let phi0 = 0.121
-        phi_cap = 0.5 * phi0
-        phi_c_ = 0.18
-        n_ = 2.7
-        ds_ = 2.0e-4
-        tau_agg_ = 0.27
-        dsn = ds_^(1 / n_)
-        mp = 0.5 * ((phi_cap - phi_c_) + dsn * (1 - phi_c_ - phi_cap)) / (1 - phi_c_)
-        tau_p = (mp + sqrt(mp^2 + dsn * phi_c_ / (1 - phi_c_)))^n_
-        tau = tau_p * tau_agg_
+        oj = OhJang(; phi_c = 0.18, n = 2.7, ds = 2.0e-4, tau_agg = 0.27)
+        tau = tortuosity(oj, phi0, 1)
         D_eff_Cl = 2.032e-9 * tau                        # [m²/s]
         D_app_Cl = D_eff_Cl / phi0                       # D_eff/φ (VoronoiFVM: storage=φ·c)
         t_1yr = 3.1536e7                                  # [s] — always 1 year for the comparison
@@ -551,7 +544,7 @@ function run_Chloricem3(;
     end
 
     # ── Model with thermodynamic ICs ──────────────────────────────────────────
-    m = ChloriceModel3(N + 1, cs, has_friedels)
+    m = ChlorideModel3(N + 1, cs, has_friedels)
     grid = simplexgrid(range(0.0, m.L; length=N + 1))
 
     # ── VoronoiFVM adapters (4 species, no reaction) ──────────────────────────
@@ -695,7 +688,7 @@ function compare_reference_3(results, grid)
 end
 
 """
-    plot_Chloricem3(results, grid; n_curves=4, save_path=nothing)
+    plot_chloride_ingress3(results, grid; n_curves=4, save_path=nothing)
 
 Quatre panneaux :
   - Left     : C_Cl profiles (+ C++ reference)
@@ -703,7 +696,7 @@ Quatre panneaux :
   - Centre-R : Friedel's salt n_fs(x) and monosulphate n_ms(x)
   - Right    : c_OH_frozen at the final time
 """
-function plot_Chloricem3(results, grid;
+function plot_chloride_ingress3(results, grid;
     n_curves=4,
     save_path=nothing,
 )
@@ -764,15 +757,15 @@ end
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    @info "Chloricem — Phase 3 TOUGHREACT: pure Fick on 4 primary ions + Gibbs chemistry"
-    results, m_fin = run_Chloricem3(; verbose=false)
+    @info "chloride_ingress — Phase 3 TOUGHREACT: pure Fick on 4 primary ions + Gibbs chemistry"
+    results, m_fin = run_chloride_ingress3(; verbose=false)
 
     grid_ref = simplexgrid(range(0.0, 0.05; length=101))
     compare_reference_3(results, grid_ref)
 
     try
         using Plots
-        p = plot_Chloricem3(results, grid_ref)
+        p = plot_chloride_ingress3(results, grid_ref)
         display(p)
     catch e
         @warn "Plots.jl not available" exception = e

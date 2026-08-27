@@ -27,4 +27,10 @@ using PoroMechanics
         @test isnothing(bcondition!(zeros(1), zeros(1), nothing, m, nothing))
     end
 
+    # ── Constitutive layer: values and differentiability ──────────────────────
+    include("constitutive.jl")
+
+    # ── Examples still produce the profiles they used to ───────────────────────
+    include("regression.jl")
+
 end

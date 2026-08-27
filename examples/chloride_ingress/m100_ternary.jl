@@ -7,10 +7,10 @@
 #   - initial hydration and entry point
 #
 # The generic infrastructure (ternary DLM, kinetics, SNIA, Fick transport,
-# visualisation) is defined in chloricem_ternary.jl.
+# visualisation) is defined in chloride_ternary.jl.
 #
 # Usage:
-#   julia --project examples/Chloricem/m100_ternary.jl
+#   julia --project examples/chloride_ingress/m100_ternary.jl
 
 using PoroMechanics
 using VoronoiFVM
@@ -89,7 +89,7 @@ Base.@kwdef struct ExposureConditions
     c_Al::Float64  = 1e-5     # Al(OH)₄⁻ seawater [mol/m³] (negligible)
 end
 
-include("chloricem_ternary.jl")
+include("chloride_ternary.jl")
 
 # ── Initial hydration M100 ────────────────────────────────────────────────────
 
@@ -231,11 +231,11 @@ end
 # ── SNIA driver ───────────────────────────────────────────────────────────────
 
 """
-    run_M100_ternary(; N, t_end, n_save, dlm, kwargs...) -> (results, model)
+    run_fickian_diffusion00_ternary(; N, t_end, n_save, dlm, kwargs...) -> (results, model)
 
 SNIA for M100 concrete — ternary complex ≡SiOCaCl + Yoshida 2021.
 """
-function run_M100_ternary(;
+function run_fickian_diffusion00_ternary(;
     N=400,
     t_end=3.1536e7,
     n_save=12,
@@ -251,10 +251,8 @@ function run_M100_ternary(;
     cs_hyd, cs_tr, has_afm_ss, has_friedels, has_brucite, has_msh, has_ldh, has_gyp, has_cash = _init_chemistry_ternary()
 
     let tr = mat.transport
-        phi_cap = 0.5 * tr.phi0
-        dsn = tr.ds_OJ^(1 / tr.n_OJ)
-        mp = 0.5 * ((phi_cap - tr.phi_c) + dsn * (1 - tr.phi_c - phi_cap)) / (1 - tr.phi_c)
-        tau = (mp + sqrt(mp^2 + dsn * tr.phi_c / (1 - tr.phi_c)))^tr.n_OJ * tr.tau_agg
+        oj = OhJang(; phi_c = tr.phi_c, n = tr.n_OJ, ds = tr.ds_OJ, tau_agg = tr.tau_agg)
+        tau = tortuosity(oj, tr.phi0, 1)
         D_eff = diff.D_Cl * tau
         D_app = D_eff * tr.phi0 / (tr.phi0 + 1.0)
         @info "M100 transport (ternary, phi=$(tr.phi0))" tau = round(tau; sigdigits=3) D_eff_Cl = round(D_eff; sigdigits=3) D_app_Cl = round(D_app; sigdigits=3)
@@ -355,7 +353,7 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     @info "M100 — ternary ≡SiOCaCl + Yoshida 2021 (SNIA: Fick + kinetics)"
 
-    results, m_fin = run_M100_ternary(;
+    results, m_fin = run_fickian_diffusion00_ternary(;
         N=100, t_end=3.1536e7, n_save=12,
         mat=CementMaterial(
             clinker=ClinkerComposition(
@@ -396,7 +394,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     try
         figs = plot_M100_ternary(results, grid_ref;
-            save_path="./examples/Chloricem/fig_M100_ternary_1yr.png")
+            save_path="./examples/chloride_ingress/fig_M100_ternary_1yr.png")
         for f in figs
             display(f)
         end

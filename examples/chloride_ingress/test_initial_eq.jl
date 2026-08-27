@@ -13,7 +13,7 @@
 # Database: cemdata18 (Lothenbach et al. 2019, CCR 115:472–506)
 #
 # Usage :
-#   julia --project examples/Chloricem/test_initial_eq.jl
+#   julia --project examples/chloride_ingress/test_initial_eq.jl
 #
 # Dependencies (in the active environment):
 #   ChemistryLab, OptimaSolver (or OptimizationIpopt), DynamicQuantities
@@ -288,7 +288,7 @@ println("  Porosity  = $(round(state_eq.porosity[], digits=4))")
 # =============================================================================
 # 7. Initial values for run_3.jl
 # =============================================================================
-# Converts the results to mol/m³_concrete and mol/m³_water for the Chloricem
+# Converts the results to mol/m³_concrete and mol/m³_water for the chloride_ingress
 # Phase 3 transport model (V_REV = 1e-3 m³, phi = porosity).
 # Concentrations are in mol/m³_water (= mol/L × 1000).
 

@@ -1,4 +1,4 @@
-# Exemple Chloricem — Phase 2b : Nernst-Planck + dissolution CH (operator splitting)
+# Exemple chloride_ingress — Phase 2b : Nernst-Planck + dissolution CH (operator splitting)
 #
 # Extension of Phase 2a with portlandite (Ca(OH)₂) dissolution through ChemistryLab.jl.
 #
@@ -23,7 +23,7 @@
 #     Pkg.add("DynamicQuantities")
 #
 # Usage :
-#   julia --project examples/Chloricem/run_2b.jl
+#   julia --project examples/chloride_ingress/run_2b.jl
 
 using PoroMechanics
 using VoronoiFVM
@@ -53,12 +53,12 @@ const V_REV = 1.0e-3   # [m³]
 # ── Model (mutable: φ and n_CH vary in space and time) ───────────────────────
 
 """
-Parameters of the Chloricem model — Phase 2b.
+Parameters of the chloride_ingress model — Phase 2b.
 
 The vector fields (`phi`, `n_ch`, `n_csh`) hold one entry per grid node and are
 updated after every chemical step (operator splitting).
 """
-mutable struct ChloriceModel2b <: AbstractPoroModel
+mutable struct ChlorideModel2b <: AbstractPoroModel
     # ── Geometry ──────────────────────────────────────────────────────────────
     L::Float64
 
@@ -107,11 +107,11 @@ mutable struct ChloriceModel2b <: AbstractPoroModel
 end
 
 """
-Default constructor of `ChloriceModel2b` for N nodes.
+Default constructor of `ChlorideModel2b` for N nodes.
 
 Parameters are tuned on the reference case.
 """
-function ChloriceModel2b(N_nodes::Int)
+function ChlorideModel2b(N_nodes::Int)
     phi0    = 0.121
     n_ch0   = 1640.0    # mol/m³  (= 1.64 mol/dm³ in the reference case)
     n_csh0  =  635.0    # mol/m³
@@ -125,7 +125,7 @@ function ChloriceModel2b(N_nodes::Int)
     # Electroneutrality: -c_Cl + c_Na + c_K - c_OH + 2*c_Ca = 0
     c_oh0   = c_na0 + c_k0 - c_cl0 + 2 * c_ca0   # = 450.054 mol/m³
 
-    return ChloriceModel2b(
+    return ChlorideModel2b(
         0.05,                          # L
         fill(phi0, N_nodes),           # phi
         fill(n_ch0, N_nodes),          # n_ch
@@ -154,23 +154,25 @@ function ChloriceModel2b(N_nodes::Int)
     )
 end
 
-PoroMechanics.nspecies(::ChloriceModel2b) = 6
-PoroMechanics.species_names(::ChloriceModel2b) = [:c_cl, :c_na, :c_k, :c_oh, :c_ca, :psi]
+PoroMechanics.nspecies(::ChlorideModel2b) = 6
+PoroMechanics.species_names(::ChlorideModel2b) = [:c_cl, :c_na, :c_k, :c_oh, :c_ca, :psi]
 
 # ── Oh-Jang (2004) tortuosity ─────────────────────────────────────────────────
 
-function tortuosity_OhJang_2b(phi::T, m::ChloriceModel2b) where {T<:Real}
-    phi_cap = phi > 0 ? T(0.5) * phi : zero(T)
-    phi_c   = T(m.phi_c);  n = T(m.n_OJ);  ds = T(m.ds_OJ)
-    dsn     = ds^(1 / n)
-    m_p     = T(0.5) * ((phi_cap - phi_c) + dsn * (1 - phi_c - phi_cap)) / (1 - phi_c)
-    tau_paste = (m_p + sqrt(m_p^2 + dsn * phi_c / (1 - phi_c)))^n
-    return tau_paste * T(m.tau_agg)    # saturated: s_l = 1
+"""
+    tortuosity_OhJang_2b(phi, m::ChlorideModel2b)
+
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+"""
+function tortuosity_OhJang_2b(phi, m::ChlorideModel2b)
+    ## Saturated medium: S_l = 1, so the saturation factor is one.
+    oj = OhJang(; phi_c = m.phi_c, n = m.n_OJ, ds = m.ds_OJ, tau_agg = m.tau_agg)
+    return tortuosity(oj, phi, 1)
 end
 
 # ── Langmuir adsorption ───────────────────────────────────────────────────────
 
-n_ads_2b(c::T, n_csh::Float64, m::ChloriceModel2b) where {T<:Real} =
+n_ads_2b(c::T, n_csh::Float64, m::ChlorideModel2b) where {T<:Real} =
     T(n_csh) * T(m.alpha) * c / (T(1000.0) * (1 + T(m.beta) * c))
 
 # ── Bernoulli (Scharfetter-Gummel, ForwardDiff-compatible) ───────────────────
@@ -182,7 +184,7 @@ end
 
 # ── Node index lookup from a coordinate ───────────────────────────────────────
 
-@inline function _node_index(x::Float64, m::ChloriceModel2b)
+@inline function _node_index(x::Float64, m::ChlorideModel2b)
     N = length(m.phi) - 1
     i = round(Int, x / (m.L / N)) + 1
     return clamp(i, 1, N + 1)
@@ -190,7 +192,7 @@ end
 
 # ── Interface VoronoiFVM ──────────────────────────────────────────────────────
 
-function PoroMechanics.storage!(f, u, node, m::ChloriceModel2b, ::Any)
+function PoroMechanics.storage!(f, u, node, m::ChlorideModel2b, ::Any)
     i     = _node_index(node.coord[1], m)
     phi_i = m.phi[i]
     ncsh_i = m.n_csh[i]
@@ -203,7 +205,7 @@ function PoroMechanics.storage!(f, u, node, m::ChloriceModel2b, ::Any)
     f[IPS] = zero(eltype(u))
 end
 
-function PoroMechanics.reaction!(f, u, ::Any, ::ChloriceModel2b, ::Any)
+function PoroMechanics.reaction!(f, u, ::Any, ::ChlorideModel2b, ::Any)
     # Algebraic EN constraint: ψ is the potential that maintains electroneutrality.
     # After the partial chemical step (only Ca²⁺ and OH⁻ updated), dissolution of
     # Ca(OH)₂ is EN-neutral (Δcharge = +2 - 2×1 = 0), so the residual here stays
@@ -211,7 +213,7 @@ function PoroMechanics.reaction!(f, u, ::Any, ::ChloriceModel2b, ::Any)
     f[IPS] = -u[ICL] + u[INA] + u[IK] - u[IOH] + 2 * u[ICA]
 end
 
-function PoroMechanics.flux!(f, u, edge, m::ChloriceModel2b, ::Any)
+function PoroMechanics.flux!(f, u, edge, m::ChlorideModel2b, ::Any)
     x_mid = (edge.coord[1, 1] + edge.coord[1, 2]) / 2.0
     i     = _node_index(x_mid, m)
     # Uses the local porosity for the tortuosity
@@ -230,7 +232,7 @@ function PoroMechanics.flux!(f, u, edge, m::ChloriceModel2b, ::Any)
     f[IPS] = zero(eltype(u))
 end
 
-function PoroMechanics.bcondition!(f, u, bnode, m::ChloriceModel2b, ::Any)
+function PoroMechanics.bcondition!(f, u, bnode, m::ChlorideModel2b, ::Any)
     # At x = 0: external NaCl solution — 6 Dirichlet values (Cl, Na, K, OH, Ca, ψ).
     # With ψ imposed (Dirichlet), VoronoiFVM disables the algebraic EN constraint at
     # the boundary node: without Dirichlet on OH and Ca, those species drift toward
@@ -256,7 +258,7 @@ portlandite dissolution, and creates one initial `ChemicalState` per node
 
 The `chem_states` are `ChemicalState`s in moles per REV (V_REV = 1 dm³).
 """
-function init_chemistry(m::ChloriceModel2b, N_nodes::Int)
+function init_chemistry(m::ChlorideModel2b, N_nodes::Int)
     # Path to the thermodynamic database (cemdata18)
     data_path = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
     if !isfile(data_path)
@@ -313,7 +315,7 @@ Units:
   - `m.phi[node]`       — porosity [-]
   - `m.n_ch[node]`      — portlandite [mol/m³_concrete]
 """
-function chemistry_step!(m::ChloriceModel2b, u::Matrix, cs)
+function chemistry_step!(m::ChlorideModel2b, u::Matrix, cs)
     N = size(u, 2)   # number of nodes
 
     # Node 1 (x = 0) is the BC node: it is the external NaCl solution, not the
@@ -400,7 +402,7 @@ end
 # ── Solve (operator splitting) ────────────────────────────────────────────────
 
 """
-    run_Chloricem2b(; N, t_end, n_save, verbose) -> (results, model)
+    run_chloride_ingress2b(; N, t_end, n_save, verbose) -> (results, model)
 
 Simulates chloride penetration with portlandite dissolution.
 
@@ -410,15 +412,15 @@ Simulates chloride penetration with portlandite dissolution.
 
 # Returns
 - `results` : `[(t, u_matrix, phi_vec, n_ch_vec), …]` at every output time
-- `model`   : `ChloriceModel2b` with the final values (φ, n_CH)
+- `model`   : `ChlorideModel2b` with the final values (φ, n_CH)
 """
-function run_Chloricem2b(;
+function run_chloride_ingress2b(;
     N       = 100,
     t_end   = 3.1536e7,
     n_save  = 12,
     verbose = false,
 )
-    m = ChloriceModel2b(N + 1)
+    m = ChlorideModel2b(N + 1)
 
     # ── Grid ──────────────────────────────────────────────────────────────────
     grid = simplexgrid(range(0.0, m.L; length = N + 1))
@@ -560,7 +562,7 @@ end
 # ── Visualisation ─────────────────────────────────────────────────────────────
 
 """
-    plot_Chloricem2b(results, grid; n_curves=4, save_path=nothing)
+    plot_chloride_ingress2b(results, grid; n_curves=4, save_path=nothing)
 
 Plots three panels:
   - Left   : c_Cl profiles at n_curves times + C++ reference
@@ -569,7 +571,7 @@ Plots three panels:
 
 Requires Plots.jl loaded in the session (`using Plots`).
 """
-function plot_Chloricem2b(results, grid;
+function plot_chloride_ingress2b(results, grid;
     n_curves  = 4,
     save_path = nothing,
 )
@@ -627,15 +629,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Import Statistics for mean() in the loop
     using Statistics
 
-    @info "Chloricem — Phase 2b : NP multi-ions + dissolution Ca(OH)₂ (ChemistryLab)"
-    results, m_fin = run_Chloricem2b(; verbose=false)
+    @info "chloride_ingress — Phase 2b : NP multi-ions + dissolution Ca(OH)₂ (ChemistryLab)"
+    results, m_fin = run_chloride_ingress2b(; verbose=false)
 
     grid_ref = simplexgrid(range(0.0, 0.05; length=101))
     compare_reference_2b(results, grid_ref)
 
     try
         using Plots
-        p = plot_Chloricem2b(results, grid_ref)
+        p = plot_chloride_ingress2b(results, grid_ref)
         display(p)
     catch e
         @warn "Plots.jl not available — plot skipped" exception=e

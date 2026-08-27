@@ -5,6 +5,7 @@
 /Manifest.toml
 /docs/Manifest.toml
 /examples/Manifest.toml
+/test/Manifest.toml
 /deps/deps.jl
 LocalPreferences.toml
 
@@ -44,3 +45,7 @@ __pycache__/
 .continue
 .claude
 .DS_Store
+
+# Example pages are generated from examples/*/run.jl by Literate (docs/make.jl)
+docs/src/examples/
+docs/src/validation/

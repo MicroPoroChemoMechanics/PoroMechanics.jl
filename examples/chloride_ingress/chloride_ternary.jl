@@ -1,4 +1,4 @@
-# chloricem_ternary.jl — generic infrastructure: ≡SiOCaCl ternary reactive transport
+# chloride_ternary.jl — generic infrastructure: ≡SiOCaCl ternary reactive transport
 # in cementitious materials exposed to an aggressive solution.
 #
 # Contains: ternary DLM (Thermoddem 2023 + Yoshida 2021), mineral kinetics (CSHQ /
@@ -99,7 +99,7 @@ const EXCLUDE_NONCSHQ_T = [
 # Surface complexation is chemistry, not transport. It lives here only because
 # ChemistryLab.jl does not expose it yet; when it does, delete this and call it.
 # Three near-identical copies of the model currently exist in this directory
-# (run_4.jl, tran2018.jl, chloricem_ternary.jl), which is the argument for moving it.
+# (run_4.jl, tran2018.jl, chloride_ternary.jl), which is the argument for moving it.
 
 
 """
@@ -464,14 +464,16 @@ PoroMechanics.species_names(::CementTernaryModel) = [:c_Cl, :c_Na, :c_K, :c_Ca, 
 
 # ── Oh-Jang tortuosity ────────────────────────────────────────────────────────
 
-function _tortuosity_t(phi::T, m::CementTernaryModel) where {T<:Real}
-    phi_cap = phi > 0 ? T(0.5) * phi : zero(T)
-    phi_c = T(m.mat.transport.phi_c)
-    n, ds = T(m.mat.transport.n_OJ), T(m.mat.transport.ds_OJ)
-    dsn = ds^(1 / n)
-    mp = T(0.5) * ((phi_cap - phi_c) + dsn * (1 - phi_c - phi_cap)) / (1 - phi_c)
-    tau_p = (mp + sqrt(mp^2 + dsn * phi_c / (1 - phi_c)))^n
-    return tau_p * T(m.mat.transport.tau_agg)
+"""
+    _tortuosity_t(phi, m::CementTernaryModel)
+
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+Saturated medium: S_l = 1, so the saturation factor is one.
+"""
+function _tortuosity_t(phi, m::CementTernaryModel)
+    tr = m.mat.transport
+    oj = OhJang(; phi_c = tr.phi_c, n = tr.n_OJ, ds = tr.ds_OJ, tau_agg = tr.tau_agg)
+    return tortuosity(oj, phi, 1)
 end
 
 @inline function _node_idx_t(x::Float64, m::CementTernaryModel)

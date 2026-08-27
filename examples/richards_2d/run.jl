@@ -1,4 +1,4 @@
-# examples/Richard_2D/run.jl
+# examples/richards_2d/run.jl
 # Richards equation 2D — drainage of a composite column
 # Richards equation 2D on VoronoiFVM.jl.
 #

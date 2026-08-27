@@ -1,4 +1,4 @@
-# Chloricem example — Phase 4: TOUGHREACT / SNIA + DLM surface complexation on C-S-H
+# chloride_ingress example — Phase 4: TOUGHREACT / SNIA + DLM surface complexation on C-S-H
 #
 # Reference: Tran, V.Q., Soive, A., Bonnet, S., Khelidj, A. (2018).
 #   A numerical model including thermodynamic equilibrium, kinetic control and
@@ -24,7 +24,7 @@
 #   3. Update of the effective K_d after each chemical step.
 #
 # Usage :
-#   julia --project examples/Chloricem/run_4.jl
+#   julia --project examples/chloride_ingress/run_4.jl
 
 using PoroMechanics
 using VoronoiFVM
@@ -50,7 +50,7 @@ const V_REV_4 = 1.0e-3   # [m³] = 1 dm³
 # Surface complexation is chemistry, not transport. It lives here only because
 # ChemistryLab.jl does not expose it yet; when it does, delete this and call it.
 # Three near-identical copies of the model currently exist in this directory
-# (run_4.jl, tran2018.jl, chloricem_ternary.jl), which is the argument for moving it.
+# (run_4.jl, tran2018.jl, chloride_ternary.jl), which is the argument for moving it.
 
 
 """
@@ -193,13 +193,13 @@ end
 # ── Model ─────────────────────────────────────────────────────────────────────
 
 """
-Parameters of the Chloricem model — Phase 4 (TOUGHREACT + C-S-H DLM).
+Parameters of the chloride_ingress model — Phase 4 (TOUGHREACT + C-S-H DLM).
 
 Transport : 4 primary species (Cl⁻, Na⁺, K⁺, Ca²⁺), Fick's law.
 Chemistry : Gibbs through equilibrate() + DLM surface complexation.
 Adsorption: DLM replaces the phenomenological isotherms of Phase 3.
 """
-mutable struct ChloriceModel4 <: AbstractPoroModel
+mutable struct ChlorideModel4 <: AbstractPoroModel
     # ── Geometry ──────────────────────────────────────────────────────────────
     L::Float64
 
@@ -327,13 +327,13 @@ function _compute_opc_ic4(
 end
 
 """
-    ChloriceModel4(N_nodes, cs, has_friedels; dlm, kwargs...)
+    ChlorideModel4(N_nodes, cs, has_friedels; dlm, kwargs...)
 
 Constructor with thermodynamic OPC initialisation + initial DLM.
 `dlm` : `DLMParams` (optional, defaults to Tran 2018).
 `kwargs` : forwarded to `_compute_opc_ic4` (phi0, T_K, n_ch0, …).
 """
-function ChloriceModel4(
+function ChlorideModel4(
     N_nodes::Int, cs, has_friedels::Bool;
     dlm::DLMParams=DLMParams(),
     kwargs...,
@@ -354,7 +354,7 @@ function ChloriceModel4(
 
     @info "DLM initial OPC :" S_Cl = round(S_Cl0; sigdigits=3) S_Na = round(S_Na0; sigdigits=3) S_K = round(S_K0; sigdigits=3) S_Ca = round(S_Ca0; sigdigits=3)
 
-    return ChloriceModel4(
+    return ChlorideModel4(
         0.05,                             # L
         fill(ic.phi, N),
         fill(ic.n_ch, N),
@@ -387,22 +387,23 @@ function ChloriceModel4(
     )
 end
 
-PoroMechanics.nspecies(::ChloriceModel4) = 4
-PoroMechanics.species_names(::ChloriceModel4) = [:c_Cl, :c_Na, :c_K, :c_Ca]
+PoroMechanics.nspecies(::ChlorideModel4) = 4
+PoroMechanics.species_names(::ChlorideModel4) = [:c_Cl, :c_Na, :c_K, :c_Ca]
 
 # ── Fonctions utilitaires ─────────────────────────────────────────────────────
 
-function _tortuosity4(phi::T, m::ChloriceModel4) where {T<:Real}
-    phi_cap = phi > 0 ? T(0.5) * phi : zero(T)
-    phi_c = T(m.phi_c)
-    n, ds = T(m.n_OJ), T(m.ds_OJ)
-    dsn = ds^(1 / n)
-    mp = T(0.5) * ((phi_cap - phi_c) + dsn * (1 - phi_c - phi_cap)) / (1 - phi_c)
-    tau_p = (mp + sqrt(mp^2 + dsn * phi_c / (1 - phi_c)))^n
-    return tau_p * T(m.tau_agg)
+"""
+    _tortuosity4(phi, m::ChlorideModel4)
+
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+"""
+function _tortuosity4(phi, m::ChlorideModel4)
+    ## Saturated medium: S_l = 1, so the saturation factor is one.
+    oj = OhJang(; phi_c = m.phi_c, n = m.n_OJ, ds = m.ds_OJ, tau_agg = m.tau_agg)
+    return tortuosity(oj, phi, 1)
 end
 
-@inline function _node_idx4(x::Float64, m::ChloriceModel4)
+@inline function _node_idx4(x::Float64, m::ChlorideModel4)
     N = length(m.phi) - 1
     return clamp(round(Int, x / (m.L / N)) + 1, 1, N + 1)
 end
@@ -410,12 +411,12 @@ end
 # ── Interface VoronoiFVM ──────────────────────────────────────────────────────
 
 """
-    PoroMechanics.storage!(f, u, node, m::ChloriceModel4, ::Any)
+    PoroMechanics.storage!(f, u, node, m::ChlorideModel4, ::Any)
 
 Storage term: φ·c + S_DLM ≈ (φ + K_d_eff)·c  (local linear approximation).
 K_d_eff[i] = S_DLM[i] / c[i] is updated after every chemical step.
 """
-function PoroMechanics.storage!(f, u, node, m::ChloriceModel4, ::Any)
+function PoroMechanics.storage!(f, u, node, m::ChlorideModel4, ::Any)
     i = _node_idx4(node.coord[1], m)
     phi = m.phi[i]
     f[ICL4] = (phi + m.Kd_Cl[i]) * u[ICL4]
@@ -424,7 +425,7 @@ function PoroMechanics.storage!(f, u, node, m::ChloriceModel4, ::Any)
     f[ICA4] = (phi + m.Kd_Ca[i]) * u[ICA4]
 end
 
-function PoroMechanics.flux!(f, u, edge, m::ChloriceModel4, ::Any)
+function PoroMechanics.flux!(f, u, edge, m::ChlorideModel4, ::Any)
     x_mid = (edge.coord[1, 1] + edge.coord[1, 2]) / 2.0
     i = _node_idx4(x_mid, m)
     phi_i = (i < length(m.phi)) ? (m.phi[i] + m.phi[i+1]) / 2 : m.phi[i]
@@ -435,7 +436,7 @@ function PoroMechanics.flux!(f, u, edge, m::ChloriceModel4, ::Any)
     f[ICA4] = m.D_Ca * tau * (u[ICA4, 1] - u[ICA4, 2])
 end
 
-function PoroMechanics.bcondition!(f, u, bnode, m::ChloriceModel4, ::Any)
+function PoroMechanics.bcondition!(f, u, bnode, m::ChlorideModel4, ::Any)
     boundary_dirichlet!(f, u, bnode; species=ICL4, region=1, value=m.c_cl_BC)
     boundary_dirichlet!(f, u, bnode; species=INA4, region=1, value=m.c_na_BC)
     boundary_dirichlet!(f, u, bnode; species=IK4, region=1, value=m.c_k_BC)
@@ -480,7 +481,7 @@ For every interior node (i ≥ 2):
 The K_d_eff[i] are updated to feed storage!() on the next transport segment:
 K_d_Cl = dS_DLM/dc + 2·dN_fs/dc (tangents), K_d_Na/K/Ca = secant.
 """
-function chemistry_step4!(m::ChloriceModel4, u::Matrix, cs, has_friedels::Bool)
+function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
     N = size(u, 2)
     T_q = m.T_K * us"K"
     Vm_CH = 33.06e-6
@@ -629,15 +630,15 @@ end
 # ── SNIA solve ────────────────────────────────────────────────────────────────
 
 """
-    run_Chloricem4(; N, t_end, n_save, verbose, dlm) -> (results, model)
+    run_chloride_ingress4(; N, t_end, n_save, verbose, dlm) -> (results, model)
 
-SNIA Chloricem — Phase 4 : transport Fick + Gibbs + DLM C-S-H.
+SNIA chloride_ingress — Phase 4 : transport Fick + Gibbs + DLM C-S-H.
 
 Returns:
 - `results` : `[(t, u, phi, n_ch, n_ett, n_ms, n_fs, c_oh, S_Cl, S_Na, S_K, S_Ca), …]`
-- `model`   : the final `ChloriceModel4` state
+- `model`   : the final `ChlorideModel4` state
 """
-function run_Chloricem4(;
+function run_chloride_ingress4(;
     N=100,
     t_end=3.1536e7,   # 1 year [s]
     n_save=12,
@@ -649,17 +650,14 @@ function run_Chloricem4(;
 
     # Transport diagnostic (same as Phase 3)
     let phi0 = 0.121
-        phi_cap = 0.5 * phi0
-        phi_c_, n_, ds_, tau_agg_ = 0.18, 2.7, 2.0e-4, 0.27
-        dsn = ds_^(1 / n_)
-        mp = 0.5 * ((phi_cap - phi_c_) + dsn * (1 - phi_c_ - phi_cap)) / (1 - phi_c_)
-        tau = (mp + sqrt(mp^2 + dsn * phi_c_ / (1 - phi_c_)))^n_ * tau_agg_
+        oj = OhJang(; phi_c = 0.18, n = 2.7, ds = 2.0e-4, tau_agg = 0.27)
+        tau = tortuosity(oj, phi0, 1)
         D_eff = 2.032e-9 * tau
         front_1yr = 2 * sqrt(D_eff / phi0 * t_end) * 1e3
         @info "Transport (phi=0.121)" tau = round(tau; sigdigits=3) D_eff_Cl = round(D_eff; sigdigits=3) front_Fick_mm = round(front_1yr; sigdigits=3)
     end
 
-    m = ChloriceModel4(N + 1, cs, has_friedels; dlm=dlm, kwargs...)
+    m = ChlorideModel4(N + 1, cs, has_friedels; dlm=dlm, kwargs...)
     grid = simplexgrid(range(0.0, m.L; length=N + 1))
 
     _storage!(f, u, node, data) = PoroMechanics.storage!(f, u, node, m, data)
@@ -818,7 +816,7 @@ function compare_reference_4(results, grid; dlm::DLMParams=DLMParams())
 end
 
 """
-    plot_Chloricem4(results, grid; n_curves, save_path)
+    plot_chloride_ingress4(results, grid; n_curves, save_path)
 
 Six panneaux :
   p1 – Cl split (free / DLM-adsorbed / Friedel-bound / total) in g/100g cement at the final time.
@@ -828,7 +826,7 @@ Six panneaux :
   p5 – c_OH.
   p6 – DLM surface potential β.
 """
-function plot_Chloricem4(results, grid; n_curves=4, save_path=nothing, dlm::DLMParams=DLMParams())
+function plot_chloride_ingress4(results, grid; n_curves=4, save_path=nothing, dlm::DLMParams=DLMParams())
     # Conversion constants: mol Cl / m³_concrete → g Cl / 100g cement
     M_Cl = 35.453
     m_clinker = 350_000.0          # g/m³_concrete
@@ -948,21 +946,21 @@ end
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    @info "Chloricem — Phase 4 : Fick + Gibbs + DLM C-S-H (Tran 2018)"
+    @info "chloride_ingress — Phase 4 : Fick + Gibbs + DLM C-S-H (Tran 2018)"
 
-    # Parameters tuned on the C++ Chloricem version:
+    # Parameters tuned on the C++ chloride_ingress version:
     #   n_csh0 = 635 mol/m³  ← InitialContent_csh = 0.635 mol/dm³
     #   n_ms0  = 3000 mol/m³ ← unlimited Al in C++ (n_c3a = -n_friedelsalt)
     dlm = DLMParams(n_csh0=635.0)
 
-    results, m_fin = run_Chloricem4(; N=100, t_end=3.1536e7, n_save=12, dlm=dlm, n_ms0=3000.0)
+    results, m_fin = run_chloride_ingress4(; N=100, t_end=3.1536e7, n_save=12, dlm=dlm, n_ms0=3000.0)
 
     grid_ref = simplexgrid(range(0.0, 0.05; length=101))
     compare_reference_4(results, grid_ref; dlm=dlm)
 
     try
         using Plots
-        p = plot_Chloricem4(results, grid_ref; dlm=dlm)
+        p = plot_chloride_ingress4(results, grid_ref; dlm=dlm)
         display(p)
     catch e
         @warn "Plots.jl not available" exception = e

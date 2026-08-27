@@ -29,7 +29,7 @@
 #   Na⁺=459, K⁺=9.71, Ca²⁺=9.97, Mg²⁺=52.2, SO₄²⁻=27.6, Cl⁻=546 mol/m³
 #
 # Usage :
-#   julia --project examples/Chloricem/run_Marks2015.jl
+#   julia --project examples/chloride_ingress/run_Marks2015.jl
 
 using PoroMechanics
 using VoronoiFVM
@@ -631,14 +631,16 @@ PoroMechanics.species_names(::Marks2015Model) = [:c_Cl, :c_Na, :c_K, :c_Ca, :c_M
 
 # ── Fonctions utilitaires ─────────────────────────────────────────────────────
 
-function _tortuosity_m(phi::T, m::Marks2015Model) where {T<:Real}
-    phi_cap = phi > 0 ? T(0.5) * phi : zero(T)
-    phi_c = T(m.mat.transport.phi_c)
-    n, ds = T(m.mat.transport.n_OJ), T(m.mat.transport.ds_OJ)
-    dsn = ds^(1 / n)
-    mp = T(0.5) * ((phi_cap - phi_c) + dsn * (1 - phi_c - phi_cap)) / (1 - phi_c)
-    tau_p = (mp + sqrt(mp^2 + dsn * phi_c / (1 - phi_c)))^n
-    return tau_p * T(m.mat.transport.tau_agg)
+"""
+    _tortuosity_m(phi, m::Marks2015Model)
+
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+Saturated medium: S_l = 1, so the saturation factor is one.
+"""
+function _tortuosity_m(phi, m::Marks2015Model)
+    tr = m.mat.transport
+    oj = OhJang(; phi_c = tr.phi_c, n = tr.n_OJ, ds = tr.ds_OJ, tau_agg = tr.tau_agg)
+    return tortuosity(oj, phi, 1)
 end
 
 @inline function _node_idx_m(x::Float64, m::Marks2015Model)
@@ -995,10 +997,8 @@ function run_Marks2015(;
 
     # Transport diagnostic (Cl⁻ D_app at the initial porosity)
     let tr = mat.transport
-        phi_cap = 0.5 * tr.phi0
-        dsn = tr.ds_OJ^(1 / tr.n_OJ)
-        mp  = 0.5 * ((phi_cap - tr.phi_c) + dsn * (1 - tr.phi_c - phi_cap)) / (1 - tr.phi_c)
-        tau = (mp + sqrt(mp^2 + dsn * tr.phi_c / (1 - tr.phi_c)))^tr.n_OJ * tr.tau_agg
+        oj = OhJang(; phi_c = tr.phi_c, n = tr.n_OJ, ds = tr.ds_OJ, tau_agg = tr.tau_agg)
+        tau = tortuosity(oj, tr.phi0, 1)
         D_eff = diff.D_Cl * tau
         D_app = D_eff * tr.phi0 / (tr.phi0 + 1.0)   # Kd ≈ 1 (Marks 2015 value)
         println("── Initial Cl⁻ transport values (phi₀ = $(tr.phi0)) ────────────────────")
@@ -1116,7 +1116,7 @@ function run_Marks2015(;
         @info "SNIA" seg = k - 1 φ_mean = round(mean(m.phi); sigdigits=4) n_FS0 = round(m.n_fs[2]; sigdigits=4) n_BRC0 = round(m.n_brc[2]; sigdigits=4)
 
         let phi_vec = m.phi, tr = m.mat.transport, D_Cl = m.diff.D_Cl
-            dsn     = tr.ds_OJ^(1 / tr.n_OJ)
+            oj_diag = OhJang(; phi_c = tr.phi_c, n = tr.n_OJ, ds = tr.ds_OJ, tau_agg = tr.tau_agg)
             N_nodes = length(phi_vec)
             t_yr_k  = round(t1 / 3.1536e7; digits=2)
             println("   ── Cl⁻ transport  [seg $(k-1), t = $t_yr_k yr] ─────────────────────────────")
@@ -1124,9 +1124,7 @@ function run_Marks2015(;
             step = max(1, (N_nodes - 1) ÷ 10)
             for i in 1:step:N_nodes
                 phi_i   = phi_vec[i]
-                phi_cap = 0.5 * phi_i
-                mp      = 0.5 * ((phi_cap - tr.phi_c) + dsn * (1 - tr.phi_c - phi_cap)) / (1 - tr.phi_c)
-                tau_i   = (mp + sqrt(mp^2 + dsn * tr.phi_c / (1 - tr.phi_c)))^tr.n_OJ * tr.tau_agg
+                tau_i   = tortuosity(oj_diag, phi_i, 1)
                 D_eff_i = D_Cl * tau_i
                 D_app_i = D_eff_i * phi_i / (phi_i + 1.0)
                 x_cm    = (i - 1) * m.L / (N_nodes - 1) * 100
@@ -1834,7 +1832,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
     try
         using Plots
-        figs = plot_Marks2015(results, grid_ref, save_path="./examples/Chloricem/fig_Marks2015_1an.png")
+        figs = plot_Marks2015(results, grid_ref, save_path="./examples/chloride_ingress/fig_Marks2015_1an.png")
         for f in figs
             display(f)
         end

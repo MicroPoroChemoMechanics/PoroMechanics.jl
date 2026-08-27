@@ -1,4 +1,4 @@
-# examples/Richard_2D/make_retention_table.jl
+# examples/richards_2d/make_retention_table.jl
 #
 # Generates `retention_table.dat`, the tabulated retention curve read by run.jl.
 #
@@ -12,7 +12,7 @@
 #   k_rl     = √S_e · [1 - (1 - S_e^(1/m))^m]²
 #
 # Usage:
-#   julia --project=examples examples/Richard_2D/make_retention_table.jl
+#   julia --project=examples examples/richards_2d/make_retention_table.jl
 
 using Printf
 

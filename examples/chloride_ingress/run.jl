@@ -1,4 +1,4 @@
-# Chloricem example — Phase 1: 1D chloride transport + Langmuir adsorption
+# chloride_ingress example — Phase 1: 1D chloride transport + Langmuir adsorption
 #
 # Validation: chloride profile against a published C++ reference solution.
 # Phase 1: saturated medium (s_l = 1), single species Cl⁻, no dissolution of the
@@ -31,7 +31,7 @@
 #   Reference result: front at ~7-8 mm, c(0) ≈ 0.523 mol/dm³ = 523 mol/m³
 #
 # Usage :
-#   julia --project examples/Chloricem/run.jl
+#   julia --project examples/chloride_ingress/run.jl
 
 using PoroMechanics
 using VoronoiFVM
@@ -42,12 +42,12 @@ using Printf
 # ── Physical parameters ───────────────────────────────────────────────────────
 
 """
-Parameters of the Chloricem model — Phase 1.
+Parameters of the chloride_ingress model — Phase 1.
 
 All quantities are SI (m, s, mol, mol/m³).
 Values come from the reference case.
 """
-Base.@kwdef struct ChloriceModel <: AbstractPoroModel
+Base.@kwdef struct ChlorideModel <: AbstractPoroModel
     # ── Geometry ──────────────────────────────────────────────────────────────
     L::Float64       = 0.05          # domain length [m]  (= 0.5 dm)
 
@@ -73,8 +73,8 @@ Base.@kwdef struct ChloriceModel <: AbstractPoroModel
     c_init::Float64  = 1.0e-2        # [mol/m³]  initial concentration (fresh concrete, ≈ 0)
 end
 
-PoroMechanics.nspecies(::ChloriceModel) = 1
-PoroMechanics.species_names(::ChloriceModel) = [:c_cl]
+PoroMechanics.nspecies(::ChlorideModel) = 1
+PoroMechanics.species_names(::ChlorideModel) = [:c_cl]
 
 # ── Oh-Jang (2004) tortuosity ─────────────────────────────────────────────────
 
@@ -88,17 +88,14 @@ after Oh & Jang (2004).
 
 For the saturated medium (s_l = 1): τ = τ_paste · τ_agg.
 """
-function tortuosity_OhJang(phi::T, s_l::T, m::ChloriceModel) where {T<:Real}
-    phi_cap = phi > 0 ? T(0.5) * phi : zero(T)
-    phi_c   = T(m.phi_c)
-    n       = T(m.n_OJ)
-    ds      = T(m.ds_OJ)
+"""
+    tortuosity_OhJang(phi, s_l, m::ChlorideModel)
 
-    dsn  = ds^(1 / n)
-    m_p  = T(0.5) * ((phi_cap - phi_c) + dsn * (1 - phi_c - phi_cap)) / (1 - phi_c)
-    tau_paste = (m_p + sqrt(m_p^2 + dsn * phi_c / (1 - phi_c)))^n
-
-    return tau_paste * T(m.tau_agg) * s_l^T(4.5)
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+"""
+function tortuosity_OhJang(phi, s_l, m::ChlorideModel)
+    oj = OhJang(; phi_c = m.phi_c, n = m.n_OJ, ds = m.ds_OJ, tau_agg = m.tau_agg)
+    return tortuosity(oj, phi, s_l)
 end
 
 """
@@ -108,7 +105,7 @@ Effective Cl⁻ diffusion coefficient [m²/s] for a saturation s_l = 1.
 
     D_eff = D_Cl · τ(φ, 1)
 """
-D_eff(phi::T, m::ChloriceModel) where {T<:Real} =
+D_eff(phi::T, m::ChlorideModel) where {T<:Real} =
     T(m.D_Cl) * tortuosity_OhJang(phi, one(T), m)
 
 # ── Langmuir adsorption ───────────────────────────────────────────────────────
@@ -117,7 +114,7 @@ D_eff(phi::T, m::ChloriceModel) where {T<:Real} =
     n_ads(c, m)
 
 Amount of Cl⁻ adsorbed per unit volume [mol/m³] through the Langmuir isotherm
-(curve `Adscl` of Chloricem):
+(curve `Adscl` of chloride_ingress):
 
     n_ads = n_csh · α · c / (c_ref · (1 + β · c))
 
@@ -127,7 +124,7 @@ the Langmuir denominator, which is 1 mol/dm³ in the original units.
 Check: at c = 523 mol/m³, n_csh = 635, α = 3.192, β = 0.0266 m³/mol
 → n_ads = 635 × 3.192 × 523 / (1000 × 14.91) ≈ 71.1 mol/m³ = 0.0711 mol/dm³  ✓
 """
-n_ads(c::T, m::ChloriceModel) where {T<:Real} =
+n_ads(c::T, m::ChlorideModel) where {T<:Real} =
     T(m.n_csh) * T(m.alpha) * c / (T(1000.0) * (1 + T(m.beta) * c))
 
 # ── Interface VoronoiFVM ──────────────────────────────────────────────────────
@@ -137,7 +134,7 @@ Storage term: N_cl = φ · c + n_ads(c)
 
 Unit: [mol/m³]
 """
-function PoroMechanics.storage!(f, u, ::Any, m::ChloriceModel, ::Any)
+function PoroMechanics.storage!(f, u, ::Any, m::ChlorideModel, ::Any)
     c    = u[1]
     f[1] = m.phi * c + n_ads(c, m)
 end
@@ -147,7 +144,7 @@ Effective Fick flux: J_cl = D_eff(φ) · (c₁ − c₂)
 
 VoronoiFVM convention: f = K·(u₁ − u₂) with K = D_eff.
 """
-function PoroMechanics.flux!(f, u, ::Any, m::ChloriceModel, ::Any)
+function PoroMechanics.flux!(f, u, ::Any, m::ChlorideModel, ::Any)
     f[1] = D_eff(m.phi, m) * (u[1, 1] - u[1, 2])
 end
 
@@ -155,14 +152,14 @@ end
 Dirichlet condition at x = 0 (region 1): c = c_BC.
 The right face (region 2) stays at zero Neumann (VoronoiFVM default).
 """
-function PoroMechanics.bcondition!(f, u, bnode, m::ChloriceModel, ::Any)
+function PoroMechanics.bcondition!(f, u, bnode, m::ChlorideModel, ::Any)
     boundary_dirichlet!(f, u, bnode; species=1, region=1, value=m.c_BC)
 end
 
 # ── Solve ─────────────────────────────────────────────────────────────────────
 
 """
-    run_Chloricem(; N, t_end, n_save, verbose) -> (tsol, grid, model)
+    run_chloride_ingress(; N, t_end, n_save, verbose) -> (tsol, grid, model)
 
 Simulates chloride penetration into a saturated concrete (Phase 1).
 
@@ -175,15 +172,15 @@ Simulates chloride penetration into a saturated concrete (Phase 1).
 # Returns
 - `tsol`  : transient solution (VoronoiFVM.TransientSolution)
 - `grid`  : 1D grid
-- `model` : the ChloriceModel instance
+- `model` : the ChlorideModel instance
 """
-function run_Chloricem(;
+function run_chloride_ingress(;
     N       = 100,
     t_end   = 3.1536e7,   # 1 year [s]
     n_save  = 12,
     verbose = false,
 )
-    m = ChloriceModel()
+    m = ChlorideModel()
 
     # ── Uniform 1D grid ───────────────────────────────────────────────────────
     grid = simplexgrid(range(0.0, m.L; length = N + 1))
@@ -225,7 +222,7 @@ function run_Chloricem(;
     tsol = solve(sys; inival, times, control = ctrl)
 
     τ_ref = tortuosity_OhJang(m.phi, 1.0, m)
-    @info "Chloricem Phase 1 done" steps=length(tsol.t) τ=round(τ_ref; sigdigits=3) D_eff=round(D_eff(m.phi, m); sigdigits=3) c_max=round(maximum(tsol[1, :, end]); sigdigits=4)
+    @info "chloride_ingress Phase 1 done" steps=length(tsol.t) τ=round(τ_ref; sigdigits=3) D_eff=round(D_eff(m.phi, m); sigdigits=3) c_max=round(maximum(tsol[1, :, end]); sigdigits=4)
 
     return tsol, grid, m
 end
@@ -248,7 +245,7 @@ Reference solution (t = 3.1536e7 s = 1 year):
   0.065    0.005
   0.075    0.0005
 """
-function compare_reference(tsol, grid, ::ChloriceModel)
+function compare_reference(tsol, grid, ::ChlorideModel)
     x_m    = grid[Coordinates][1, :]         # coordinates [m]
     x_dm   = x_m .* 10.0                     # in [dm] for comparison
     c_SI   = tsol[1, :, end]                 # [mol/m³] at t_final
@@ -284,7 +281,7 @@ end
 # ── Visualisation ─────────────────────────────────────────────────────────────
 
 """
-    plot_Chloricem(tsol, grid, m; n_curves=4, save_path=nothing)
+    plot_chloride_ingress(tsol, grid, m; n_curves=4, save_path=nothing)
 
 Plots the Cl⁻ profiles at `n_curves` times and compares them with the C++ reference.
 
@@ -292,14 +289,14 @@ Requires Plots.jl loaded in the session (`using Plots`).
 
 # Exemple
 ```julia
-tsol, grid, m = run_Chloricem()
+tsol, grid, m = run_chloride_ingress()
 using Plots
-p = plot_Chloricem(tsol, grid, m)
+p = plot_chloride_ingress(tsol, grid, m)
 display(p)
 savefig(p, "chloricem_phase1.png")
 ```
 """
-function plot_Chloricem(tsol, grid, m::ChloriceModel;
+function plot_chloride_ingress(tsol, grid, m::ChlorideModel;
     n_curves  = 4,
     save_path = nothing,
 )
@@ -318,7 +315,7 @@ function plot_Chloricem(tsol, grid, m::ChloriceModel;
     p = plot(;
         xlabel  = "x [dm]",
         ylabel  = "c_Cl [mol/dm³]",
-        title   = "Chloricem Phase 1 — Cl⁻ penetration (Fick + Langmuir)",
+        title   = "chloride_ingress Phase 1 — Cl⁻ penetration (Fick + Langmuir)",
         legend  = :topright,
         xlims   = (0.0, maximum(x_dm)),
         ylims   = (0.0, m.c_BC / 1000.0 * 1.08),
@@ -349,13 +346,13 @@ end
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    @info "Chloricem — Phase 1 : Transport Cl⁻ + adsorption Langmuir"
-    tsol, grid, m = run_Chloricem(; verbose = false)
+    @info "chloride_ingress — Phase 1 : Transport Cl⁻ + adsorption Langmuir"
+    tsol, grid, m = run_chloride_ingress(; verbose = false)
     compare_reference(tsol, grid, m)
 
     try
         using Plots
-        p = plot_Chloricem(tsol, grid, m)
+        p = plot_chloride_ingress(tsol, grid, m)
         display(p)
     catch e
         @warn "Plots.jl not available — plot skipped" exception=e
