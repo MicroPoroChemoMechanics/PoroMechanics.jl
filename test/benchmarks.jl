@@ -20,6 +20,10 @@ module _Cryer
     include("../benchmarks/cryer.jl")
 end
 
+module _DeLeeuw
+    include("../benchmarks/deleeuw.jl")
+end
+
 module _Gardner
     include("../benchmarks/gardner_infiltration.jl")
 end
@@ -192,5 +196,44 @@ end
     ## Backward Euler, first order in time.
     e_coarse = _Cryer.worst_error(; nel = 80, dT = 2.0e-3)
     e_fine = _Cryer.worst_error(; nel = 80, dT = 1.0e-3)
+    @test 1.8 < e_coarse / e_fine < 2.2
+end
+
+@testset "De Leeuw's cylinder" begin
+    m = _DeLeeuw.DELEEUW_MATERIAL
+    Pc = _DeLeeuw.P_LAT
+    p0 = _DeLeeuw.undrained_pressure(m)
+
+    @test maximum(_DeLeeuw.errors) < 2.0e-2
+
+    ## The undrained limit here is NOT Skempton's B·Pc. Plane strain forbids ε_zz, so
+    ## σ_zz = ν_u(σ_rr + σ_θθ) and the mean stress carries an extra (1+ν_u) factor. That
+    ## different limit is what makes this an independent check rather than a rerun of Cryer.
+    @test p0 ≈ 2 * _DeLeeuw.skempton(m) * (1 + _DeLeeuw.undrained_poisson(m)) * Pc / 3
+    @test p0 < _DeLeeuw.skempton(m) * Pc
+    for r in (0.1, 0.5, 0.9)
+        @test isapprox(_DeLeeuw.deleeuw_pressure(m, r, 1.0e-6), p0; rtol = 5.0e-3)
+    end
+    @test _DeLeeuw.deleeuw_pressure(m, 0.5, 20.0) / p0 < 1.0e-5
+    @test abs(_DeLeeuw.deleeuw_pressure(m, 0.999999, 0.1)) < 1.0e-5 * Pc
+
+    ## The overshoot, and its place in the sequence slab < cylinder < sphere.
+    ref = [_DeLeeuw.deleeuw_pressure(m, 1.0e-8, T) for T in _DeLeeuw.T_hist]
+    i_ref = argmax(ref)
+    i_num = argmax(_DeLeeuw.p_axis)
+
+    @test 1.08 < ref[i_ref] / p0 < 1.15
+    @test isapprox(_DeLeeuw.p_axis[i_num], ref[i_ref]; rtol = 5.0e-3)
+    @test isapprox(_DeLeeuw.T_hist[i_num], _DeLeeuw.T_hist[i_ref]; rtol = 5.0e-2)
+    @test _DeLeeuw.p_axis[end] < _DeLeeuw.p_axis[i_num]
+
+    ## Cylinder strictly between slab and sphere, on the same material.
+    cryer_ref = [_Cryer.cryer_pressure(_Cryer.CRYER_MATERIAL, 1.0e-8, T) for T in _Cryer.T_hist]
+    cryer_peak = maximum(cryer_ref) / (_Cryer.skempton(_Cryer.CRYER_MATERIAL) * _Cryer.P_CONF)
+    @test ref[i_ref] / p0 < cryer_peak
+
+    ## Backward Euler, first order in time.
+    e_coarse = _DeLeeuw.worst_error(; nel = 80, dT = 2.0e-3)
+    e_fine = _DeLeeuw.worst_error(; nel = 80, dT = 1.0e-3)
     @test 1.8 < e_coarse / e_fine < 2.2
 end

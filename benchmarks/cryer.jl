@@ -105,45 +105,19 @@ function cryer_laplace(m::HomogeneousBiot, r, ŝ; Pc = P_CONF)
     return (Pc / ŝ) * (m.b / (2G * S)) * (1 - _shape_ratio(r, x)) / D
 end
 
-# ### Stehfest inversion
+# ### Inversion
 #
-# The weights alternate in sign and grow large, so they are built in `BigFloat`; in
-# `Float64` the cancellation destroys the result.
-
-"""Stehfest weights `V_k`, `N` even."""
-function stehfest_weights(::Type{T}, N) where {T}
-    V = zeros(T, N)
-    h = N ÷ 2
-    for k in 1:N
-        s = zero(T)
-        for j in cld(k, 2):min(k, h)
-            s += T(j)^h * factorial(T(2j)) / (
-                factorial(T(h - j)) * factorial(T(j)) * factorial(T(j - 1)) *
-                    factorial(T(k - j)) * factorial(T(2j - k))
-            )
-        end
-        V[k] = (-1)^(k + h) * s
-    end
-    return V
-end
-
-const STEHFEST_N = 16
-const STEHFEST_V = stehfest_weights(BigFloat, STEHFEST_N)
+# By the Stehfest algorithm of `biot_common.jl`. This transform is elementary, so it
+# evaluates in `BigFloat` throughout.
 
 """
     cryer_pressure(m, r, t; Pc) -> p [Pa]
 
-Pore pressure at normalised radius `r = r/R` and dimensionless time `t = c t/R²`, by
-Stehfest inversion of [`cryer_laplace`](@ref).
+Pore pressure at normalised radius `r = r/R` and dimensionless time `t = c t/R²`.
 """
 function cryer_pressure(m::HomogeneousBiot, r, t; Pc = P_CONF)
     t <= 0 && return skempton(m) * Pc
-    ln2 = log(BigFloat(2))
-    acc = sum(
-        STEHFEST_V[k] * cryer_laplace(m, BigFloat(r), k * ln2 / BigFloat(t); Pc = Pc)
-            for k in 1:STEHFEST_N
-    )
-    return Float64(ln2 / t * acc)
+    return stehfest(ŝ -> cryer_laplace(m, big(r), ŝ; Pc = Pc), t)
 end
 
 # ## The spherical element
@@ -165,59 +139,9 @@ end
 #   + 2\mu\left(N_i'N_j' + 2\frac{N_iN_j}{r^2}\right) \right] r^2\,\mathrm{d}r
 # ```
 #
-# The hoop terms are what a Cartesian element cannot produce, and the ``N_i/r`` factors are
-# why the quadrature points must stay strictly inside the elements — they do, and the
-# ``r^2`` weight suppresses what is left.
-
-"""
-    spherical_element_matrices!(ke1, ke2, m, cv_u, cv_p, coords)
-
-Element contributions for the radially symmetric Biot problem. Same two-matrix split as the
-Cartesian case: `ke1` stationary, `ke2` storage.
-"""
-function spherical_element_matrices!(ke1, ke2, m::HomogeneousBiot, cv_u, cv_p, coords)
-    fill!(ke1, 0.0)
-    fill!(ke2, 0.0)
-
-    λ, μ = lame(m)
-    K_l = m.k / m.mu_l
-
-    nu_l = getnbasefunctions(cv_u)
-    np_l = getnbasefunctions(cv_p)
-
-    for q in 1:getnquadpoints(cv_u)
-        r = spatial_coordinate(cv_u, q, coords)[1]
-        dΩ = getdetJdV(cv_u, q) * r^2          # spherical volume weight
-
-        ## Strain operator: divergence-like and shear-like parts
-        Ndiv = [shape_gradient(cv_u, q, i)[1] + 2 * shape_value(cv_u, q, i) / r for i in 1:nu_l]
-        Ngrad = [shape_gradient(cv_u, q, i)[1] for i in 1:nu_l]
-        Nval = [shape_value(cv_u, q, i) for i in 1:nu_l]
-
-        for i in 1:nu_l, j in 1:nu_l
-            ke1[i, j] += (
-                λ * Ndiv[i] * Ndiv[j] +
-                    2μ * (Ngrad[i] * Ngrad[j] + 2 * Nval[i] * Nval[j] / r^2)
-            ) * dΩ
-        end
-
-        ## Biot coupling: −α p on each normal stress
-        for i in 1:nu_l, j in 1:np_l
-            val = m.b * Ndiv[i] * shape_value(cv_p, q, j) * dΩ
-            ke1[i, nu_l + j] -= val
-            ke2[nu_l + j, i] += val
-        end
-
-        ## Darcy conductivity and storage
-        for i in 1:np_l, j in 1:np_l
-            ke1[nu_l + i, nu_l + j] +=
-                K_l * shape_gradient(cv_p, q, i)[1] * shape_gradient(cv_p, q, j)[1] * dΩ
-            ke2[nu_l + i, nu_l + j] +=
-                m.N * shape_value(cv_p, q, i) * shape_value(cv_p, q, j) * dΩ
-        end
-    end
-    return nothing
-end
+# The hoop terms are what a Cartesian element cannot produce. The element itself lives in
+# `benchmarks/biot_common.jl` as `radial_element_matrices!`, parameterised by the number of
+# hoop directions: `nhoop = 2` here, `nhoop = 1` for the cylinder of de Leeuw's problem.
 
 # ## Solving
 
@@ -267,7 +191,7 @@ function run_cryer(;
     for cell in CellIterator(dh)
         reinit!(cv_u, cell)
         reinit!(cv_p, cell)
-        spherical_element_matrices!(ke1, ke2, m, cv_u, cv_p, getcoordinates(cell))
+        radial_element_matrices!(ke1, ke2, m, cv_u, cv_p, getcoordinates(cell); nhoop = 2)
         assemble!(as1, celldofs(cell), ke1)
         assemble!(as2, celldofs(cell), ke2)
     end

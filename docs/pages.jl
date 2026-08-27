@@ -12,6 +12,7 @@ pages = [
         "Terzaghi consolidation" => "validation/terzaghi.md",
         "Mandel's problem"       => "validation/mandel.md",
         "Cryer's sphere"         => "validation/cryer.md",
+        "De Leeuw's cylinder"    => "validation/deleeuw.md",
         "Gardner infiltration"   => "validation/gardner_infiltration.md",
     ],
     "API" => "api.md",

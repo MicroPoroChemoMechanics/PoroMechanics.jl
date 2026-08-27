@@ -187,3 +187,116 @@ function combine!(A, K1, K2, inv_dt)
     @. A.nzval = K1.nzval + inv_dt * K2.nzval
     return A
 end
+
+# ── Radially symmetric elements ───────────────────────────────────────────────
+
+"""
+    radial_element_matrices!(ke1, ke2, m, cv_u, cv_p, coords; nhoop)
+
+Element contributions for a radially symmetric Biot problem on a 1D mesh in `r`.
+
+`nhoop` is the number of hoop directions, and it is the only thing that separates the two
+geometries:
+
+| `nhoop` | geometry | strains | volume weight |
+|---|---|---|---|
+| 1 | long cylinder, plane strain | ``\\varepsilon_{rr} = u'``, ``\\varepsilon_{\\theta\\theta} = u/r``, ``\\varepsilon_{zz} = 0`` | ``r\\,\\mathrm{d}r`` |
+| 2 | sphere | ``\\varepsilon_{rr} = u'``, ``\\varepsilon_{\\theta\\theta} = \\varepsilon_{\\varphi\\varphi} = u/r`` | ``r^2\\,\\mathrm{d}r`` |
+
+The discrete strain operator is ``B_i = (N_i', \\; N_i/r, \\; \\ldots)`` with `nhoop`
+hoop entries, so contracting with the isotropic stiffness gives
+
+```math
+K^{uu}_{ij} = \\int \\left[ \\lambda\\,\\hat N_i \\hat N_j
+  + 2\\mu\\left(N_i'N_j' + n\\,\\frac{N_iN_j}{r^2}\\right)\\right] r^{\\,n}\\,\\mathrm{d}r,
+\\qquad \\hat N_i = N_i' + n\\,\\frac{N_i}{r}
+```
+
+The hoop terms are what no Cartesian element produces. The `N_i/r` factors are why the
+quadrature points must stay strictly inside the elements — they do — and the `r^n` weight
+suppresses what is left near the axis.
+
+This is the prototype of the axisymmetric kinematics a Barcelona Basic Model will need.
+"""
+function radial_element_matrices!(
+        ke1, ke2, m::HomogeneousBiot, cv_u, cv_p, coords; nhoop::Int
+    )
+    fill!(ke1, 0.0)
+    fill!(ke2, 0.0)
+
+    λ, μ = lame(m)
+    K_l = m.k / m.mu_l
+    n = nhoop
+
+    nu_l = getnbasefunctions(cv_u)
+    np_l = getnbasefunctions(cv_p)
+
+    for q in 1:getnquadpoints(cv_u)
+        r = spatial_coordinate(cv_u, q, coords)[1]
+        dΩ = getdetJdV(cv_u, q) * r^n
+
+        Ngrad = [shape_gradient(cv_u, q, i)[1] for i in 1:nu_l]
+        Nval = [shape_value(cv_u, q, i) for i in 1:nu_l]
+        Ndiv = [Ngrad[i] + n * Nval[i] / r for i in 1:nu_l]
+
+        for i in 1:nu_l, j in 1:nu_l
+            ke1[i, j] += (
+                λ * Ndiv[i] * Ndiv[j] +
+                    2μ * (Ngrad[i] * Ngrad[j] + n * Nval[i] * Nval[j] / r^2)
+            ) * dΩ
+        end
+
+        for i in 1:nu_l, j in 1:np_l
+            val = m.b * Ndiv[i] * shape_value(cv_p, q, j) * dΩ
+            ke1[i, nu_l + j] -= val
+            ke2[nu_l + j, i] += val
+        end
+
+        for i in 1:np_l, j in 1:np_l
+            ke1[nu_l + i, nu_l + j] +=
+                K_l * shape_gradient(cv_p, q, i)[1] * shape_gradient(cv_p, q, j)[1] * dΩ
+            ke2[nu_l + i, nu_l + j] +=
+                m.N * shape_value(cv_p, q, i) * shape_value(cv_p, q, j) * dΩ
+        end
+    end
+    return nothing
+end
+
+# ── Stehfest inversion ────────────────────────────────────────────────────────
+
+"""
+    stehfest_weights(T, N)
+
+Stehfest weights `V_k`, `N` even. Build them in `BigFloat`: they alternate in sign and reach
+``3.6\\times10^{9}`` at `N = 16`, and in `Float64` the cancellation leaves nothing.
+"""
+function stehfest_weights(::Type{T}, N) where {T}
+    V = zeros(T, N)
+    h = N ÷ 2
+    for k in 1:N
+        s = zero(T)
+        for j in cld(k, 2):min(k, h)
+            s += T(j)^h * factorial(T(2j)) / (
+                factorial(T(h - j)) * factorial(T(j)) * factorial(T(j - 1)) *
+                    factorial(T(k - j)) * factorial(T(2j - k))
+            )
+        end
+        V[k] = (-1)^(k + h) * s
+    end
+    return V
+end
+
+"""
+    stehfest(F, t; N = 16, T = BigFloat)
+
+Invert a Laplace transform numerically: `f(t) ≈ (ln2/t) Σ_k V_k F(k ln2 / t)`.
+
+`F` is called with a `T`-typed argument and may return whatever precision it can manage —
+elementary transforms evaluate happily in `BigFloat`, whereas one built on Bessel functions
+has to drop to `Float64`, which the weights still carry.
+"""
+function stehfest(F, t; N = 16, T = BigFloat)
+    V = stehfest_weights(T, N)
+    ln2 = log(T(2))
+    return Float64(ln2 / t * sum(V[k] * F(k * ln2 / T(t)) for k in 1:N))
+end
