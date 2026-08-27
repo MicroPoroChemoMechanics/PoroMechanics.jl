@@ -34,6 +34,8 @@ MIT — see `LICENSE`.
 module PoroMechanics
 
 using VoronoiFVM: VoronoiFVM
+using Ferrite: Ferrite
+using Tensors: Tensors, ⊡, ⋅
 
 # ── Public re-exports ──────────────────────────────────────────────────────────
 export AbstractPoroModel, AbstractPoroSolver
@@ -46,9 +48,14 @@ export saturation, dsaturation_dpc
 export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl
 export relative_permeability, gas_relative_permeability
 export AbstractTortuosity, OhJang, tortuosity
+export AbstractPoroelastic, BiotPoroelastic
+export lame, shear_modulus, bulk_modulus, oedometric_modulus, biot_modulus
+export compaction_coefficient, storage_coefficient, consolidation_coefficient
+export hydraulic_conductivity, skempton, undrained_poisson, undrained_bulk_modulus
 
 # Backends
 export fvm_system
+export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
 
 # ── Core abstractions ──────────────────────────────────────────────────────────
 
@@ -89,6 +96,26 @@ abstract type AbstractPoroModel end
 Supertype for time-stepping strategies.
 """
 abstract type AbstractPoroSolver end
+
+# ── Helper: number of species ──────────────────────────────────────────────────
+
+"""
+    nspecies(model::AbstractPoroModel) -> Int
+
+Return the number of primary unknowns (species) solved by `model`.
+"""
+function nspecies(::AbstractPoroModel)
+    error("nspecies not implemented for this model")
+end
+
+"""
+    species_names(model::AbstractPoroModel) -> Vector{Symbol}
+
+Return the symbolic names of the primary unknowns, e.g. `[:p_l, :T]`.
+"""
+function species_names(::AbstractPoroModel)
+    error("species_names not implemented for this model")
+end
 
 # ── Interface stubs (fall-through implementations raise informative errors) ────
 
@@ -178,29 +205,12 @@ function facet_load!(fe, facet, model::AbstractPoroModel, fv)
     return nothing
 end
 
+include("Constitutive/Poroelasticity.jl")
+
 # ── Backends ───────────────────────────────────────────────────────────────────
 # Glue to the solver packages. The physics lives above; these only wire it up.
 
 include("Backends/FVM.jl")
-
-# ── Helper: number of species ──────────────────────────────────────────────────
-
-"""
-    nspecies(model::AbstractPoroModel) -> Int
-
-Return the number of primary unknowns (species) solved by `model`.
-"""
-function nspecies(::AbstractPoroModel)
-    error("nspecies not implemented for this model")
-end
-
-"""
-    species_names(model::AbstractPoroModel) -> Vector{Symbol}
-
-Return the symbolic names of the primary unknowns, e.g. `[:p_l, :T]`.
-"""
-function species_names(::AbstractPoroModel)
-    error("species_names not implemented for this model")
-end
+include("Backends/FEM.jl")
 
 end # module PoroMechanics

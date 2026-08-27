@@ -157,7 +157,8 @@ function run_mandel(;
     cv_u = CellValues(qr, ip_u, ip_geo)
     cv_p = CellValues(qr, ip_p, ip_geo)
 
-    uy_dof, p_dof = node_dof_maps(dh, grid)
+    maps = node_dof_maps(dh, grid, (:u, 2), :p)
+    uy_dof, p_dof = maps.u, maps.p
 
     coords = [node.x for node in grid.nodes]
     tol = 1.0e-9
@@ -190,7 +191,7 @@ function run_mandel(;
     for cell in CellIterator(dh)
         reinit!(cv_u, cell)
         reinit!(cv_p, cell)
-        PoroMechanics.element_matrices!(ke1, ke2, nothing, m, cv_u, cv_p)
+        biot_element_matrices!(ke1, ke2, m, cv_u, cv_p)
         assemble!(as1, celldofs(cell), ke1)
         assemble!(as2, celldofs(cell), ke2)
     end

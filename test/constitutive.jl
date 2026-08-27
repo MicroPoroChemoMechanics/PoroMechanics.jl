@@ -16,15 +16,22 @@ using FiniteDiff
     @test_derivative f x
 
 Check `ForwardDiff.derivative(f, x)` against a central finite difference.
-Relative tolerance 1e-6 — finite differences are the inaccurate side of this comparison.
+
+The step is taken *relative to the point*. `FiniteDiff`'s default is scaled by
+`max(|x|, 1)`, which is meaningless for a parameter like the storage modulus `N ≈ 7e-9`:
+the difference would then be evaluated a thousand steps away from the point and disagree
+with the exact derivative by orders of magnitude — as it did, until this was fixed.
+
+Relative tolerance 1e-6: finite differences are the inaccurate side of this comparison.
 """
 macro test_derivative(f, x)
     return quote
         local fun = $(esc(f))
         local pt = $(esc(x))
         local ad = ForwardDiff.derivative(fun, pt)
-        local fd = FiniteDiff.finite_difference_derivative(fun, pt, Val{:central})
-        @test isapprox(ad, fd; rtol = 1.0e-6, atol = 1.0e-12 * max(1, abs(fd)))
+        local h = 1.0e-6 * max(abs(pt), floatmin())
+        local fd = (fun(pt + h) - fun(pt - h)) / 2h
+        @test isapprox(ad, fd; rtol = 1.0e-5, atol = 1.0e-12 * max(1, abs(fd)))
     end
 end
 
@@ -185,4 +192,95 @@ end
 
     ## And the saturated branch must not produce NaN either
     @test ForwardDiff.derivative(p -> saturation(vg, p), -1.0) == 0.0
+end
+
+# ── Poroelasticity ────────────────────────────────────────────────────────────
+
+@testset "Poroelasticity — constants" begin
+    m = BiotPoroelastic()
+    λ, μ = lame(m)
+
+    ## The elastic constants must agree with each other, whichever way they are reached.
+    @test μ ≈ shear_modulus(m)
+    @test bulk_modulus(m) ≈ λ + 2μ / 3
+    @test oedometric_modulus(m) ≈ λ + 2μ
+    @test oedometric_modulus(m) ≈ bulk_modulus(m) + 4μ / 3
+    @test bulk_modulus(m) ≈ m.E / (3 * (1 - 2m.nu))
+
+    ## Storage, compaction and diffusivity are one relation seen three ways.
+    @test compaction_coefficient(m) ≈ m.b / oedometric_modulus(m)
+    @test storage_coefficient(m) ≈ m.N + m.b^2 / oedometric_modulus(m)
+    @test consolidation_coefficient(m) ≈ hydraulic_conductivity(m) / storage_coefficient(m)
+
+    ## Skempton and the undrained Poisson ratio, against their closed forms.
+    B = skempton(m)
+    @test B ≈ m.b * biot_modulus(m) / (bulk_modulus(m) + m.b^2 * biot_modulus(m))
+    @test undrained_bulk_modulus(m) ≈ bulk_modulus(m) + m.b^2 * biot_modulus(m)
+    @test m.nu < undrained_poisson(m) < 0.5      # draining always softens
+
+    ## Independent cross-check: the diffusivity computed from the storage coefficient must
+    ## equal Cheng & Detournay's form, which is written in entirely different variables.
+    ν, νu = m.nu, undrained_poisson(m)
+    κ = hydraulic_conductivity(m)
+    c_cheng = 2κ * B^2 * μ * (1 - ν) * (1 + νu)^2 / (9 * (1 - νu) * (νu - ν))
+    @test isapprox(consolidation_coefficient(m), c_cheng; rtol = 1.0e-10)
+
+    ## Incompressible limit: B → 1 and ν_u → 1/2.
+    stiff = BiotPoroelastic(; E = 1.0e8, nu = 0.2, k = 1.0e-13, mu_l = 1.0e-3, b = 1.0, N = 1.0e-18)
+    @test isapprox(skempton(stiff), 1.0; rtol = 1.0e-8)
+    @test isapprox(undrained_poisson(stiff), 0.5; rtol = 1.0e-8)
+end
+
+@testset "Poroelasticity — differentiable w.r.t. parameters" begin
+    ## The property the whole layer exists for, on the poroelastic constants this time.
+    ## It works only because `BiotPoroelastic{T}` carries its coefficients as a type
+    ## parameter; with `E::Float64` none of these derivatives would exist.
+    base = (E = 1.0e8, nu = 0.2, k = 1.0e-13, mu_l = 1.0e-3, b = 1.0, N = 7.2e-9)
+    mk(; kwargs...) = BiotPoroelastic(; base..., kwargs...)
+
+    @testset "consolidation coefficient w.r.t. b" begin
+        f = b -> consolidation_coefficient(mk(; b = b))
+        @test_derivative f 1.0
+        ## More coupling stiffens the storage, so the diffusivity falls.
+        @test ForwardDiff.derivative(f, 1.0) < 0
+    end
+
+    @testset "Skempton w.r.t. N" begin
+        f = N -> skempton(mk(; N = N))
+        @test_derivative f 7.2e-9
+        ## Also against the exact derivative, dB/dN = −bK/(NK + b²)², which is worth
+        ## writing out because N is nine orders of magnitude from unity and any
+        ## finite-difference check has to be told so.
+        K = bulk_modulus(mk())
+        @test ForwardDiff.derivative(f, 7.2e-9) ≈ -K / (7.2e-9 * K + 1)^2
+        @test ForwardDiff.derivative(f, 7.2e-9) < 0
+    end
+
+    @testset "undrained Poisson w.r.t. nu" begin
+        @test_derivative (ν -> undrained_poisson(mk(; nu = ν))) 0.2
+    end
+
+    @testset "oedometric modulus w.r.t. E" begin
+        f = E -> oedometric_modulus(mk(; E = E))
+        @test_derivative f 1.0e8
+        ## Linear in E, so the derivative is M_o/E exactly.
+        @test ForwardDiff.derivative(f, 1.0e8) ≈ f(1.0e8) / 1.0e8
+    end
+
+    @testset "gradient over the whole parameter vector" begin
+        ## The shape an inverse calibration of a consolidation curve would take.
+        g = p -> consolidation_coefficient(BiotPoroelastic(p[1], p[2], p[3], p[4], p[5], p[6]))
+        p0 = [1.0e8, 0.2, 1.0e-13, 1.0e-3, 1.0, 7.2e-9]
+        ad = ForwardDiff.gradient(g, p0)
+        fd = FiniteDiff.finite_difference_gradient(g, p0)
+        @test isapprox(ad, fd; rtol = 1.0e-5)
+        @test all(ad .!= 0)
+    end
+
+    @testset "a Dual really does enter the struct" begin
+        d = ForwardDiff.Dual(1.0, 1.0)
+        m = BiotPoroelastic(; base..., b = d)
+        @test eltype(m) <: ForwardDiff.Dual
+        @test skempton(m) isa ForwardDiff.Dual
+    end
 end

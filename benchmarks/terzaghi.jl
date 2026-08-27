@@ -164,7 +164,7 @@ function run_terzaghi(;
     for cell in CellIterator(dh)
         reinit!(cv_u, cell)
         reinit!(cv_p, cell)
-        PoroMechanics.element_matrices!(ke1, ke2, nothing, m, cv_u, cv_p)
+        biot_element_matrices!(ke1, ke2, m, cv_u, cv_p)
         assemble!(as1, celldofs(cell), ke1)
         assemble!(as2, celldofs(cell), ke2)
     end
@@ -183,7 +183,7 @@ function run_terzaghi(;
 
     coords = [node.x for node in grid.nodes]
     y = [c[2] for c in coords]
-    _, p_dof = node_dof_maps(dh, grid)
+    p_dof = node_dof_maps(dh, grid, :p).p
 
     ## One short step to T_start captures the undrained response, then uniform steps.
     ## Backward Euler is first order in time, so ΔT — not the number of steps — sets the

@@ -72,11 +72,8 @@ const DELEEUW_MATERIAL = HomogeneousBiot(;
 const R_CYL = 1.0       # radius [m]
 const P_LAT = 1.0e6     # lateral confining traction [Pa]
 
-"""Geertsma's compaction coefficient ``c_m = \\alpha/M_o`` [Pa⁻¹]."""
-compaction_coefficient(m::HomogeneousBiot) = m.b / oedometric_modulus(m)
+## `compaction_coefficient` and `storage_coefficient` come from the package.
 
-"""Storage coefficient ``S = 1/M + \\alpha c_m`` [Pa⁻¹]."""
-storage_coefficient(m::HomogeneousBiot) = m.N + m.b * compaction_coefficient(m)
 
 """
     undrained_pressure(m; Pc)

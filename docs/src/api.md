@@ -77,3 +77,42 @@ AbstractTortuosity
 OhJang
 tortuosity
 ```
+
+### Poroelasticity
+
+```@docs
+AbstractPoroelastic
+BiotPoroelastic
+lame
+shear_modulus
+bulk_modulus
+oedometric_modulus
+biot_modulus
+compaction_coefficient
+storage_coefficient
+consolidation_coefficient
+hydraulic_conductivity
+skempton
+undrained_poisson
+undrained_bulk_modulus
+```
+
+## Backends
+
+Glue to the solver packages. The physics lives in the constitutive layer; these only wire
+it up.
+
+### Finite volumes
+
+```@docs
+fvm_system
+```
+
+### Finite elements
+
+```@docs
+biot_element_matrices!
+radial_element_matrices!
+node_dof_maps
+combine!
+```
