@@ -12,7 +12,7 @@ import Ferrite
 const I3 = one(SymmetricTensor{2, 3})
 
 """Drive an isotropic compression path, returning the state history."""
-function isotropic_path(m, pc0, s; nstep = 14, dεv = 0.004)
+function isotropic_path(m, pc0, s; nstep = 20, dεv = 0.004)
     st = initial_state(m, -1.0e3 * I3, pc0; suction = s)
     hist = [(0.0, mean_pressure(st.σ), st.pc_star, st.εv_p)]
     εv = 0.0
@@ -163,7 +163,7 @@ end
     @test Tensors.gradient(e -> material_response(m, e, st, 1.0)[1], ε_el) ≈ C
 
     ## Machinery for comparing against the true Jacobian of a plastic step.
-    stp, _ = isotropic_path(m, 4.0e4, 0.0; nstep = 9)
+    stp, _ = isotropic_path(m, 4.0e4, 0.0; nstep = 13)
     idx = [(1, 1), (2, 2), (3, 3), (1, 2), (1, 3), (2, 3)]
     to_mat(C4) = [C4[i, j, k, l] for (i, j) in idx, (k, l) in idx]
     function fd_tangent(ε0, state; h = 1.0e-9)
@@ -229,7 +229,7 @@ end
     nq = Ferrite.getnquadpoints(cv)
 
     I3 = one(SymmetricTensor{2, 3})
-    σ0, pc0, εv_tot, nsteps = -1.0e3 * I3, 4.0e4, 0.045, 8
+    σ0, pc0, εv_tot, nsteps = -1.0e3 * I3, 4.0e4, 0.08, 16
 
     function drive(mat)
         mk() = [[initial_state(mat, σ0, pc0) for _ in 1:nq] for _ in 1:Ferrite.getncells(grid)]
@@ -268,13 +268,13 @@ end
     @test mean_pressure(st_fe.σ) ≈ mean_pressure(ref.σ) rtol = 1.0e-10
     @test st_fe.pc_star ≈ ref.pc_star rtol = 1.0e-10
     @test st_fe.εv_p ≈ ref.εv_p rtol = 1.0e-10
-    @test ref.εv_p > 0.01                      # the path is genuinely plastic
+    @test ref.εv_p > 0.03                      # the path is genuinely plastic
 
     ## Quadratic convergence on the plastic steps that follow the elastic–plastic
     ## transition. Squaring the residual roughly doubles the number of correct digits, so
     ## three successive norms must satisfy e₃ ≲ e₂²/e₁ up to a constant.
     for nr in hist[(end - 1):end]
-        @test length(nr) <= 6
+        @test length(nr) <= 5
         e1, e2, e3 = nr[(end - 2):end]
         @test e3 < 10 * e2^2 / e1
     end
@@ -282,11 +282,15 @@ end
     ## Every step converges, and the elastic ones take a single iteration because the
     ## imposed field is linear and therefore exactly representable.
     @test all(nr -> last(nr) < 1.0e-8, hist)
-    @test all(nr -> length(nr) == 2, hist[1:4])
+    ## The elastic steps take one iteration: the imposed field is linear, so it is
+    ## represented exactly and the first correction lands on the answer. Yield first bites
+    ## at step 7, where the elastic limit εv ≈ κ ln(p₀/p_in)/(1+e₀) is crossed.
+    @test all(nr -> length(nr) == 2, hist[1:6])
+    @test length(hist[7]) > 2
 
     ## The continuum tangent reaches the same answer, far more slowly. This is the
     ## measurement that justifies deriving the algorithmic one.
     st_c, hist_c = drive(ContinuumTangent(BBM()))
     @test mean_pressure(st_c.σ) ≈ mean_pressure(ref.σ) rtol = 1.0e-5
-    @test sum(length, hist_c) > 2 * sum(length, hist)
+    @test sum(length, hist_c) > 3 * sum(length, hist)
 end

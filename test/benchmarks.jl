@@ -32,6 +32,10 @@ module _GardnerTransient
     include("../benchmarks/gardner_transient.jl")
 end
 
+module _BilBBM
+    include("../benchmarks/bbm_bil.jl")
+end
+
 @testset "Terzaghi 1D consolidation" begin
     ## Tolerance sits an order of magnitude above the measured error, so ordinary
     ## floating-point or solver-version drift does not trip it, while a real regression
@@ -286,4 +290,66 @@ end
     ## Stehfest inversion per node, so a third level would dominate the suite's runtime.
     e = [M.errors_at(; N = N, Δt = 2.0e3)[end] for N in (100, 200)]
     @test 3.8 < e[1] / e[2] < 4.2
+end
+
+@testset "BBM — cas de référence Bil" begin
+    B = _BilBBM
+    rel(a, b) = abs(a - b) / abs(b)
+
+    ## `base/BBM` — the loading–collapse curve. The plastic variables carry the comparison:
+    ## they are set by the yield surface and the hardening law, which are algebraic, while
+    ## the total strain also carries the first-order error of the explicit hypoelastic
+    ## predictor that both codes share.
+    for (d, (εv, εv_p, pc)) in B.bbm_ref
+        r = B.bbm[d]
+        @test rel(r.εv, εv) < 3.0e-2
+        @test rel(r.pc_star, pc) < 1.0e-3
+        εv_p > 0 && @test rel(r.εv_p, εv_p) < 1.0e-3
+    end
+    @test B.bbm[6.0].εv_p ≈ 2.917845e-2 rtol = 1.0e-3
+
+    ## `base/BBM_pcst` — the deviatoric leg stops 1 % short of the yield surface, so the
+    ## response must stay elastic. A yield surface misplaced by a per cent would not.
+    @test B.pcst[2.0].εv_p == 0
+    @test B.pcst[2.0].pc_star == 40.0e3
+    @test B.pcst[2.0].εv ≈ B.pcst[1.0].εv          # no volumetric strain at constant p̄
+    @test rel(B.pcst[2.0].εv, -2.478797e-2) < 1.0e-4
+    @test B.pcst[2.0].q ≈ 23.76e3 rtol = 1.0e-6
+
+    ## `base/BBM_pcst` sits just inside the surface, and that is what makes it sharp: at
+    ## p̄ = 20 kPa with p₀ = 40 kPa and no suction, yield is at q = M√(p̄(p₀−p̄)) = 24 kPa.
+    m = BBM(G_const = 1.0e8)
+    @test yield_function(m, 20.0e3, 24.0e3, 0.0, 40.0e3) ≈ 0 atol = 1.0e-6
+    @test yield_function(m, 20.0e3, 23.76e3, 0.0, 40.0e3) < 0
+
+    ## `base/BBM2` — reproduced with the loading–collapse coupling switched off, which is
+    ## how the reference was actually run. See the benchmark page for the two independent
+    ## proofs; the assertion here is the one that does not depend on the diagnosis, namely
+    ## that Bil's own output violates Bil's own yield function once suction is applied.
+    @test rel(B.bbm2[5.0].εv_p, 6.066891e-2) < 5.0e-3
+    @test rel(B.bbm2[5.0].pc_star, 178908.5) < 5.0e-3
+
+    ## The published `BBM2` state at t = 3 is strictly inside the yield surface implied by
+    ## its own reported hardening variable, while carrying plastic strain — impossible for
+    ## a consistent return mapping, and the reason the case is run with r = 1.
+    lc = (0.065 - 0.011) / (0.065 * (0.25 * exp(-2.0e-5 * 40.0e3) + 0.75) - 0.011)
+    p0_lc = 1.0e4 * (89620.6 / 1.0e4)^lc
+    @test yield_function(BBM(), 80.0e3, 39.6e3, 40.0e3, 89620.6) < -5.0e6
+    @test p0_lc > 130.0e3                          # 138.5 kPa, against p̄ = 80 kPa
+
+    ## With the coupling off the same state is on the surface, to a per cent.
+    @test abs(yield_function(BBM(r = 1.0), 80.0e3, 39.6e3, 40.0e3, 89620.6)) < 2.0e-2 *
+        1.2^2 * (80.0e3 + 32.0e3) * 10.0e3
+
+    ## First-order convergence of the explicit hypoelastic predictor, and the fact that the
+    ## plastic strain does not care about it.
+    exact = -(BBM().κ / (1 + BBM().e0)) * log(40.0)
+    errs = Float64[]
+    for Δt in (2.0e-3, 1.0e-3, 5.0e-4)
+        r = B.run_case(BBM(), B.p_bbm, t -> 0.0, B.s_bbm, 6.0, [1.0, 6.0]; Δt = Δt)
+        push!(errs, abs(r[1.0].εv - exact) / abs(exact))
+        @test r[6.0].εv_p ≈ 2.9176e-2 rtol = 1.0e-3
+    end
+    @test errs[1] / errs[2] ≈ 2 atol = 0.05
+    @test errs[2] / errs[3] ≈ 2 atol = 0.05
 end

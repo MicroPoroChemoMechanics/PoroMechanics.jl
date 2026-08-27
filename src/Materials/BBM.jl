@@ -52,16 +52,19 @@ Base.@kwdef struct BBM{T} <: AbstractMaterial
     β::T = 2.0e-5
     M::T = 1.2
     k_s::T = 0.8
+    κ_s::T = 0.005
     nu::T = 0.15
-    e0::T = 0.9
+    G_const::T = 0.0
+    e0::T = 1 / 3
     p_ref::T = 1.0e4
+    p_atm::T = 101325.0
     p_min::T = 1.0e2
 end
 
 ## Promote rather than require a single type: differentiating with respect to one
 ## parameter makes that field a `Dual` while the others stay `Float64`.
-function BBM(κ, λ0, r, β, M, k_s, nu, e0, p_ref, p_min)
-    return BBM(promote(κ, λ0, r, β, M, k_s, nu, e0, p_ref, p_min)...)
+function BBM(κ, λ0, r, β, M, k_s, κ_s, nu, G_const, e0, p_ref, p_atm, p_min)
+    return BBM(promote(κ, λ0, r, β, M, k_s, κ_s, nu, G_const, e0, p_ref, p_atm, p_min)...)
 end
 
 Base.eltype(::BBM{T}) where {T} = T
@@ -186,8 +189,34 @@ this law.
 """
 function bbm_moduli(m::BBM, p)
     K = max(p, m.p_min) * (1 + m.e0) / m.κ
-    G = 3K * (1 - 2m.nu) / (2 * (1 + m.nu))
+    ## A constant shear modulus is the other way the elastic part is usually parameterised,
+    ## and some published parameter sets quote `G` rather than `ν`. Zero means "derive it
+    ## from ν", which is the common case.
+    G = m.G_const > 0 ? m.G_const : 3K * (1 - 2m.nu) / (2 * (1 + m.nu))
     return K, G
+end
+
+"""
+    suction_stress_increment(m, p, s, s_n) -> Δσ_m
+
+The elastic mean-stress change caused by a change of suction at constant strain,
+
+```math
+\\Delta\\sigma_m = \\bar p\\,\\frac{\\kappa_s}{\\kappa}\\,
+\\ln\\frac{s + p_{atm}}{s_n + p_{atm}}
+```
+
+the second half of the BBM's elastic law: volumetric strain responds to suction as well as
+to stress, ``d\\varepsilon_v^e = \\frac{\\kappa}{1+e_0}\\frac{d\\bar p}{\\bar p}
++ \\frac{\\kappa_s}{1+e_0}\\frac{ds}{s + p_{atm}}``.
+
+The atmospheric offset is what keeps the logarithm finite at zero suction, where a saturated
+soil must still have a defined stiffness. Drying raises `s`, so at constant net stress the
+sample shrinks — the reversible half of the shrinkage, the irreversible half being what the
+LC curve produces.
+"""
+function suction_stress_increment(m::BBM, p, s, s_n)
+    return p * (m.κ_s / m.κ) * log((s + m.p_atm) / (s_n + m.p_atm))
 end
 
 """
@@ -290,7 +319,24 @@ the discrete return map, from [`algorithmic_tangent`](@ref). The continuum tange
 as [`elastoplastic_tangent`](@ref) for comparison; the two differ by ``O(\\Delta\\gamma)``.
 """
 function material_response(m::BBM, ε::Tensors.SymmetricTensor{2}, state::BBMState, Δt)
-    return bbm_response(m, ε, state, Δt, Val(:algorithmic))
+    return bbm_response(m, ε, state.suction, state, Δt, Val(:algorithmic))
+end
+
+"""
+    material_response(m::BBM, ε, s, state, Δt) -> (σ, ∂σ∂ε, state_new)
+
+The five-argument form, in which the **suction is a loading variable alongside the strain**.
+
+That is what it is: the BBM has two controls, and a wetting or drying step is imposed, not
+undergone. Only the increment ``\\ln\\frac{s+p_{atm}}{s_n+p_{atm}}`` has meaning for the
+elastic response, so the state carries the suction it was computed at and this form supplies
+the new one. The four-argument form reads the suction back out of the state, which leaves
+the increment at zero — right for a mechanical step, and wrong for a hydraulic one.
+"""
+function material_response(
+        m::BBM, ε::Tensors.SymmetricTensor{2}, s::Real, state::BBMState, Δt
+    )
+    return bbm_response(m, ε, s, state, Δt, Val(:algorithmic))
 end
 
 """
@@ -309,26 +355,33 @@ struct ContinuumTangent{M <: AbstractMaterial} <: AbstractMaterial
     model::M
 end
 
-initial_state(w::ContinuumTangent, args...) = initial_state(w.model, args...)
+initial_state(w::ContinuumTangent, args...; kw...) = initial_state(w.model, args...; kw...)
 
 function material_response(
         w::ContinuumTangent{<:BBM}, ε::Tensors.SymmetricTensor{2}, state::BBMState, Δt
     )
-    return bbm_response(w.model, ε, state, Δt, Val(:continuum))
+    return bbm_response(w.model, ε, state.suction, state, Δt, Val(:continuum))
+end
+
+function material_response(
+        w::ContinuumTangent{<:BBM}, ε::Tensors.SymmetricTensor{2}, s::Real,
+        state::BBMState, Δt
+    )
+    return bbm_response(w.model, ε, s, state, Δt, Val(:continuum))
 end
 
 function bbm_response(
-        m::BBM, ε::Tensors.SymmetricTensor{2, dim}, state::BBMState, Δt, which::Val
+        m::BBM, ε::Tensors.SymmetricTensor{2, dim}, s, state::BBMState, Δt, which::Val
     ) where {dim}
-    s = state.suction
     Δε = ε - state.ε
 
     ## Elastic predictor, with the moduli of the incoming state.
-    p_n = mean_pressure(state.σ)
+    p_n = max(mean_pressure(state.σ), m.p_min)
     K, G = bbm_moduli(m, p_n)
     λ_lame = K - 2G / 3
     C_e = elastic_stiffness(LinearElastic(λ_lame, G), Val(dim))
-    σ_tr = state.σ + C_e ⊡ Δε
+    Δσ_s = suction_stress_increment(m, p_n, s, state.suction)
+    σ_tr = state.σ + C_e ⊡ Δε + Δσ_s * one(state.σ)
 
     p_tr = mean_pressure(σ_tr)
     q_tr = equivalent_stress(σ_tr)

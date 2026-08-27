@@ -55,7 +55,7 @@ export lame, shear_modulus, bulk_modulus, oedometric_modulus, biot_modulus
 export compaction_coefficient, storage_coefficient, consolidation_coefficient
 export hydraulic_conductivity, skempton, undrained_poisson, undrained_bulk_modulus
 export AbstractMaterial, AbstractMaterialState, NoState, LinearElastic
-export material_response, initial_state, elastic_stiffness
+export material_response, stress_controlled_response, initial_state, elastic_stiffness
 export skeleton, total_stress, poro_response
 export LogarithmicElastic, LogarithmicElasticState, tangent_moduli, mean_compressive_stress
 export AbstractBishop, SaturationBishop, PowerBishop, bishop_coefficient
@@ -63,7 +63,7 @@ export equivalent_pore_pressure, unsaturated_total_stress, suction_stress
 
 # Materials
 export BBM, BBMState, compression_index, preconsolidation, yield_function
-export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent
+export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, suction_stress_increment, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent
 
 # Backends
 export fvm_system

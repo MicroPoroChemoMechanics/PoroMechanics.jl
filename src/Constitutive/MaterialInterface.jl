@@ -257,3 +257,62 @@ function material_response(
     σ = state.σ + C ⊡ Δε
     return σ, C, LogarithmicElasticState(σ, ε)
 end
+
+# ── Stress control ────────────────────────────────────────────────────────────
+
+"""
+    stress_controlled_response(mat, σ_target, [s,] state, Δt; tol, maxiter) -> (ε, σ, state_new, iters)
+
+The strain that produces a prescribed stress, by Newton on the material response.
+
+Laboratory paths are prescribed in stress, not in strain: an isotropic compression test
+holds a cell pressure and measures the volume change. A model whose interface is
+``\\varepsilon \\mapsto \\sigma`` cannot follow one directly, so this inverts it, using the
+same consistent tangent the global solve uses — which is the cheapest possible check that
+the tangent is right, since a wrong one shows up immediately as a failure to converge.
+
+The optional `s` is the second loading variable of a model that has one, the suction of the
+Barcelona Basic Model in particular.
+
+`tol` is relative to the target stress, so it means the same thing at 1 kPa and at 1 MPa.
+"""
+function stress_controlled_response(
+        mat::AbstractMaterial, σ_target::Tensors.SymmetricTensor{2}, state, Δt;
+        kwargs...
+    )
+    return _stress_control(ε -> material_response(mat, ε, state, Δt), σ_target, state; kwargs...)
+end
+
+function stress_controlled_response(
+        mat::AbstractMaterial, σ_target::Tensors.SymmetricTensor{2}, s::Real, state, Δt;
+        kwargs...
+    )
+    return _stress_control(
+        ε -> material_response(mat, ε, s, state, Δt), σ_target, state; kwargs...
+    )
+end
+
+function _stress_control(
+        respond, σ_target, state; tol = 1.0e-10, maxiter = 50, maxhalve = 12
+    )
+    scale = max(norm(σ_target), one(eltype(σ_target)))
+    ε = state.ε
+    σ, C, st = respond(ε)
+    res = norm(σ - σ_target)
+    iters = 0
+    while res > tol * scale && iters < maxiter
+        iters += 1
+        Δε = Tensors.inv(C) ⊡ (σ - σ_target)
+        α = one(res)
+        for _ in 1:maxhalve
+            σt, Ct, stt = respond(ε - α * Δε)
+            rt = norm(σt - σ_target)
+            if rt < res
+                ε, σ, C, st, res = ε - α * Δε, σt, Ct, stt, rt
+                break
+            end
+            α /= 2
+        end
+    end
+    return ε, σ, st, iters
+end

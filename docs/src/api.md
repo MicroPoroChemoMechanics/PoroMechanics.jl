@@ -111,6 +111,7 @@ AbstractMaterialState
 NoState
 initial_state
 material_response
+stress_controlled_response
 LinearElastic
 elastic_stiffness
 skeleton
@@ -194,6 +195,7 @@ yield_function
 mean_pressure
 equivalent_stress
 bbm_moduli
+suction_stress_increment
 hardening_modulus
 PoroMechanics.dyield_dp
 PoroMechanics.dyield_dq

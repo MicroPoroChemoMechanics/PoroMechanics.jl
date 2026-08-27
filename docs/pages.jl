@@ -15,6 +15,7 @@ pages = [
         "De Leeuw's cylinder"    => "validation/deleeuw.md",
         "Gardner infiltration"   => "validation/gardner_infiltration.md",
         "Transient drainage"     => "validation/gardner_transient.md",
+        "BBM — Bil reference cases" => "validation/bbm_bil.md",
     ],
     "API" => "api.md",
     "References" => "references.md",
