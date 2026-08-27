@@ -160,3 +160,24 @@ radial_element_matrices!
 node_dof_maps
 combine!
 ```
+
+## Materials
+
+### Barcelona Basic Model
+
+Elastoplasticity for unsaturated soils, in which suction is a second loading variable:
+drying expands the yield surface, wetting shrinks it, and a soil wetted under constant
+stress can therefore be pushed to yield and collapse.
+
+```@docs
+BBM
+BBMState
+compression_index
+preconsolidation
+yield_function
+mean_pressure
+equivalent_stress
+bbm_moduli
+hardening_modulus
+elastoplastic_tangent
+```

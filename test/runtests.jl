@@ -30,6 +30,9 @@ using PoroMechanics
     # ── Constitutive layer: values and differentiability ──────────────────────
     include("constitutive.jl")
 
+    # ── The Barcelona Basic Model ──────────────────────────────────────────────
+    include("bbm.jl")
+
     # ── Validation against closed-form solutions ──────────────────────────────
     include("benchmarks.jl")
 

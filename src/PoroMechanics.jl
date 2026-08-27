@@ -35,7 +35,8 @@ module PoroMechanics
 
 using VoronoiFVM: VoronoiFVM
 using Ferrite: Ferrite
-using Tensors: Tensors, SymmetricTensor, ⊡, ⋅
+using Tensors: Tensors, SymmetricTensor, ⊡, ⊗, ⋅
+using ForwardDiff: ForwardDiff
 
 # ── Public re-exports ──────────────────────────────────────────────────────────
 export AbstractPoroModel, AbstractPoroSolver
@@ -58,6 +59,10 @@ export skeleton, total_stress, poro_response
 export LogarithmicElastic, LogarithmicElasticState, tangent_moduli, mean_compressive_stress
 export AbstractBishop, SaturationBishop, PowerBishop, bishop_coefficient
 export equivalent_pore_pressure, unsaturated_total_stress, suction_stress
+
+# Materials
+export BBM, BBMState, compression_index, preconsolidation, yield_function
+export mean_pressure, equivalent_stress, bbm_moduli, hardening_modulus, elastoplastic_tangent
 
 # Backends
 export fvm_system
@@ -214,6 +219,10 @@ end
 include("Constitutive/Poroelasticity.jl")
 include("Constitutive/MaterialInterface.jl")
 include("Constitutive/EffectiveStress.jl")
+
+# ── Materials ──────────────────────────────────────────────────────────────────
+
+include("Materials/BBM.jl")
 
 # ── Backends ───────────────────────────────────────────────────────────────────
 # Glue to the solver packages. The physics lives above; these only wire it up.
