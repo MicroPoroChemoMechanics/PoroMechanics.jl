@@ -80,10 +80,12 @@ end
 # [`stress_controlled_response`](@ref) — Newton on the material response, using the same
 # algorithmic tangent the global solve uses.
 #
-# The time step matters and is not a free choice. The elastic law of the BBM is
-# hypoelastic, ``K = \bar p (1+e_0)/\kappa``, and both codes integrate it explicitly with
-# the modulus of the incoming state, which is first-order accurate. Running at Bil's own
-# step, ``\Delta t = 10^{-3}``, compares like with like.
+# Every case is run **twice**, because the two codes do not integrate the elastic law the
+# same way. Bil freezes the bulk modulus at the incoming state and steps forward, which is
+# first-order accurate; this package integrates ``K = \bar p(1+e_0)/\kappa`` in closed form,
+# which has no step-size error at all. Comparing with Bil therefore needs
+# [`ExplicitPredictor`](@ref), which reproduces Bil's scheme, and the exact result is shown
+# beside it so the difference between the two is visible rather than argued about.
 
 function run_case(m, p_of, q_of, s_of, t_end, dates; Δt = 1.0e-3)
     state = initial_state(m, σ0, pc_star0; suction = s_of(0.0))
@@ -115,7 +117,9 @@ p_bbm = t -> piecewise_linear([0, 1, 2, 3, 4, 5, 6], [1, 40, 1, 80, 1, 160, 1], 
 s_bbm = t -> 1.0e3 * piecewise_linear(
     [0, 1.999, 2, 3.999, 4, 5.999, 6], [0, 0, 40, 40, 80, 80, 160], t
 )
-bbm = run_case(material, p_bbm, t -> 0.0, s_bbm, 6.0, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+bbm_dates = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+bbm = run_case(ExplicitPredictor(material), p_bbm, t -> 0.0, s_bbm, 6.0, bbm_dates)
+bbm_exact = run_case(material, p_bbm, t -> 0.0, s_bbm, 6.0, bbm_dates)
 
 # Bil's own results at the same dates, read from `base/BBM/BBM.p1`. The volumetric strain
 # is recovered from the void-ratio change it reports, ``\Delta e = (1+e_0)\,\mathrm{tr}\,
@@ -130,27 +134,30 @@ bbm_ref = Dict(                          # (tr ε, εv_p, pc* [Pa])
     6.0 => (-3.426270e-2, 2.917845e-2, 82214.7),
 )
 
-function comparison_table(res, ref)
-    println("  t │  p [kPa]  q [kPa] │      tr(ε)  (Bil)          err │      εv_p  (Bil)          err │   pc* [kPa]  (Bil)      err")
+rel(a, b) = abs(b) < 1.0e-12 ? abs(a - b) : abs(a - b) / abs(b)
+
+function comparison_table(explicit, exact, ref)
+    println("      │           Bil │   Bil's scheme reproduced │  exact elastic integration")
+    println("    t │  εv_p     pc* │      εv_p      pc*    tr ε │      εv_p      pc*    tr ε")
     for (d, (rεv, rεp, rpc)) in sort(collect(ref))
-        r = res[d]
-        rel(a, b) = abs(b) < 1.0e-12 ? abs(a - b) : abs(a - b) / abs(b)
+        a, b = explicit[d], exact[d]
         @printf(
-            "%3.0f │ %8.3f %8.3f │ %+.5e (%+.5e) %.1e │ %+.5e (%+.5e) %.1e │ %8.3f (%8.3f) %.1e\n",
-            d, r.p / 1.0e3, r.q / 1.0e3, r.εv, rεv, rel(r.εv, rεv),
-            r.εv_p, rεp, rel(r.εv_p, rεp), r.pc_star / 1.0e3, rpc / 1.0e3,
-            rel(r.pc_star, rpc)
+            "%5.0f │ %.5f %6.2f │ %.1e %.1e %.1e │ %.1e %.1e %.1e\n",
+            d, rεp, rpc / 1.0e3,
+            rel(a.εv_p, rεp), rel(a.pc_star, rpc), rel(a.εv, rεv),
+            rel(b.εv_p, rεp), rel(b.pc_star, rpc), rel(b.εv, rεv)
         )
     end
     return nothing
 end
 
-comparison_table(bbm, bbm_ref)
+comparison_table(bbm, bbm_exact, bbm_ref)
 
-# The plastic variables — the substance of the model — agree to about ``10^{-4}``:
-# ``\varepsilon_v^p`` to ``1.1\times10^{-4}`` and ``p_c^*`` to ``5.4\times10^{-5}``. The
-# total strain differs by more, and the reason is worth stating because it is a property of
-# both codes rather than a disagreement between them, as the convergence study below shows.
+# Reproducing Bil's scheme, the plastic variables — the substance of the model — agree to
+# about ``10^{-4}``. Integrating exactly moves the total strain away from Bil by up to 20 %,
+# and that is the expected direction: the exact answer is not Bil's answer, it is the one
+# Bil is converging towards. The convergence study at the end of this page shows it is Bil
+# that moves.
 #
 # ## Case 2 — `base/BBM_pcst`: the yield surface, approached to 1 %
 #
@@ -158,15 +165,17 @@ comparison_table(bbm, bbm_ref)
 # ``G = 10^8`` Pa instead of deriving it from ``\nu``, which [`BBM`](@ref) supports through
 # `G_const`.
 
-pcst = run_case(
-    BBM(G_const = 1.0e8),
+pcst_args = (
     t -> piecewise_linear([0, 1], [1, 20], t),
     t -> piecewise_linear([0, 1, 2], [0, 0, 24], t),
     t -> 0.0, 2.0, [1.0, 2.0],
 )
+pcst = run_case(ExplicitPredictor(BBM(G_const = 1.0e8)), pcst_args...)
+pcst_exact = run_case(BBM(G_const = 1.0e8), pcst_args...)
 
 comparison_table(
-    pcst, Dict(1.0 => (-2.478797e-2, 0.0, 39999.8), 2.0 => (-2.478797e-2, 0.0, 39999.8))
+    pcst, pcst_exact,
+    Dict(1.0 => (-2.478797e-2, 0.0, 39999.8), 2.0 => (-2.478797e-2, 0.0, 39999.8))
 )
 
 # Both codes stay elastic throughout, as they must: the deviatoric loading stops 1 % short
@@ -209,16 +218,17 @@ comparison_table(
 # The case is therefore reproduced as it was actually run, with ``\lambda(s) = \lambda(0)``,
 # which `r = 1` produces exactly.
 
-bbm2 = run_case(
-    BBM(r = 1.0),
+bbm2_args = (
     t -> piecewise_linear([0, 1, 2, 3, 4, 5], [1, 40, 1, 80, 1, 160], t),
     t -> piecewise_linear([0, 1, 2, 3, 4, 5], [1, 20, 1, 40, 1, 80], t),
     t -> 1.0e3 * piecewise_linear([0, 1.999, 2, 3.999, 4, 5], [0, 0, 40, 40, 80, 80], t),
     5.0, [1.0, 2.0, 3.0, 4.0, 5.0],
 )
+bbm2 = run_case(ExplicitPredictor(BBM(r = 1.0)), bbm2_args...)
+bbm2_exact = run_case(BBM(r = 1.0), bbm2_args...)
 
 comparison_table(
-    bbm2, Dict(
+    bbm2, bbm2_exact, Dict(
         1.0 => (-3.693599e-2, 6.364060e-3, 46806.2),
         2.0 => (-7.892678e-3, 6.364060e-3, 46806.2),
         3.0 => (-7.055920e-2, 3.267174e-2, 89620.6),
@@ -232,44 +242,77 @@ comparison_table(
 # for — the two-point table gives ``lc = 1.00104`` at ``s = 80`` kPa rather than exactly 1,
 # which is a 0.3 % effect on ``p_c^*``, and 0.3 % is what remains at ``t = 5``.
 #
-# ## Why the total strain agrees less well than the plastic strain
+# ## Which code is converging, and to what
 #
-# The elastic law is hypoelastic and both codes integrate it explicitly, evaluating the
-# bulk modulus at the incoming stress. That is first-order accurate in the step, and over a
-# path that loads and unloads six times the error accumulates.
-#
-# The first loading leg is elastic throughout and integrable in closed form,
-# ``\varepsilon_v = -\frac{\kappa}{1+e_0}\ln\frac{40}{1}``, so the error can be measured
-# rather than argued about.
+# The first loading leg is elastic throughout, so it has a closed-form answer,
+# ``\varepsilon_v = -\frac{\kappa}{1+e_0}\ln\frac{40}{1}``, and the two schemes can be
+# measured against it rather than against each other.
 
 exact_leg1 = -(material.κ / (1 + material.e0)) * log(40.0)
-@printf("tr(ε) at t = 1, exact elastic: %+.6e\n\n", exact_leg1)
-@printf("%-9s  %-17s %-10s %-17s\n", "Δt", "tr(ε) at t=1", "error", "εv_p at t=6")
+@printf("tr(ε) at t = 1, closed form: %+.9e\n\n", exact_leg1)
+@printf("%-9s  %-12s %-12s   %-12s %-12s\n", "Δt", "Bil's scheme", "error", "exact", "error")
 for Δt in (4.0e-3, 2.0e-3, 1.0e-3, 5.0e-4, 2.5e-4)
-    r = run_case(material, p_bbm, t -> 0.0, s_bbm, 6.0, [1.0, 6.0]; Δt = Δt)
+    a = run_case(ExplicitPredictor(material), p_bbm, t -> 0.0, s_bbm, 6.0, [1.0]; Δt = Δt)
+    b = run_case(material, p_bbm, t -> 0.0, s_bbm, 6.0, [1.0]; Δt = Δt)
     @printf(
-        "%-9.1e  %+.9e  %.3e  %+.9e\n", Δt, r[1.0].εv,
-        abs(r[1.0].εv - exact_leg1) / abs(exact_leg1), r[6.0].εv_p
+        "%-9.1e  %+.6e %.3e   %+.6e %.3e\n", Δt,
+        a[1.0].εv, rel(a[1.0].εv, exact_leg1), b[1.0].εv, rel(b[1.0].εv, exact_leg1)
     )
 end
 @printf(
-    "%-9s  %+.9e  %.3e  %+.9e\n", "Bil", bbm_ref[1.0][1],
-    abs(bbm_ref[1.0][1] - exact_leg1) / abs(exact_leg1), bbm_ref[6.0][2]
+    "%-9s  %+.6e %.3e\n", "Bil", bbm_ref[1.0][1], rel(bbm_ref[1.0][1], exact_leg1)
 )
 
-# The errors halve as the step halves — first order, as expected — and converge to the
-# analytical elastic solution. Bil's own error, ``5.0\times10^{-3}``, sits on that same
-# curve, between this package's values at ``\Delta t = 10^{-3}`` and ``5\times10^{-4}``:
-# Bil starts from ``\Delta t = 10^{-4}`` and ramps up to ``10^{-3}``, so its effective step
-# is slightly the finer. The elastic difference between the two codes is that, and nothing
-# else.
+# Two different things are on display. The incremental scheme's error halves as the step
+# halves — first order, as expected of a forward Euler step on ``d\bar p = K\,
+# d\varepsilon_v`` — and Bil's own error sits on that same line, between this package's
+# values at ``\Delta t = 10^{-3}`` and ``5\times10^{-4}``, which is where Bil should be:
+# it starts from ``\Delta t = 10^{-4}`` and ramps up to ``10^{-3}``, so its effective step
+# is slightly the finer.
 #
-# The plastic strain, by contrast, barely moves — ``1.2\times10^{-5}`` of relative change
-# over a sixteenfold refinement. It is set by the yield surface and the hardening law,
-# which are algebraic, not by how the elastic predictor is integrated. That is why it is
-# the plastic variables that carry the comparison.
+# The exact scheme has no error to converge, at any step. It is not a better approximation
+# of the elastic law; it *is* the elastic law, because
+# ``d\varepsilon_v = \frac{\kappa}{1+e_0}\frac{d\bar p}{\bar p}`` separates and integrates.
+# The 20 % gap against Bil at ``t = 6`` is six loading legs' worth of accumulated
+# first-order error in the reference, not a disagreement about the model.
 #
-# An exact integration of the hypoelastic law is available,
-# ``\bar p = \bar p_n \exp\!\big((1+e_0)\Delta\varepsilon_v/\kappa\big)``, and would remove
-# this error entirely. It is not used here, because the purpose of this page is to compare
-# with Bil on Bil's terms.
+# ## What this does and does not change
+#
+# The plastic variables barely move between the two schemes, and barely move with the step
+# either.
+
+for Δt in (2.0e-3, 5.0e-4)
+    a = run_case(ExplicitPredictor(material), p_bbm, t -> 0.0, s_bbm, 6.0, [6.0]; Δt = Δt)
+    b = run_case(material, p_bbm, t -> 0.0, s_bbm, 6.0, [6.0]; Δt = Δt)
+    @printf(
+        "Δt = %.1e   εv_p at t=6:  Bil's scheme %+.7e   exact %+.7e\n",
+        Δt, a[6.0].εv_p, b[6.0].εv_p
+    )
+end
+@printf("%22s  Bil reports  %+.7e\n", "", bbm_ref[6.0][2])
+
+# That is why the plastic variables carry the comparison with Bil, and why the agreement to
+# ``10^{-4}`` on them is the meaningful result: they are fixed by the yield surface and the
+# hardening law, which are algebraic relations both codes implement identically, not by how
+# the elastic predictor is stepped.
+#
+# What the exact integration buys is that the total strain — the quantity a laboratory
+# actually measures, and the one a calibration would fit — no longer carries a discretisation
+# error that a user would have to discover by refining. It also removes a spurious
+# dependence on the load path: an incremental hypoelastic law does not return to the same
+# state after a closed stress cycle, and the exact one does.
+
+let m = material
+    st = initial_state(m, σ0, pc_star0; suction = 0.0)
+    ste = initial_state(ExplicitPredictor(m), σ0, pc_star0; suction = 0.0)
+    for k in 1:200                                   # 1 → 20 → 1 kPa, entirely elastic
+        p_k = k <= 100 ? 1 + 19 * k / 100 : 20 - 19 * (k - 100) / 100
+        _, _, st, _ = stress_controlled_response(m, face_stress(p_k, 0.0), 0.0, st, 1.0)
+        _, _, ste, _ = stress_controlled_response(
+            ExplicitPredictor(m), face_stress(p_k, 0.0), 0.0, ste, 1.0
+        )
+    end
+    @printf("residual strain after a closed elastic cycle 1 → 20 → 1 kPa\n")
+    @printf("  Bil's scheme : %+.3e\n", tr(ste.ε))
+    @printf("  exact        : %+.3e\n", tr(st.ε))
+end

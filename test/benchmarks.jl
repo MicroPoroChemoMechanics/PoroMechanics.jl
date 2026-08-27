@@ -341,15 +341,44 @@ end
     @test abs(yield_function(BBM(r = 1.0), 80.0e3, 39.6e3, 40.0e3, 89620.6)) < 2.0e-2 *
         1.2^2 * (80.0e3 + 32.0e3) * 10.0e3
 
-    ## First-order convergence of the explicit hypoelastic predictor, and the fact that the
-    ## plastic strain does not care about it.
-    exact = -(BBM().κ / (1 + BBM().e0)) * log(40.0)
+    ## The first loading leg is elastic throughout, so it has a closed form to measure both
+    ## integration schemes against.
+    closed_form = -(BBM().κ / (1 + BBM().e0)) * log(40.0)
     errs = Float64[]
     for Δt in (2.0e-3, 1.0e-3, 5.0e-4)
-        r = B.run_case(BBM(), B.p_bbm, t -> 0.0, B.s_bbm, 6.0, [1.0, 6.0]; Δt = Δt)
-        push!(errs, abs(r[1.0].εv - exact) / abs(exact))
-        @test r[6.0].εv_p ≈ 2.9176e-2 rtol = 1.0e-3
+        a = B.run_case(
+            ExplicitPredictor(BBM()), B.p_bbm, t -> 0.0, B.s_bbm, 6.0, [1.0, 6.0]; Δt = Δt
+        )
+        b = B.run_case(BBM(), B.p_bbm, t -> 0.0, B.s_bbm, 6.0, [1.0, 6.0]; Δt = Δt)
+        push!(errs, abs(a[1.0].εv - closed_form) / abs(closed_form))
+
+        ## The exact scheme has no step-size error to converge: it is the elastic law, not
+        ## an approximation of it.
+        @test b[1.0].εv ≈ closed_form rtol = 1.0e-10
+
+        ## And the plastic strain is the same either way, which is why it — not the total
+        ## strain — is what carries the comparison with Bil.
+        @test a[6.0].εv_p ≈ b[6.0].εv_p rtol = 1.0e-8
+        @test b[6.0].εv_p ≈ 2.9176e-2 rtol = 1.0e-3
     end
+
+    ## Bil's scheme is first order, and Bil's own error sits on that line.
     @test errs[1] / errs[2] ≈ 2 atol = 0.05
     @test errs[2] / errs[3] ≈ 2 atol = 0.05
+    bil_err = abs(B.bbm_ref[1.0][1] - closed_form) / abs(closed_form)
+    @test errs[3] < bil_err < errs[2]
+
+    ## A closed elastic cycle must return the sample to where it started. An incremental
+    ## hypoelastic law does not: it leaves a residual strain that is neither elastic nor
+    ## plastic, only numerical. Integrating in closed form removes it exactly.
+    function elastic_cycle(mat)
+        st = initial_state(mat, B.σ0, B.pc_star0; suction = 0.0)
+        for k in 1:200
+            p_k = k <= 100 ? 1 + 19 * k / 100 : 20 - 19 * (k - 100) / 100
+            _, _, st, _ = stress_controlled_response(mat, B.face_stress(p_k, 0.0), 0.0, st, 1.0)
+        end
+        return tr(st.ε)
+    end
+    @test abs(elastic_cycle(BBM())) < 1.0e-14
+    @test abs(elastic_cycle(ExplicitPredictor(BBM()))) > 1.0e-3
 end

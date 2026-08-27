@@ -63,7 +63,7 @@ export equivalent_pore_pressure, unsaturated_total_stress, suction_stress
 
 # Materials
 export BBM, BBMState, compression_index, preconsolidation, yield_function
-export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, suction_stress_increment, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent
+export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_mean, step_shear_modulus, trial_stress, suction_stress_increment, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent, ExplicitPredictor
 
 # Backends
 export fvm_system

@@ -240,8 +240,9 @@ The hardening is integrated exponentially,
 ``p_c^* = p_c^{*n}\\exp(H\\,\\Delta\\varepsilon_v^p)``, which keeps it positive whatever the
 step size — a plain forward increment can drive it negative and destroy the yield surface.
 """
-function return_residual(m::BBM, x, p_tr, q_tr, s, pc_star_n, K, G)
+function return_residual(m::BBM, x, p_tr, q_tr, s, pc_star_n, p_n, scheme)
     p, Δγ = x[1], x[2]
+    G = step_shear_modulus(m, p_n, p_tr, scheme)
     q = q_tr / (1 + 6G * Δγ)
 
     ## Volumetric plastic strain, compression positive, from associated flow.
@@ -251,22 +252,30 @@ function return_residual(m::BBM, x, p_tr, q_tr, s, pc_star_n, K, G)
     pc_star = pc_star_n * exp(H * Δεv_p)
     Δεv_p = Δγ * dyield_dp(m, p, s, pc_star)        # corrected with the updated surface
 
-    r1 = p - p_tr + K * Δεv_p
+    ## The plastic volumetric return is integrated in the same closed form as the elastic
+    ## predictor: unloading the plastic strain divides the pressure rather than subtracting
+    ## from it. Linearising `exp` recovers `p_tr - K Δεv_p`, the explicit form.
+    r1 = if scheme === Val(:exact)
+        p - p_tr * exp(-(1 + m.e0) * Δεv_p / m.κ)
+    else
+        p - p_tr + bbm_moduli(m, p_n)[1] * Δεv_p
+    end
     r2 = yield_function(m, p, q, s, pc_star) / (m.M^2 * m.p_ref^2)   # scaled to O(1)
     return (r1 / m.p_ref, r2)
 end
 
 """
-    solve_return_map(m, p_tr, q_tr, s, pc_star_n, K, G; tol, maxiter)
+    solve_return_map(m, p_tr, q_tr, s, pc_star_n, p_n, scheme; tol, maxiter)
 
 Newton on the two-equation residual, with the Jacobian from `ForwardDiff`. Returns
 `(p, Δγ, q, pc_star, converged)`.
 """
 function solve_return_map(
-        m::BBM, p_tr, q_tr, s, pc_star_n, K, G; tol = 1.0e-10, maxiter = 50
+        m::BBM, p_tr, q_tr, s, pc_star_n, p_n, scheme = Val(:exact);
+        tol = 1.0e-10, maxiter = 50
     )
     x = [p_tr, zero(p_tr)]
-    R(y) = collect(return_residual(m, y, p_tr, q_tr, s, pc_star_n, K, G))
+    R(y) = collect(return_residual(m, y, p_tr, q_tr, s, pc_star_n, p_n, scheme))
     converged = false
     for _ in 1:maxiter
         r = R(x)
@@ -279,7 +288,7 @@ function solve_return_map(
         x[2] = max(x[2], zero(x[2]))     # the multiplier cannot go negative
     end
     p, Δγ = x[1], x[2]
-    q = q_tr / (1 + 6G * Δγ)
+    q = q_tr / (1 + 6 * step_shear_modulus(m, p_n, p_tr, scheme) * Δγ)
     H = hardening_modulus(m)
     Δεv_p = Δγ * dyield_dp(m, p, s, pc_star_n)
     pc_star = pc_star_n * exp(H * Δεv_p)
@@ -304,6 +313,91 @@ The tolerance is relative to the stress the material actually carries, because a
 one would be meaningless across the range of pressures a soil sees.
 """
 deviatoric_tolerance(m::BBM, p_tr) = 1.0e-10 * max(abs(p_tr), m.p_ref)
+
+"""
+    log_mean(a, b)
+
+The logarithmic mean ``(b-a)/\\ln(b/a)``, with the series ``a(1 + x/2 + x^2/6 + \\dots)``,
+``x = \\ln(b/a)``, taking over near ``a = b`` where the quotient is ``0/0``.
+
+It is the exact average of a quantity that varies exponentially between `a` and `b`, which
+is what a pressure obeying ``d\\bar p = K\\,d\\varepsilon_v`` with ``K \\propto \\bar p``
+does over a step of constant strain rate. That is why it, and not the arithmetic mean, is
+the right modulus for the deviatoric part of the step.
+"""
+function log_mean(a, b)
+    x = log(b / a)
+    abs(x) < 1.0e-6 && return a * (1 + x / 2 + x^2 / 6 + x^3 / 24)
+    return a * (exp(x) - 1) / x
+end
+
+"""
+    step_shear_modulus(m, p_n, p_tr, scheme) -> G
+
+The shear modulus to use across a step, from the pressures at its two ends.
+
+Under `Val(:exact)` it is evaluated at the logarithmic mean pressure, which integrates
+``d\\,\\mathrm{dev}\\,\\sigma = 2G\\,d e`` exactly when ``\\bar p`` varies exponentially
+across the step — second order, against the first order of freezing `G` at the incoming
+state. Under `Val(:explicit)` it is frozen at `p_n`, which is what Bil does.
+
+A constant `G_const` short-circuits both.
+"""
+function step_shear_modulus(m::BBM, p_n, p_tr, ::Val{:exact})
+    m.G_const > 0 && return m.G_const
+    K = log_mean(p_n, p_tr) * (1 + m.e0) / m.κ
+    return 3K * (1 - 2m.nu) / (2 * (1 + m.nu))
+end
+
+step_shear_modulus(m::BBM, p_n, p_tr, ::Val{:explicit}) = bbm_moduli(m, p_n)[2]
+
+"""
+    trial_stress(m, ε, s, state, scheme)
+
+The elastic predictor: the stress the material would carry at strain `ε` and suction `s` if
+the step were entirely elastic.
+
+Under `Val(:exact)` the volumetric part is **integrated in closed form**. The BBM's elastic
+law is
+
+```math
+d\\varepsilon_v^e = \\frac{\\kappa}{1+e_0}\\frac{d\\bar p}{\\bar p}
+                  + \\frac{\\kappa_s}{1+e_0}\\,d\\ln(s + p_{atm})
+```
+
+which separates and integrates to
+
+```math
+\\bar p = \\bar p_n \\exp\\!\\left(\\frac{(1+e_0)\\,\\Delta\\varepsilon_v}{\\kappa}
+        - \\frac{\\kappa_s}{\\kappa}\\,\\Delta\\ln(s+p_{atm})\\right)
+```
+
+with no step-size error at all. Expanding the exponential to first order recovers
+``\\bar p_n + K\\Delta\\varepsilon_v``, the explicit update, so the two schemes agree in the
+limit and differ by ``O(\\Delta\\varepsilon_v^2)`` — which over a path that loads and
+unloads several times is what accumulates into a per-cent-level error.
+
+Under `Val(:explicit)` the incremental form is used instead, to reproduce Bil.
+"""
+function trial_stress(m::BBM, ε::Tensors.SymmetricTensor{2}, s, state::BBMState, ::Val{:exact})
+    Δε = ε - state.ε
+    Δεv = -Tensors.tr(Δε)                     # compression positive
+    p_n = max(mean_pressure(state.σ), m.p_min)
+    Δlns = log((s + m.p_atm) / (state.suction + m.p_atm))
+    p_tr = p_n * exp((1 + m.e0) * Δεv / m.κ - (m.κ_s / m.κ) * Δlns)
+    G = step_shear_modulus(m, p_n, p_tr, Val(:exact))
+    return deviator(state.σ) + 2G * deviator(Δε) - p_tr * one(ε)
+end
+
+function trial_stress(
+        m::BBM, ε::Tensors.SymmetricTensor{2, dim}, s, state::BBMState, ::Val{:explicit}
+    ) where {dim}
+    Δε = ε - state.ε
+    p_n = max(mean_pressure(state.σ), m.p_min)
+    K, G = bbm_moduli(m, p_n)
+    C_e = elastic_stiffness(LinearElastic(K - 2G / 3, G), Val(dim))
+    return state.σ + C_e ⊡ Δε + suction_stress_increment(m, p_n, s, state.suction) * one(ε)
+end
 
 # ── The response ──────────────────────────────────────────────────────────────
 
@@ -355,6 +449,37 @@ struct ContinuumTangent{M <: AbstractMaterial} <: AbstractMaterial
     model::M
 end
 
+"""
+    ExplicitPredictor(model)
+
+A material that answers like `model` but integrates the elastic law **incrementally**,
+freezing the moduli at the incoming state, instead of in closed form.
+
+That is the scheme Bil uses, and it is first-order accurate in the step: over a path that
+loads and unloads several times the error accumulates to the per-cent level. This wrapper
+exists so that the comparison against Bil can be made on Bil's own terms, and so that the
+improvement from integrating exactly is measured rather than asserted. It is not the
+recommended way to run the model.
+"""
+struct ExplicitPredictor{M <: AbstractMaterial} <: AbstractMaterial
+    model::M
+end
+
+initial_state(w::ExplicitPredictor, args...; kw...) = initial_state(w.model, args...; kw...)
+
+function material_response(
+        w::ExplicitPredictor{<:BBM}, ε::Tensors.SymmetricTensor{2}, state::BBMState, Δt
+    )
+    return bbm_response(w.model, ε, state.suction, state, Δt, Val(:algorithmic), Val(:explicit))
+end
+
+function material_response(
+        w::ExplicitPredictor{<:BBM}, ε::Tensors.SymmetricTensor{2}, s::Real,
+        state::BBMState, Δt
+    )
+    return bbm_response(w.model, ε, s, state, Δt, Val(:algorithmic), Val(:explicit))
+end
+
 initial_state(w::ContinuumTangent, args...; kw...) = initial_state(w.model, args...; kw...)
 
 function material_response(
@@ -371,27 +496,28 @@ function material_response(
 end
 
 function bbm_response(
-        m::BBM, ε::Tensors.SymmetricTensor{2, dim}, s, state::BBMState, Δt, which::Val
+        m::BBM, ε::Tensors.SymmetricTensor{2, dim}, s, state::BBMState, Δt,
+        which::Val, scheme::Val = Val(:exact)
     ) where {dim}
-    Δε = ε - state.ε
-
-    ## Elastic predictor, with the moduli of the incoming state.
     p_n = max(mean_pressure(state.σ), m.p_min)
-    K, G = bbm_moduli(m, p_n)
-    λ_lame = K - 2G / 3
-    C_e = elastic_stiffness(LinearElastic(λ_lame, G), Val(dim))
-    Δσ_s = suction_stress_increment(m, p_n, s, state.suction)
-    σ_tr = state.σ + C_e ⊡ Δε + Δσ_s * one(state.σ)
+
+    ## Elastic predictor and its exact tangent. The predictor is nonlinear in the strain
+    ## once the volumetric law is integrated in closed form, so its tangent is no longer the
+    ## constant `C_e` of the explicit scheme and is differentiated rather than assumed.
+    σ_tr = trial_stress(m, ε, s, state, scheme)
+    C_tr = Tensors.gradient(e -> trial_stress(m, e, s, state, scheme), ε)
 
     p_tr = mean_pressure(σ_tr)
     q_tr = equivalent_stress(σ_tr)
 
     if yield_function(m, p_tr, q_tr, s, state.pc_star) <= 0
         new = BBMState(σ_tr, ε, state.pc_star, state.εv_p, s)
-        return σ_tr, C_e, new
+        return σ_tr, C_tr, new
     end
 
-    p, Δγ, q, pc_star, Δεv_p, ok = solve_return_map(m, p_tr, q_tr, s, state.pc_star, K, G)
+    p, Δγ, q, pc_star, Δεv_p, ok = solve_return_map(
+        m, p_tr, q_tr, s, state.pc_star, p_n, scheme
+    )
     ok || @warn "BBM return map did not converge" p_tr q_tr s pc_star_n = state.pc_star
 
     ## Rebuild the stress: the deviator keeps its direction and is scaled by q/q_tr.
@@ -402,11 +528,12 @@ function bbm_response(
 
     C = if which === Val(:algorithmic)
         algorithmic_tangent(
-            m, C_e, p, Δγ, p_tr, q_tr, s, state.pc_star, K, G, dev_tr, Val(dim)
+            m, C_tr, p, Δγ, p_tr, q_tr, s, state.pc_star, p_n, dev_tr, Val(dim), scheme
         )
     else
+        K, G = bbm_moduli(m, p_n)
         elastoplastic_tangent(
-            m, C_e, p, q, s, pc_star, Δγ, K, G, dev_tr, q_tr, Val(dim)
+            m, C_tr, p, q, s, pc_star, Δγ, K, G, dev_tr, q_tr, Val(dim)
         )
     end
     new = BBMState(σ, ε, pc_star, state.εv_p + Δεv_p, s)
@@ -488,10 +615,11 @@ place on this model: `ForwardDiff` supplies ``\\partial R/\\partial x`` and
 ``\\partial R/\\partial p^{tr}`` exactly, where Bil differentiates the same residual by hand.
 """
 function algorithmic_tangent(
-        m::BBM, C_e, p, Δγ, p_tr, q_tr, s, pc_star_n, K, G, dev_tr, ::Val{dim}
+        m::BBM, C_tr, p, Δγ, p_tr, q_tr, s, pc_star_n, p_n, dev_tr, ::Val{dim},
+        scheme = Val(:exact)
     ) where {dim}
     x = [p, Δγ]
-    R(y, ptr, qtr) = collect(return_residual(m, y, ptr, qtr, s, pc_star_n, K, G))
+    R(y, ptr, qtr) = collect(return_residual(m, y, ptr, qtr, s, pc_star_n, p_n, scheme))
 
     J = ForwardDiff.jacobian(y -> R(y, p_tr, q_tr), x)
     Rp = ForwardDiff.derivative(t -> R(x, t, q_tr), p_tr)
@@ -517,9 +645,15 @@ function algorithmic_tangent(
     dp_dσtr = dx_dptr[1] * dptr_dσ + dx_dqtr[1] * dqtr_dσ
     dΔγ_dσtr = dx_dptr[2] * dptr_dσ + dx_dqtr[2] * dqtr_dσ
 
+    ## The deviatoric scaling depends on the trial pressure as well as on the multiplier,
+    ## because the step modulus is taken at the logarithmic mean of the two end pressures.
+    ## Dropping that second path would leave the tangent first-order correct and quietly
+    ## cost the global solve its quadratic rate on any path with a deviator.
+    G = step_shear_modulus(m, p_n, p_tr, scheme)
+    dG_dptr = ForwardDiff.derivative(t -> step_shear_modulus(m, p_n, t, scheme), p_tr)
     a = 1 / (1 + 6G * Δγ)
-    da_dΔγ = -6G * a^2
+    da_dσtr = (-6G * a^2) * dΔγ_dσtr + (-6 * Δγ * a^2 * dG_dptr) * dptr_dσ
 
-    dσ_dσtr = a * Idev + (da_dΔγ * dev_tr) ⊗ dΔγ_dσtr - Iden ⊗ dp_dσtr
-    return dσ_dσtr ⊡ C_e
+    dσ_dσtr = a * Idev + dev_tr ⊗ da_dσtr - Iden ⊗ dp_dσtr
+    return dσ_dσtr ⊡ C_tr
 end

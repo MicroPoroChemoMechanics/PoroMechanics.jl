@@ -194,17 +194,16 @@ end
     errs = map((4.0e-3, 1.0e-3, 2.5e-4)) do dε
         ε1 = -((-tr(stp.ε)) + dε) / 3 * I3
         σ1, _, _ = material_response(m, ε1, stp, 1.0)
-        p_n = mean_pressure(stp.σ)
+        p_n = max(mean_pressure(stp.σ), m.p_min)
         K, G = bbm_moduli(m, p_n)
-        λ_l = K - 2G / 3
-        C_e = elastic_stiffness(LinearElastic(λ_l, G), Val(3))
-        σ_tr = stp.σ + C_e ⊡ (ε1 - stp.ε)
+        σ_tr = PoroMechanics.trial_stress(m, ε1, 0.0, stp, Val(:exact))
+        C_tr = Tensors.gradient(e -> PoroMechanics.trial_stress(m, e, 0.0, stp, Val(:exact)), ε1)
         p_tr, q_tr = mean_pressure(σ_tr), equivalent_stress(σ_tr)
         pp, Δγ, qq, pcs, _, _ = PoroMechanics.solve_return_map(
-            m, p_tr, q_tr, 0.0, stp.pc_star, K, G
+            m, p_tr, q_tr, 0.0, stp.pc_star, p_n
         )
         Cc = elastoplastic_tangent(
-            m, C_e, pp, qq, 0.0, pcs, Δγ, K, G, Tensors.dev(σ_tr), q_tr, Val(3)
+            m, C_tr, pp, qq, 0.0, pcs, Δγ, K, G, Tensors.dev(σ_tr), q_tr, Val(3)
         )
         norm(fd_tangent(ε1, stp) - to_mat(Cc)) / norm(to_mat(Cc))
     end
@@ -268,13 +267,13 @@ end
     @test mean_pressure(st_fe.σ) ≈ mean_pressure(ref.σ) rtol = 1.0e-10
     @test st_fe.pc_star ≈ ref.pc_star rtol = 1.0e-10
     @test st_fe.εv_p ≈ ref.εv_p rtol = 1.0e-10
-    @test ref.εv_p > 0.03                      # the path is genuinely plastic
+    @test ref.εv_p > 0.04                      # the path is genuinely plastic
 
     ## Quadratic convergence on the plastic steps that follow the elastic–plastic
     ## transition. Squaring the residual roughly doubles the number of correct digits, so
     ## three successive norms must satisfy e₃ ≲ e₂²/e₁ up to a constant.
     for nr in hist[(end - 1):end]
-        @test length(nr) <= 5
+        @test length(nr) <= 6
         e1, e2, e3 = nr[(end - 2):end]
         @test e3 < 10 * e2^2 / e1
     end
@@ -282,11 +281,16 @@ end
     ## Every step converges, and the elastic ones take a single iteration because the
     ## imposed field is linear and therefore exactly representable.
     @test all(nr -> last(nr) < 1.0e-8, hist)
-    ## The elastic steps take one iteration: the imposed field is linear, so it is
-    ## represented exactly and the first correction lands on the answer. Yield first bites
-    ## at step 7, where the elastic limit εv ≈ κ ln(p₀/p_in)/(1+e₀) is crossed.
-    @test all(nr -> length(nr) == 2, hist[1:6])
-    @test length(hist[7]) > 2
+    ## The elastic steps converge in five iterations rather than in one: with the elastic
+    ## law integrated in closed form the pressure is exponential in the strain, so even an
+    ## elastic step is a nonlinear solve. It is a *smooth* one, which is why the count stays
+    ## small and the tail is quadratic — as it is on the plastic steps, and for the same
+    ## reason, the tangent being exact in both cases.
+    @test all(nr -> 4 <= length(nr) <= 7, hist)
+    for nr in hist[1:6]
+        e1, e2, e3 = nr[(end - 2):end]
+        @test e3 < 10 * e2^2 / e1
+    end
 
     ## The continuum tangent reaches the same answer, far more slowly. This is the
     ## measurement that justifies deriving the algorithmic one.

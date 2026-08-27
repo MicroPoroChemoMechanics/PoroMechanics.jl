@@ -196,6 +196,9 @@ mean_pressure
 equivalent_stress
 bbm_moduli
 suction_stress_increment
+log_mean
+step_shear_modulus
+trial_stress
 hardening_modulus
 PoroMechanics.dyield_dp
 PoroMechanics.dyield_dq
@@ -206,4 +209,5 @@ PoroMechanics.solve_return_map
 elastoplastic_tangent
 algorithmic_tangent
 ContinuumTangent
+ExplicitPredictor
 ```
