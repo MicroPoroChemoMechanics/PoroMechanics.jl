@@ -16,6 +16,10 @@ module _Mandel
     include("../benchmarks/mandel.jl")
 end
 
+module _Cryer
+    include("../benchmarks/cryer.jl")
+end
+
 module _Gardner
     include("../benchmarks/gardner_infiltration.jl")
 end
@@ -147,4 +151,46 @@ end
     end
     @test 3.8 < errs[1] / errs[2] < 4.2
     @test 3.8 < errs[2] / errs[3] < 4.2
+end
+
+@testset "Cryer's sphere" begin
+    m = _Cryer.CRYER_MATERIAL
+    B = _Cryer.skempton(m)
+    Pc = _Cryer.P_CONF
+    p0 = B * Pc
+
+    @test maximum(_Cryer.errors) < 2.0e-2
+
+    ## The reference is derived here, so it is checked here too, by the limit theorems it
+    ## must satisfy — independently of the finite element solution it validates.
+    ##
+    ## Initial value: the undrained response to isotropic loading is Skempton's, uniform.
+    for r in (0.1, 0.5, 0.9)
+        @test isapprox(_Cryer.cryer_pressure(m, r, 1.0e-6), p0; rtol = 5.0e-3)
+    end
+    ## Final value: everything drains.
+    @test _Cryer.cryer_pressure(m, 0.5, 20.0) / p0 < 1.0e-6
+    ## Drained surface.
+    @test abs(_Cryer.cryer_pressure(m, 0.999999, 0.1)) < 1.0e-5 * Pc
+
+    ## The storage coefficient of the derivation must be the package's own.
+    @test _Cryer.storage_coefficient(m) ≈ m.N + m.b^2 / _Cryer.oedometric_modulus(m)
+    @test _Cryer.consolidation_coefficient(m) ≈ (m.k / m.mu_l) / _Cryer.storage_coefficient(m)
+
+    ## The Mandel–Cryer effect, and the fact that the sphere overshoots far harder than the
+    ## plane-strain slab — 23 % against 6.5 %.
+    ref = [_Cryer.cryer_pressure(m, 1.0e-8, T) for T in _Cryer.T_hist]
+    i_ref = argmax(ref)
+    i_num = argmax(_Cryer.p_centre)
+
+    @test ref[i_ref] / p0 > 1.2
+    @test _Cryer.p_centre[i_num] / p0 > 1.2
+    @test isapprox(_Cryer.p_centre[i_num], ref[i_ref]; rtol = 5.0e-3)
+    @test isapprox(_Cryer.T_hist[i_num], _Cryer.T_hist[i_ref]; rtol = 5.0e-2)
+    @test _Cryer.p_centre[end] < _Cryer.p_centre[i_num]
+
+    ## Backward Euler, first order in time.
+    e_coarse = _Cryer.worst_error(; nel = 80, dT = 2.0e-3)
+    e_fine = _Cryer.worst_error(; nel = 80, dT = 1.0e-3)
+    @test 1.8 < e_coarse / e_fine < 2.2
 end
