@@ -1,0 +1,107 @@
+# Validation benchmarks — the numerical solution against a closed-form reference.
+#
+# These are the counterpart of the regression tests. Regression asks "did the answer
+# change?"; validation asks "is the answer right?". A benchmark script is included once,
+# in its own module, and the errors it computed at load time are asserted here — the same
+# arrangement as `regression.jl`, and for the same reason: the numbers the documentation
+# page displays are exactly the numbers the tests check.
+
+using LinearAlgebra: norm
+
+module _Terzaghi
+    include("../benchmarks/terzaghi.jl")
+end
+
+module _Mandel
+    include("../benchmarks/mandel.jl")
+end
+
+@testset "Terzaghi 1D consolidation" begin
+    ## Tolerance sits an order of magnitude above the measured error, so ordinary
+    ## floating-point or solver-version drift does not trip it, while a real regression
+    ## in the poroelastic assembly would.
+    @test maximum(_Terzaghi.errors) < 5.0e-3
+
+    ## The reference series must reproduce the square wave it expands at T = 0.
+    for Z in (0.1, 0.35, 0.6, 0.9)
+        @test _Terzaghi.terzaghi_pressure(Z, 0.0) ≈ 1.0
+        @test isapprox(_Terzaghi.terzaghi_pressure(Z, 1.0e-6), 1.0; atol = 1.0e-2)
+    end
+
+    ## Drained surface and impermeable base
+    @test _Terzaghi.terzaghi_pressure(0.0, 0.1) ≈ 0.0 atol = 1.0e-12
+    @test _Terzaghi.terzaghi_pressure(1.0, 0.1) > _Terzaghi.terzaghi_pressure(0.5, 0.1)
+
+    ## Derived constants, against the closed forms they come from
+    m = _Terzaghi.TERZAGHI_MATERIAL
+    F = _Terzaghi.F_LOAD
+    Mo = _Terzaghi.oedometric_modulus(m)
+    @test Mo ≈ m.E * (1 - m.nu) / ((1 + m.nu) * (1 - 2m.nu))
+    @test _Terzaghi.consolidation_coefficient(m) ≈ (m.k / m.mu_l) / (m.N + m.b^2 / Mo)
+    @test _Terzaghi.initial_pressure(m) ≈ F * m.b / (Mo * m.N + m.b^2)
+
+    ## With b = 1 the undrained pressure falls short of the load by exactly the
+    ## compressibility of the fluid and grains, p₀ = F / (1 + M_o N) — about 0.1 % here.
+    @test m.b == 1.0
+    @test _Terzaghi.initial_pressure(m) ≈ F / (1 + Mo * m.N)
+    @test 0.998 < _Terzaghi.initial_pressure(m) / F < 1.0
+
+    ## Backward Euler is first order: halving ΔT must halve the error.
+    e_coarse = _Terzaghi.worst_error(; nely = 60, dT = 1.0e-3)
+    e_fine = _Terzaghi.worst_error(; nely = 60, dT = 5.0e-4)
+    @test 1.8 < e_coarse / e_fine < 2.2
+end
+
+@testset "Mandel's problem" begin
+    m = _Mandel.MANDEL_MATERIAL
+    roots = _Mandel.mandel_roots(m)
+
+    @test maximum(_Mandel.errors) < 5.0e-3
+
+    ## Derived poroelastic constants, against their closed forms
+    K = _Mandel.bulk_modulus(m)
+    B = _Mandel.skempton(m)
+    @test B ≈ m.b / (m.N * K + m.b^2)
+    @test _Mandel.undrained_poisson(m) > m.nu          # draining stiffens the material
+    @test _Mandel.undrained_poisson(m) < 0.5
+
+    ## The eigenvalue condition, and the first root that is easy to miss
+    k = (1 - m.nu) / (_Mandel.undrained_poisson(m) - m.nu)
+    @test k > 1
+    @test 0 < roots[1] < π / 2                          # outside the (nπ, nπ+π/2) pattern
+    for (n, α) in enumerate(roots[1:6])
+        @test tan(α) ≈ k * α rtol = 1.0e-8
+        n > 1 && @test (n - 1) * π < α < (n - 1) * π + π / 2
+    end
+
+    ## At t → 0 the series must return the uniform initial pressure. It converges slowly
+    ## there, so the check is that the gap *shrinks with the term count* — truncation, not
+    ## a wrong formula.
+    p0 = _Mandel.initial_pressure(m)
+    gaps = [
+        abs(_Mandel.mandel_pressure(m, _Mandel.mandel_roots(m; nterms = n), 0.3, 1.0e-12) - p0) / p0
+            for n in (60, 200, 800, 3000)
+    ]
+    @test issorted(gaps; rev = true)
+    @test gaps[1] < 1.0e-2
+    @test gaps[end] < 2.0e-4
+    for x in (0.0, 0.3, 0.7)
+        @test isapprox(_Mandel.mandel_pressure(m, roots, x, 1.0e-12), p0; rtol = 1.5e-2)
+    end
+    @test _Mandel.mandel_pressure(m, roots, _Mandel.A_HALF, 0.1) ≈ 0.0 atol = 1.0e-6
+
+    ## The Mandel–Cryer effect itself: the centre pressure must overshoot p₀, and the
+    ## numerical solution must reproduce both the height and the timing of the peak.
+    ref = [_Mandel.mandel_pressure(m, roots, 0.0, T) for T in _Mandel.T_hist]
+    i_ref = argmax(ref)
+    i_num = argmax(_Mandel.p_centre)
+
+    @test ref[i_ref] / p0 > 1.05                        # a genuine overshoot, not noise
+    @test _Mandel.p_centre[i_num] / p0 > 1.05
+    @test isapprox(_Mandel.p_centre[i_num], ref[i_ref]; rtol = 5.0e-3)
+    @test isapprox(_Mandel.T_hist[i_num], _Mandel.T_hist[i_ref]; rtol = 5.0e-2)
+
+    ## ...and it must be a rise then a fall, not a monotone decay
+    @test _Mandel.p_centre[i_num] > _Mandel.p_centre[1]
+    @test _Mandel.p_centre[end] < _Mandel.p_centre[i_num]
+end

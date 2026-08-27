@@ -8,6 +8,10 @@ pages = [
         "Non-isothermal drying"  => "examples/nonisothermal_drying.md",
         "Biot consolidation"     => "examples/biot_consolidation.md",
     ],
+    "Validation" => [
+        "Terzaghi consolidation" => "validation/terzaghi.md",
+        "Mandel's problem"       => "validation/mandel.md",
+    ],
     "API" => "api.md",
     "References" => "references.md",
 ]

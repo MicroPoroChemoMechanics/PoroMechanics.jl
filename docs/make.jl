@@ -18,6 +18,11 @@ include("pages.jl")
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const GENERATED_DIR = joinpath(@__DIR__, "src", "examples")
 
+const BENCHMARKS_DIR = joinpath(@__DIR__, "..", "benchmarks")
+const VALIDATION_DIR = joinpath(@__DIR__, "src", "validation")
+
+const LITERATE_BENCHMARKS = ["terzaghi", "mandel"]
+
 const LITERATE_EXAMPLES = [
     "fickian_diffusion",
     "darcy_column",
@@ -26,6 +31,28 @@ const LITERATE_EXAMPLES = [
     "biot_consolidation",
 ]
 const NONEXECUTED = ["biot_consolidation"]   # needs Ferrite + a Gmsh mesh
+
+mkpath(VALIDATION_DIR)
+
+# The benchmark scripts `include("biot_common.jl")`. Documenter runs an `@example` block
+# with the working directory set to the built page's folder, so the shared file has to sit
+# next to the generated markdown; Documenter copies non-markdown files from src to build.
+cp(
+    joinpath(BENCHMARKS_DIR, "biot_common.jl"),
+    joinpath(VALIDATION_DIR, "biot_common.jl");
+    force = true,
+)
+
+for name in LITERATE_BENCHMARKS
+    Literate.markdown(
+        joinpath(BENCHMARKS_DIR, name * ".jl"),
+        VALIDATION_DIR;
+        name = name,
+        documenter = true,
+        credit = false,
+        codefence = ("```@example $name" => "```"),
+    )
+end
 
 mkpath(GENERATED_DIR)
 for name in LITERATE_EXAMPLES

@@ -30,6 +30,9 @@ using PoroMechanics
     # ── Constitutive layer: values and differentiability ──────────────────────
     include("constitutive.jl")
 
+    # ── Validation against closed-form solutions ──────────────────────────────
+    include("benchmarks.jl")
+
     # ── Examples still produce the profiles they used to ───────────────────────
     include("regression.jl")
 
