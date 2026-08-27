@@ -59,15 +59,19 @@ Linear single-phase Darcy model.
 Unknown : pore pressure p [Pa].
 PDE     : S ∂p/∂t = ∇·(K/μ · ∇p)
 """
-Base.@kwdef struct DarcyModel <: AbstractPoroModel
-    K::Float64 = 1e-12       # intrinsic permeability [m²]
-    mu::Float64 = 1e-3       # dynamic viscosity [Pa·s]
-    S::Float64 = 1e-8        # storage coefficient [-/Pa]
-    L::Float64 = 1.0         # column length [m]
-    p_top::Float64 = 1.0e5   # pressure imposed at the top [Pa]
+Base.@kwdef struct DarcyModel{T} <: AbstractPoroModel
+    K::T = 1e-12       # intrinsic permeability [m²]
+    mu::T = 1e-3       # dynamic viscosity [Pa·s]
+    S::T = 1e-8        # storage coefficient [-/Pa]
+    L::T = 1.0         # column length [m]
+    p_top::T = 1.0e5   # pressure imposed at the top [Pa]
 end
 
 PoroMechanics.nspecies(::DarcyModel) = 1
+
+## Promote rather than require a single type: a `Dual` in one parameter leaves the rest
+## `Float64`, which is what differentiating with respect to that parameter does.
+DarcyModel(K, mu, S, L, p_top) = DarcyModel(promote(K, mu, S, L, p_top)...)
 PoroMechanics.species_names(::DarcyModel) = [:p]
 
 # ## Constitutive behaviour

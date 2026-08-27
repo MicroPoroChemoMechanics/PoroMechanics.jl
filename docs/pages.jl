@@ -19,6 +19,7 @@ pages = [
     ],
     "Differentiability" => [
         "Parameter identification" => "demos/parameter_identification.md",
+        "Differentiating a solve"  => "demos/solver_sensitivity.md",
     ],
     "API" => "api.md",
     "References" => "references.md",

@@ -76,14 +76,14 @@ Richards model 1D — single-phase unsaturated flow.
 Unknown: liquid pore pressure p_l [Pa].
 Van Genuchten / Mualem retention curves.
 """
-Base.@kwdef struct RichardsModel{R, K} <: AbstractPoroModel
+Base.@kwdef struct RichardsModel{T, R, K} <: AbstractPoroModel
     ## Material parameters (material "bo")
-    phi::Float64 = 0.30        # porosity [-]
-    rho_l::Float64 = 1.0e3     # liquid density [kg/m³]
-    k_int::Float64 = 1.0e-20   # intrinsic permeability [m²]
-    mu_l::Float64 = 1.0e-3     # dynamic viscosity [Pa·s]
-    p_g::Float64 = 1.0e5       # gas pressure [Pa]
-    gravite::Float64 = 0.0     # gravity [m/s²] (horizontal → 0)
+    phi::T = 0.30        # porosity [-]
+    rho_l::T = 1.0e3     # liquid density [kg/m³]
+    k_int::T = 1.0e-20   # intrinsic permeability [m²]
+    mu_l::T = 1.0e-3     # dynamic viscosity [Pa·s]
+    p_g::T = 1.0e5       # gas pressure [Pa]
+    gravite::T = 0.0     # gravity [m/s²] (horizontal → 0)
 
     ## Constitutive curves, from the package's constitutive layer
     retention::R = VanGenuchten(1.5e6, 0.06)
@@ -91,6 +91,14 @@ Base.@kwdef struct RichardsModel{R, K} <: AbstractPoroModel
 end
 
 PoroMechanics.nspecies(::RichardsModel) = 1
+
+## Promote rather than require a single type: a `Dual` in one parameter leaves the rest
+## `Float64`, which is what differentiating with respect to that parameter does.
+function RichardsModel(phi, rho_l, k_int, mu_l, p_g, gravite, retention, rel_perm)
+    return RichardsModel(
+        promote(phi, rho_l, k_int, mu_l, p_g, gravite)..., retention, rel_perm
+    )
+end
 PoroMechanics.species_names(::RichardsModel) = [:p_l]
 
 # ## Constitutive laws

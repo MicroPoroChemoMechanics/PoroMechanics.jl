@@ -275,17 +275,22 @@ Returns the assembled pair; the volume element carries the axisymmetric weight `
 """
 function assemble_axisymmetric!(K, f, dh, cv, mat, states, states_old, u, Δt)
     assembler = Ferrite.start_assemble(K, f)
+    ## Element arrays take their type from the global ones, not from `Float64`. That is
+    ## what lets a `ForwardDiff.Dual` in a material parameter reach the assembled system:
+    ## hard-coding the element type here would silently confine differentiability to the
+    ## constitutive layer and stop it at the mesh.
     n = Ferrite.ndofs_per_cell(dh)
-    ke = zeros(n, n)
-    fe = zeros(n)
+    T = eltype(K)
+    ke = zeros(T, n, n)
+    fe = zeros(T, n)
 
     for cell in Ferrite.CellIterator(dh)
         Ferrite.reinit!(cv, cell)
         coords = Ferrite.getcoordinates(cell)
         ue = u[Ferrite.celldofs(cell)]
         cid = Ferrite.cellid(cell)
-        fill!(ke, 0.0)
-        fill!(fe, 0.0)
+        fill!(ke, zero(T))
+        fill!(fe, zero(T))
 
         for q in 1:Ferrite.getnquadpoints(cv)
             r = Ferrite.spatial_coordinate(cv, q, coords)[1]
@@ -310,7 +315,7 @@ function assemble_axisymmetric!(K, f, dh, cv, mat, states, states_old, u, Δt)
 end
 
 """
-    newton_solve!(u, K, f, dh, cv, mat, states, states_old, ch, Δt; tol, maxiter, maxhalve)
+    newton_solve!(u, K, f, dh, cv, mat, states, states_old, ch, Δt; tol, maxiter, maxhalve, linsolve)
 
 Newton–Raphson on the equilibrium residual, with backtracking, returning the residual norm
 of every iteration.
@@ -332,27 +337,30 @@ descent direction, which is a modelling problem rather than one a line search ca
 """
 function newton_solve!(
         u, K, f, dh, cv, mat, states, states_old, ch, Δt;
-        tol = 1.0e-8, maxiter = 25, maxhalve = 12
+        tol = 1.0e-8, maxiter = 25, maxhalve = 12, linsolve = \
     )
-    norms = Float64[]
+    norms = Vector{eltype(f)}()
     Ferrite.apply!(u, ch)
     utrial = similar(u)
 
-    residual_norm!(uu) = begin
+    ## Squared, like the stress-control loop: a norm puts a `sqrt` on a quantity that goes
+    ## to zero at convergence, and nothing here needs anything but comparisons. The values
+    ## reported are still norms.
+    residual_sq!(uu) = begin
         assemble_axisymmetric!(K, f, dh, cv, mat, states, states_old, uu, Δt)
         Ferrite.apply_zero!(K, f, ch)
-        norm(f)
+        f ⋅ f
     end
 
-    nrm = residual_norm!(u)
+    nrm = residual_sq!(u)
     for _ in 1:maxiter
-        push!(norms, nrm)
-        nrm < tol && break
-        Δu = K \ f
+        push!(norms, sqrt(nrm))
+        nrm < tol^2 && break
+        Δu = linsolve(K, f)
         α = 1.0
         for _ in 1:maxhalve
             @. utrial = u - α * Δu
-            trial = residual_norm!(utrial)
+            trial = residual_sq!(utrial)
             if trial < nrm
                 nrm = trial
                 break
@@ -363,6 +371,6 @@ function newton_solve!(
     end
     ## The states left behind must be those of the accepted iterate, not of the last trial
     ## the line search happened to reject.
-    residual_norm!(u)
+    residual_sq!(u)
     return norms
 end

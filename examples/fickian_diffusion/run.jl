@@ -62,13 +62,17 @@ using ExtendableGrids
 # struct is what selects the constitutive behaviour below.
 
 """Parameters of the Fickian diffusion model (saturated porous medium)."""
-Base.@kwdef struct FickModel <: AbstractPoroModel
-    φ::Float64 = 0.30     # porosity [-]
-    D::Float64 = 1e-10    # effective diffusion coefficient [m²/s]
-    c_in::Float64 = 1.0   # concentration imposed at x=0 [mol/m³]
+Base.@kwdef struct FickModel{T} <: AbstractPoroModel
+    φ::T = 0.30     # porosity [-]
+    D::T = 1e-10    # effective diffusion coefficient [m²/s]
+    c_in::T = 1.0   # concentration imposed at x=0 [mol/m³]
 end
 
 PoroMechanics.nspecies(::FickModel) = 1
+
+## Differentiating with respect to one parameter turns that field into a `Dual` while the
+## others stay `Float64`, so the constructor promotes rather than demanding they match.
+FickModel(φ, D, c_in) = FickModel(promote(φ, D, c_in)...)
 PoroMechanics.species_names(::FickModel) = [:c]
 
 # ## Constitutive behaviour

@@ -11,6 +11,10 @@ module _Identification
     include("../demos/parameter_identification.jl")
 end
 
+module _SolverSensitivity
+    include("../demos/solver_sensitivity.jl")
+end
+
 @testset "differentiability with respect to parameters" begin
     I3 = one(SymmetricTensor{2, 3})
 
@@ -80,4 +84,38 @@ end
     for i in 1:4
         @test abs(D.θ_fit[i] - 1) < 4 * sqrt(D.Σ[i, i])
     end
+end
+
+@testset "differentiating a solve" begin
+    S = _SolverSensitivity
+
+    ## Steady finite volumes, through VoronoiFVM in dual numbers.
+    @test S.grad_flux[1] ≈ S.grad_flux_fd[1] rtol = 1.0e-6
+    @test S.grad_flux[4] ≈ S.grad_flux_fd[4] rtol = 1.0e-6
+
+    ## The retention parameters are structurally invisible to a steady flux: the curve
+    ## enters only through the storage term, which is zero at steady state.
+    @test S.grad_flux[2] == 0
+    @test S.grad_flux[3] == 0
+
+    ## A full nonlinear axisymmetric elastoplastic solve — twelve load steps, a global
+    ## Newton at each, a return mapping at every quadrature point — differentiated with
+    ## respect to three material parameters.
+    for i in 1:3
+        @test S.grad_fe[i] ≈ S.grad_fe_fd[i] rtol = 1.0e-7
+        @test isfinite(S.grad_fe[i])
+    end
+
+    ## The signs are the physics, and getting them backwards would be a real error rather
+    ## than a tolerance one: a softer elastic law or a flatter compression line reaches a
+    ## given compaction at lower stress, a larger void ratio stiffens both the bulk modulus
+    ## and the hardening.
+    @test S.grad_fe[1] < 0        # κ
+    @test S.grad_fe[2] < 0        # λ(0)
+    @test S.grad_fe[3] > 0        # e₀
+
+    ## The element arrays must follow the type of the assembled system, not `Float64`.
+    ## This is the check that differentiability reaches past the constitutive layer.
+    @test eltype(S.grad_fe) === Float64
+    @test S.mobilised_stress(ones(3)) ≈ 112.4039e3 rtol = 1.0e-5
 end
