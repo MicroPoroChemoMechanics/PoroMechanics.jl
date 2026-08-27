@@ -116,6 +116,31 @@ total_stress
 poro_response
 ```
 
+### Pressure-dependent elasticity
+
+```@docs
+LogarithmicElastic
+LogarithmicElasticState
+tangent_moduli
+mean_compressive_stress
+```
+
+### Unsaturated effective stress
+
+When two fluid phases share the pore space there is no single pore pressure, and the
+question of what replaces it is a modelling choice rather than a formula — so the Bishop
+coefficient is a model of its own.
+
+```@docs
+AbstractBishop
+SaturationBishop
+PowerBishop
+bishop_coefficient
+equivalent_pore_pressure
+unsaturated_total_stress
+suction_stress
+```
+
 ## Backends
 
 Glue to the solver packages. The physics lives in the constitutive layer; these only wire

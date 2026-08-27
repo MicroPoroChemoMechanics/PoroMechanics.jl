@@ -155,3 +155,105 @@ function poro_response(
     ∂σ∂p = -m.b * one(σ_eff)
     return σ, ∂σ∂ε, ∂σ∂p, state_new
 end
+
+# ── Pressure-dependent elasticity ─────────────────────────────────────────────
+
+"""
+    LogarithmicElasticState(σ, ε)
+
+Internal variables of [`LogarithmicElastic`](@ref): the stress and strain the material
+carries from the previous step. A hypoelastic law needs them because its stiffness depends
+on where it currently sits, so the response is an increment rather than a function of the
+total strain.
+"""
+struct LogarithmicElasticState{S, E} <: AbstractMaterialState
+    σ::S
+    ε::E
+end
+
+"""
+    LogarithmicElastic(; κ, nu, e0, p_min)
+
+Elasticity with a bulk modulus proportional to the mean effective compressive stress,
+
+```math
+K = \\frac{\\bar p\\,(1+e_0)}{\\kappa}, \\qquad
+G = \\frac{3K(1-2\\nu)}{2(1+\\nu)}, \\qquad
+\\bar p = -\\tfrac{1}{3}\\mathrm{tr}(\\sigma)
+```
+
+the elastic law of critical-state soil mechanics, and the elastic part of the Barcelona
+Basic Model. `κ` is the swelling index, `e0` the initial void ratio.
+
+Tension positive throughout, so ``\\bar p > 0`` in compression. Under tension the modulus
+would go to zero or negative, which is unphysical and would break the solve, so `p_min`
+floors it: a soil that is genuinely in tension is outside this law's range and the floor
+says so rather than producing a plausible number.
+
+Unlike [`LinearElastic`](@ref), this material has a state and its tangent changes with it —
+which is what makes it the honest rehearsal for a return mapping.
+"""
+Base.@kwdef struct LogarithmicElastic{T} <: AbstractMaterial
+    κ::T = 0.02          # swelling index [-]
+    nu::T = 0.3          # Poisson's ratio [-]
+    e0::T = 0.9          # initial void ratio [-]
+    p_min::T = 1.0e3     # floor on the mean compressive stress [Pa]
+end
+
+function LogarithmicElastic(κ, nu, e0, p_min)
+    return LogarithmicElastic(promote(κ, nu, e0, p_min)...)
+end
+
+Base.eltype(::LogarithmicElastic{T}) where {T} = T
+
+## A pressure-dependent modulus has no meaning without a stress to evaluate it at, so the
+## zero-argument form says so rather than handing back an empty state that would fail later
+## and further away.
+initial_state(::LogarithmicElastic) = error(
+    "LogarithmicElastic has no default state: its stiffness depends on the current " *
+        "stress. Use `initial_state(m, σ0)` with the in-situ stress."
+)
+
+"""
+    initial_state(m::LogarithmicElastic, σ0) -> LogarithmicElasticState
+
+Start the material from a known in-situ stress. A pressure-dependent modulus is undefined
+without one, which is why this material cannot use the zero-argument form.
+"""
+initial_state(::LogarithmicElastic, σ0::Tensors.SymmetricTensor{2}) =
+    LogarithmicElasticState(σ0, zero(σ0))
+
+"""
+    mean_compressive_stress(m, σ) -> p̄ [Pa]
+
+``\\bar p = -\\mathrm{tr}(\\sigma)/3``, floored at `m.p_min`.
+"""
+mean_compressive_stress(m::LogarithmicElastic, σ) =
+    max(-Tensors.tr(σ) / 3, m.p_min)
+
+"""
+    tangent_moduli(m, σ) -> (K, G)
+
+Bulk and shear moduli at the current stress.
+"""
+function tangent_moduli(m::LogarithmicElastic, σ)
+    K = mean_compressive_stress(m, σ) * (1 + m.e0) / m.κ
+    G = 3K * (1 - 2m.nu) / (2 * (1 + m.nu))
+    return K, G
+end
+
+function material_response(
+        m::LogarithmicElastic, ε::Tensors.SymmetricTensor{2, dim},
+        state::LogarithmicElasticState, Δt
+    ) where {dim}
+    K, G = tangent_moduli(m, state.σ)
+    λ = K - 2G / 3
+    C = elastic_stiffness(LinearElastic(λ, G), Val(dim))
+
+    ## Explicit integration over the step: the moduli are evaluated at the stress the
+    ## material came in with, so the tangent returned is exact *for this scheme*, which is
+    ## what the consistent-tangent test checks.
+    Δε = ε - state.ε
+    σ = state.σ + C ⊡ Δε
+    return σ, C, LogarithmicElasticState(σ, ε)
+end

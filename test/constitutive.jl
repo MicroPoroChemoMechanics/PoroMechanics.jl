@@ -360,3 +360,91 @@ end
     g = b -> tr(poro_response(BiotPoroelastic(; b = b), ε, p, NoState(), 1.0)[1])
     @test_derivative g 1.0
 end
+
+# ── Unsaturated effective stress ──────────────────────────────────────────────
+
+@testset "Bishop coefficient and equivalent pore pressure" begin
+    vg = VanGenuchten(1.5e6, 0.06)
+    χ = SaturationBishop(vg)
+
+    ## Saturated: χ = 1, and the equivalent pressure is just the liquid pressure. This is
+    ## the check that the unsaturated theory contains the saturated one.
+    @test bishop_coefficient(χ, 0.0) == 1.0
+    @test equivalent_pore_pressure(χ, 1.0e5) ≈ 1.0e5
+    @test suction_stress(χ, 1.0e5) == 0.0
+
+    ## Unsaturated: χ falls with suction, and stays in [0,1]
+    for pc in (1.0e4, 1.0e6, 1.0e8)
+        c = bishop_coefficient(χ, pc)
+        @test 0 < c <= 1
+    end
+    @test bishop_coefficient(χ, 1.0e8) < bishop_coefficient(χ, 1.0e4)
+
+    ## π = p_g − χ p_c, i.e. the saturation-weighted average of the phase pressures
+    p_l, p_g = -1.0e6, 0.0
+    pc = p_g - p_l
+    Sl = saturation(vg, pc)
+    @test equivalent_pore_pressure(χ, p_l, p_g) ≈ Sl * p_l + (1 - Sl) * p_g
+
+    ## Suction pulls the grains together: an isotropic tension on the skeleton
+    @test suction_stress(χ, p_l) > 0
+    @test suction_stress(χ, p_l) ≈ Sl * pc
+
+    ## n = 1 recovers the saturation form; larger n weights the liquid less
+    @test bishop_coefficient(PowerBishop(vg, 1.0), 1.0e6) ≈ bishop_coefficient(χ, 1.0e6)
+    @test bishop_coefficient(PowerBishop(vg, 2.0), 1.0e6) < bishop_coefficient(χ, 1.0e6)
+
+    ## The total stress reduces to the saturated form when the medium is saturated
+    m = BiotPoroelastic()
+    σ_eff = SymmetricTensor{2, 2}((-1.0e5, 1.0e4, -2.0e5))
+    @test unsaturated_total_stress(m.b, χ, σ_eff, 1.0e5) ≈ total_stress(m.b, σ_eff, 1.0e5)
+    ## ...and differs from it once there is suction
+    @test unsaturated_total_stress(m.b, χ, σ_eff, -1.0e6) != total_stress(m.b, σ_eff, -1.0e6)
+
+    ## Differentiable through the retention parameter, like everything else here
+    f = a -> equivalent_pore_pressure(SaturationBishop(VanGenuchten(a, 0.06)), -1.0e6)
+    @test_derivative f 1.5e6
+end
+
+# ── Pressure-dependent elasticity ─────────────────────────────────────────────
+
+@testset "LogarithmicElastic" begin
+    m = LogarithmicElastic()
+    σ0 = -1.0e5 * one(SymmetricTensor{2, 2})     # 100 kPa isotropic compression
+
+    ## No default state: the modulus is undefined without a stress to evaluate it at.
+    @test_throws ErrorException initial_state(m)
+
+    st = initial_state(m, σ0)
+    @test st.σ == σ0
+    @test st.ε == zero(σ0)
+
+    ## K grows in proportion to the mean compressive stress
+    K1, G1 = tangent_moduli(m, σ0)
+    K2, G2 = tangent_moduli(m, 2σ0)
+    @test K1 ≈ mean_compressive_stress(m, σ0) * (1 + m.e0) / m.κ
+    @test K2 ≈ 2K1
+    @test G1 / K1 ≈ 3 * (1 - 2m.nu) / (2 * (1 + m.nu))
+
+    ## The floor engages in tension, where the law has no meaning
+    @test mean_compressive_stress(m, -σ0) == m.p_min
+    @test tangent_moduli(m, -σ0)[1] > 0
+
+    ## The response is an increment from the stored state
+    ε = SymmetricTensor{2, 2}((-1.0e-4, 0.0, -1.0e-4))
+    σ, C, st2 = material_response(m, ε, st, 1.0)
+    @test σ ≈ st.σ + C ⊡ (ε - st.ε)
+    @test st2.σ == σ && st2.ε == ε
+    ## Compression stiffens it: the next step is stiffer than this one.
+    @test tangent_moduli(m, st2.σ)[1] > tangent_moduli(m, st.σ)[1]
+
+    ## The consistent tangent, again against automatic differentiation of the response.
+    ## The material now has a state and a stress-dependent stiffness, so this is no longer
+    ## the tautology it was for linear elasticity.
+    @test Tensors.gradient(e -> material_response(m, e, st, 1.0)[1], ε) ≈ C
+
+    ## Differentiable in the swelling index — the parameter one would calibrate.
+    f = κ -> tr(material_response(LogarithmicElastic(; κ = κ), ε, st, 1.0)[1])
+    @test_derivative f 0.02
+    @test ForwardDiff.derivative(f, 0.02) != 0
+end

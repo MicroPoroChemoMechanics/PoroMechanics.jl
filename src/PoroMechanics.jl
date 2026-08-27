@@ -55,6 +55,9 @@ export hydraulic_conductivity, skempton, undrained_poisson, undrained_bulk_modul
 export AbstractMaterial, AbstractMaterialState, NoState, LinearElastic
 export material_response, initial_state, elastic_stiffness
 export skeleton, total_stress, poro_response
+export LogarithmicElastic, LogarithmicElasticState, tangent_moduli, mean_compressive_stress
+export AbstractBishop, SaturationBishop, PowerBishop, bishop_coefficient
+export equivalent_pore_pressure, unsaturated_total_stress, suction_stress
 
 # Backends
 export fvm_system
@@ -210,6 +213,7 @@ end
 
 include("Constitutive/Poroelasticity.jl")
 include("Constitutive/MaterialInterface.jl")
+include("Constitutive/EffectiveStress.jl")
 
 # ── Backends ───────────────────────────────────────────────────────────────────
 # Glue to the solver packages. The physics lives above; these only wire it up.
