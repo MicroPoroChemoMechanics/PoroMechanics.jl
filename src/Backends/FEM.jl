@@ -27,11 +27,19 @@ function biot_element_matrices!(ke1, ke2, m::BiotPoroelastic, cv_u, cv_p)
     fill!(ke1, 0.0)
     fill!(ke2, 0.0)
 
-    λ, μ = lame(m)
     K_l = hydraulic_conductivity(m)
 
     nu_l = Ferrite.getnbasefunctions(cv_u)
     np_l = Ferrite.getnbasefunctions(cv_p)
+
+    ## The tangent comes from the material interface rather than from λ and μ inline, so
+    ## that a different skeleton can be substituted without touching the assembly. It is
+    ## queried once because linear elasticity has a constant tangent and no state; a
+    ## nonlinear material must be asked at every quadrature point, with the strain and the
+    ## state of that point.
+    mat = skeleton(m)
+    ε_probe = Tensors.symmetric(Ferrite.shape_gradient(cv_u, 1, 1))
+    _, C, _ = material_response(mat, zero(ε_probe), initial_state(mat), NaN)
 
     for q in 1:Ferrite.getnquadpoints(cv_u)
         dΩ = Ferrite.getdetJdV(cv_u, q)
@@ -41,8 +49,7 @@ function biot_element_matrices!(ke1, ke2, m::BiotPoroelastic, cv_u, cv_p)
             εᵢ = Tensors.symmetric(Ferrite.shape_gradient(cv_u, q, i))
             for j in 1:nu_l
                 εⱼ = Tensors.symmetric(Ferrite.shape_gradient(cv_u, q, j))
-                σⱼ = λ * Tensors.tr(εⱼ) * one(εⱼ) + 2μ * εⱼ
-                ke1[i, j] += (εᵢ ⊡ σⱼ) * dΩ
+                ke1[i, j] += (εᵢ ⊡ (C ⊡ εⱼ)) * dΩ
             end
         end
 

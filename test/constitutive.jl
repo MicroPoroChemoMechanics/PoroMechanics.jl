@@ -11,6 +11,7 @@
 
 using ForwardDiff
 using FiniteDiff
+using Tensors
 
 """
     @test_derivative f x
@@ -283,4 +284,79 @@ end
         @test eltype(m) <: ForwardDiff.Dual
         @test skempton(m) isa ForwardDiff.Dual
     end
+end
+
+# ── The stress–strain interface ───────────────────────────────────────────────
+
+@testset "Material interface — LinearElastic" begin
+    mat = LinearElastic(; E = 1.0e8, nu = 0.2)
+    ε = SymmetricTensor{2, 2}((1.0e-3, 2.0e-4, -5.0e-4))
+    σ, C, st = material_response(mat, ε, initial_state(mat), 1.0)
+
+    ## The two constructors agree
+    @test LinearElastic(mat.λ, mat.μ).λ ≈ mat.λ
+
+    ## No internal variables, and the state comes back untouched
+    @test initial_state(mat) === NoState()
+    @test st === NoState()
+
+    ## The stress matches the closed form, and the tangent reproduces it
+    @test σ ≈ mat.λ * tr(ε) * one(ε) + 2 * mat.μ * ε
+    @test C ⊡ ε ≈ σ
+
+    ## Isotropy: a pure shear produces no volumetric stress, a pure dilation no shear
+    shear = SymmetricTensor{2, 2}((0.0, 1.0e-3, 0.0))
+    @test tr(material_response(mat, shear, NoState(), 1.0)[1]) ≈ 0.0 atol = 1.0e-6
+    dil = SymmetricTensor{2, 2}((1.0e-3, 0.0, 1.0e-3))
+    @test material_response(mat, dil, NoState(), 1.0)[1][1, 2] ≈ 0.0 atol = 1.0e-6
+
+    ## Symmetries of the stiffness: minor (from the symmetric tensor type) and major
+    for i in 1:2, j in 1:2, k in 1:2, l in 1:2
+        @test C[i, j, k, l] ≈ C[k, l, i, j]
+    end
+
+    ## **The consistent-tangent check.** ∂σ/∂ε from the interface must equal the derivative
+    ## of the stress itself. Trivial for linear elasticity — and exactly the test a return
+    ## mapping will have to pass, where the tangent is anything but obvious.
+    C_ad = Tensors.gradient(e -> material_response(mat, e, NoState(), 1.0)[1], ε)
+    @test C_ad ≈ C
+
+    ## Differentiable in its parameters, like every other law here.
+    f = μ -> material_response(LinearElastic(mat.λ, μ), ε, NoState(), 1.0)[1][1, 1]
+    @test_derivative f mat.μ
+    @test ForwardDiff.derivative(f, mat.μ) ≈ 2 * ε[1, 1]
+end
+
+@testset "Material interface — poroelastic layer" begin
+    m = BiotPoroelastic()
+    ε = SymmetricTensor{2, 2}((1.0e-3, 2.0e-4, -5.0e-4))
+    p = 1.0e5
+
+    ## The skeleton is the hinge: below it, ordinary solid mechanics.
+    sk = skeleton(m)
+    @test sk isa LinearElastic
+    @test (sk.λ, sk.μ) == lame(m)
+
+    σ, C, ∂σ∂p, st = poro_response(m, ε, p, initial_state(sk), 1.0)
+    σ_eff, _, _ = material_response(sk, ε, NoState(), 1.0)
+
+    ## Total stress is the skeleton response less the pressure term
+    @test σ ≈ σ_eff - m.b * p * one(σ_eff)
+    @test σ ≈ total_stress(m.b, σ_eff, p)
+    @test ∂σ∂p ≈ -m.b * one(σ_eff)
+
+    ## A positive pore pressure relieves the skeleton: tension positive.
+    @test tr(σ) < tr(σ_eff)
+
+    ## Zero pressure recovers pure mechanics — the two layers really are separable.
+    @test poro_response(m, ε, 0.0, NoState(), 1.0)[1] ≈ σ_eff
+
+    ## Both tangents against automatic differentiation of the response itself.
+    @test Tensors.gradient(e -> poro_response(m, e, p, NoState(), 1.0)[1], ε) ≈ C
+    @test ForwardDiff.derivative(q -> poro_response(m, ε, q, NoState(), 1.0)[1][1, 1], p) ≈
+        ∂σ∂p[1, 1]
+
+    ## And differentiable through the material parameters, not only the fields.
+    g = b -> tr(poro_response(BiotPoroelastic(; b = b), ε, p, NoState(), 1.0)[1])
+    @test_derivative g 1.0
 end

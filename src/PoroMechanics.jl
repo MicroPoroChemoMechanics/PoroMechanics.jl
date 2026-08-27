@@ -35,7 +35,7 @@ module PoroMechanics
 
 using VoronoiFVM: VoronoiFVM
 using Ferrite: Ferrite
-using Tensors: Tensors, ⊡, ⋅
+using Tensors: Tensors, SymmetricTensor, ⊡, ⋅
 
 # ── Public re-exports ──────────────────────────────────────────────────────────
 export AbstractPoroModel, AbstractPoroSolver
@@ -52,6 +52,9 @@ export AbstractPoroelastic, BiotPoroelastic
 export lame, shear_modulus, bulk_modulus, oedometric_modulus, biot_modulus
 export compaction_coefficient, storage_coefficient, consolidation_coefficient
 export hydraulic_conductivity, skempton, undrained_poisson, undrained_bulk_modulus
+export AbstractMaterial, AbstractMaterialState, NoState, LinearElastic
+export material_response, initial_state, elastic_stiffness
+export skeleton, total_stress, poro_response
 
 # Backends
 export fvm_system
@@ -206,6 +209,7 @@ function facet_load!(fe, facet, model::AbstractPoroModel, fv)
 end
 
 include("Constitutive/Poroelasticity.jl")
+include("Constitutive/MaterialInterface.jl")
 
 # ── Backends ───────────────────────────────────────────────────────────────────
 # Glue to the solver packages. The physics lives above; these only wire it up.

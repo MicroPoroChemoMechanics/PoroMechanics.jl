@@ -97,6 +97,25 @@ undrained_poisson
 undrained_bulk_modulus
 ```
 
+### The stress–strain interface
+
+The mechanical layer deliberately knows nothing about pore pressure: its signature is the
+one the Ferrite ecosystem already uses, so a constitutive model written against it travels
+beyond this package. The poromechanical coupling sits on top.
+
+```@docs
+AbstractMaterial
+AbstractMaterialState
+NoState
+initial_state
+material_response
+LinearElastic
+elastic_stiffness
+skeleton
+total_stress
+poro_response
+```
+
 ## Backends
 
 Glue to the solver packages. The physics lives in the constitutive layer; these only wire
