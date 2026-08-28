@@ -119,7 +119,7 @@ end
     @test tortuosity(oj, 0.13, 0.5) < tortuosity(oj, 0.13, 1.0)
 
     ## More porosity, more transport
-    @test tortuosity(oj, 0.20) > tortuosity(oj, 0.10)
+    @test tortuosity(oj, 0.2) > tortuosity(oj, 0.1)
 
     ## Saturation factor is exactly S_l^q
     @test tortuosity(oj, 0.13, 0.5) ≈ tortuosity(oj, 0.13, 1.0) * 0.5^4.5

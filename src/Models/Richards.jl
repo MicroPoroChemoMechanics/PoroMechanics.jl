@@ -47,7 +47,7 @@ Boundaries not named are no-flow, which is `VoronoiFVM`'s default and the usual 
 an unlisted boundary in a flow problem.
 """
 Base.@kwdef struct RichardsModel{T, R, K, B} <: AbstractPoroModel
-    phi::T = 0.30
+    phi::T = 0.3
     rho_l::T = 1.0e3
     k_int::T = 1.0e-20
     mu_l::T = 1.0e-3
