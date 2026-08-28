@@ -131,7 +131,7 @@ mean_compressive_stress
 ### Unsaturated effective stress
 
 When two fluid phases share the pore space there is no single pore pressure, and the
-question of what replaces it is a modelling choice rather than a formula — so the Bishop
+question of what replaces it is a modeling choice rather than a formula — so the Bishop
 coefficient is a model of its own.
 
 ```@docs

@@ -1,7 +1,7 @@
 """
 Linear poroelasticity — Biot's material and the constants derived from it.
 
-Like the retention and permeability curves, the material is parameterised by the *type* of
+Like the retention and permeability curves, the material is parameterized by the *type* of
 its coefficients rather than fixed to `Float64`. Every derived quantity below is therefore
 differentiable with respect to the parameters it is built from: a sensitivity of a
 consolidation time to the Biot coefficient, or a calibration of the storage modulus against

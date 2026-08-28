@@ -6,7 +6,7 @@
 #  2. Differentiability — every law is differentiable not only with respect to its
 #     argument (which VoronoiFVM already needs for the Jacobian) but with respect to its
 #     *parameters*. That is what makes inverse calibration and sensitivity analysis
-#     possible later, and it only works because the coefficients are type-parameterised
+#     possible later, and it only works because the coefficients are type-parameterized
 #     rather than declared `Float64`.
 
 using ForwardDiff

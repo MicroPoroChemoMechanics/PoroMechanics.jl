@@ -79,7 +79,7 @@ end
     @test last(D.history) < first(D.history) / 1000
 
     ## The covariance is positive definite and the true value sits within a few standard
-    ## deviations of the fit — the check that the linearised uncertainty means something.
+    ## deviations of the fit — the check that the linearized uncertainty means something.
     @test isposdef(Symmetric(D.Σ))
     for i in 1:4
         @test abs(D.θ_fit[i] - 1) < 4 * sqrt(D.Σ[i, i])
@@ -153,7 +153,7 @@ end
     ## mean the abstraction is doing something behind the user's back.
     @test W.c_pkg == W.c_raw
 
-    ## And both must match the closed form to the discretisation error.
+    ## And both must match the closed form to the discretization error.
     @test W.l2(W.c_pkg, W.c_exact) < 1.0e-2
 
     ## Refining space or time reduces that error; the two are separate contributions.

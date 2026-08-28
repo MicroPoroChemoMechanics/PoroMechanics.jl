@@ -76,7 +76,7 @@ export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, n
 # ── Constitutive layer ─────────────────────────────────────────────────────────
 # Material laws, owned by the package: retention curves, relative permeabilities,
 # tortuosity models. They know nothing about grids, assembly or time stepping, and
-# their coefficients are type-parameterised so that a result can be differentiated
+# their coefficients are type-parameterized so that a result can be differentiated
 # with respect to the parameters themselves.
 
 include("Constitutive/Retention.jl")

@@ -1,7 +1,7 @@
 """
 Water retention curves — the relation between capillary pressure and liquid saturation.
 
-Every curve here is a struct parameterised by the *type* of its coefficients, not by
+Every curve here is a struct parameterized by the *type* of its coefficients, not by
 `Float64`. That is deliberate: it lets a `ForwardDiff.Dual` enter a coefficient, so a
 result can be differentiated with respect to the material parameters themselves and not
 only with respect to the unknowns. A curve declared `a::Float64` would make that
@@ -77,7 +77,7 @@ function dsaturation_dpc(r::VanGenuchten, pc)
     return -r.m * (one(T) + u)^(-(r.m + one(T))) * r.n * u / pc
 end
 
-# ── Exponential regularisation ────────────────────────────────────────────────
+# ── Exponential regularization ────────────────────────────────────────────────
 
 """
     ExponentialCutoff(raw, p_c3)

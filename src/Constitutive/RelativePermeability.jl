@@ -1,7 +1,7 @@
 """
 Relative permeability curves.
 
-Same rule as the retention curves: coefficients are type-parameterised so that a
+Same rule as the retention curves: coefficients are type-parameterized so that a
 `ForwardDiff.Dual` can enter them, making a result differentiable with respect to the
 material parameters.
 """

@@ -110,7 +110,7 @@ end
     end
     @test _Mandel.mandel_pressure(m, roots, _Mandel.A_HALF, 0.1) ≈ 0.0 atol = 1.0e-6
 
-    ## The Mandel–Cryer effect itself: the centre pressure must overshoot p₀, and the
+    ## The Mandel–Cryer effect itself: the center pressure must overshoot p₀, and the
     ## numerical solution must reproduce both the height and the timing of the peak.
     ref = [_Mandel.mandel_pressure(m, roots, 0.0, T) for T in _Mandel.T_hist]
     i_ref = argmax(ref)

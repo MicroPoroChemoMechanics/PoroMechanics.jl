@@ -11,7 +11,7 @@ pressure,
 ```
 
 so that the total stress keeps the saturated form ``\\sigma = \\sigma' - b\\,\\pi\\,I``. The
-whole modelling question is what ``\\chi`` should be.
+whole modeling question is what ``\\chi`` should be.
 
 Taking ``\\chi = S_l`` makes ``\\pi`` the saturation-weighted average
 ``S_l p_l + (1-S_l) p_g``, which is Coussy's equivalent pore pressure with the interfacial

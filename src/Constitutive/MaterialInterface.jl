@@ -76,7 +76,7 @@ end
 Isotropic linear elasticity, ``\\sigma = \\lambda\\,\\mathrm{tr}(\\varepsilon)\\mathbf{I}
 + 2\\mu\\,\\varepsilon``.
 
-Type-parameterised like every other law here, so a response can be differentiated with
+Type-parameterized like every other law here, so a response can be differentiated with
 respect to `λ` or `μ` and not only with respect to the strain.
 """
 struct LinearElastic{T} <: AbstractMaterial

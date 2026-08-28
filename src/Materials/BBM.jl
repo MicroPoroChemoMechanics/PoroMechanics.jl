@@ -197,7 +197,7 @@ this law.
 """
 function bbm_moduli(m::BBM, p)
     K = max(p, m.p_min) * (1 + m.e0) / m.κ
-    ## A constant shear modulus is the other way the elastic part is usually parameterised,
+    ## A constant shear modulus is the other way the elastic part is usually parameterized,
     ## and some published parameter sets quote `G` rather than `ν`. Zero means "derive it
     ## from ν", which is the common case.
     G = m.G_const > 0 ? m.G_const : 3K * (1 - 2m.nu) / (2 * (1 + m.nu))
@@ -262,7 +262,7 @@ function return_residual(m::BBM, x, p_tr, q_tr, s, pc_star_n, p_n, scheme)
 
     ## The plastic volumetric return is integrated in the same closed form as the elastic
     ## predictor: unloading the plastic strain divides the pressure rather than subtracting
-    ## from it. Linearising `exp` recovers `p_tr - K Δεv_p`, the explicit form.
+    ## from it. Linearizing `exp` recovers `p_tr - K Δεv_p`, the explicit form.
     r1 = if scheme === Val(:exact)
         p - p_tr * exp(-(1 + m.e0) * Δεv_p / m.κ)
     else

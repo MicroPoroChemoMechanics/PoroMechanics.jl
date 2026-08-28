@@ -328,12 +328,12 @@ the Barcelona Basic Model under isotropic compression, the first plastic step di
 outright — the residual climbs from 4.8·10⁴ and wanders for twenty-five iterations without
 ever descending, while the well-conditioned tangent (``\\mathrm{cond}(K)\\approx 6``) and the
 purely elastic steps that precede it converge in a single iteration. The failure is
-globalisation, not linearisation.
+globalization, not linearization.
 
 Halving the step until the residual decreases fixes it, and costs nothing where it is not
 needed: away from the transition the full step is accepted at once, so the quadratic rate
 survives intact. `maxhalve` bounds the search; exhausting it means the direction is not a
-descent direction, which is a modelling problem rather than one a line search can repair.
+descent direction, which is a modeling problem rather than one a line search can repair.
 """
 function newton_solve!(
         u, K, f, dh, cv, mat, states, states_old, ch, Δt;
