@@ -68,6 +68,7 @@ export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_m
 # Backends
 export fvm_system
 export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
+export RichardsModel, liquid_saturation, liquid_conductivity
 export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, newton_solve!
 
 # ── Core abstractions ──────────────────────────────────────────────────────────
@@ -229,6 +230,7 @@ include("Materials/BBM.jl")
 # ── Backends ───────────────────────────────────────────────────────────────────
 # Glue to the solver packages. The physics lives above; these only wire it up.
 
+include("Models/Richards.jl")
 include("Backends/FVM.jl")
 include("Backends/FEM.jl")
 

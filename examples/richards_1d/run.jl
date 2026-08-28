@@ -66,79 +66,33 @@ using VoronoiFVM
 using ExtendableGrids
 using Printf
 
-# ## Model definition
-
-"""
-    RichardsModel
-
-Richards model 1D — single-phase unsaturated flow.
-
-Unknown: liquid pore pressure p_l [Pa].
-Van Genuchten / Mualem retention curves.
-"""
-Base.@kwdef struct RichardsModel{T, R, K} <: AbstractPoroModel
-    ## Material parameters (material "bo")
-    phi::T = 0.30        # porosity [-]
-    rho_l::T = 1.0e3     # liquid density [kg/m³]
-    k_int::T = 1.0e-20   # intrinsic permeability [m²]
-    mu_l::T = 1.0e-3     # dynamic viscosity [Pa·s]
-    p_g::T = 1.0e5       # gas pressure [Pa]
-    gravite::T = 0.0     # gravity [m/s²] (horizontal → 0)
-
-    ## Constitutive curves, from the package's constitutive layer
-    retention::R = VanGenuchten(1.5e6, 0.06)
-    rel_perm::K = Mualem(3.0e6, 0.5)
-end
-
-PoroMechanics.nspecies(::RichardsModel) = 1
-
-## Promote rather than require a single type: a `Dual` in one parameter leaves the rest
-## `Float64`, which is what differentiating with respect to that parameter does.
-function RichardsModel(phi, rho_l, k_int, mu_l, p_g, gravite, retention, rel_perm)
-    return RichardsModel(
-        promote(phi, rho_l, k_int, mu_l, p_g, gravite)..., retention, rel_perm
-    )
-end
-PoroMechanics.species_names(::RichardsModel) = [:p_l]
-
-# ## Constitutive laws
+# ## The model
 #
-# The retention and relative-permeability curves come from `PoroMechanics.Constitutive`
-# rather than being written out here. Both are type-stable for `ForwardDiff.Dual`, which
-# VoronoiFVM needs for the Jacobian, and both carry their coefficients as type parameters,
-# so a result can also be differentiated with respect to `retention.a` or `rel_perm.m`.
+# [`RichardsModel`](@ref) lives in the package, not in this script: the equation is the same
+# whatever column it is solved on, and only the material data, the geometry and the boundary
+# conditions belong here. That split is the whole point of having a library — the physics is
+# written once, documented once, and differentiable once.
+#
+# The retention and relative-permeability curves come from the constitutive layer. Both are
+# type-stable for `ForwardDiff.Dual`, which `VoronoiFVM` needs for the Jacobian, and both
+# carry their coefficients as type parameters, so a result can also be differentiated with
+# respect to `retention.a` or `rel_perm.m`.
+#
+# The imposed pressure is given as data — `dirichlet = ((2, p_g),)`, meaning "impose ``p_g``
+# on boundary region 2" — rather than written into a method, so the same model can be used
+# with the boundary on the other side without editing anything.
 
-Sl(m::RichardsModel, pc) = saturation(m.retention, pc)
-krl(m::RichardsModel, pc) = relative_permeability(m.rel_perm, pc)
-Kl(m::RichardsModel, pc) = m.rho_l * m.k_int / m.mu_l * krl(m, pc)
-
-# ## Constitutive behaviour
-
-"""
-Richards flux: W_l = −K_l ∇p_l + K_l ρ_l g · dx.
-VoronoiFVM convention: f[1] is divided by (x₂ − x₁).
-"""
-function PoroMechanics.flux!(f, u, edge, m::RichardsModel, ::Any)
-    pl1, pl2 = u[1, 1], u[1, 2]
-    pc_avg = m.p_g - (pl1 + pl2) / 2
-    Kl_avg = Kl(m, pc_avg)
-    dx = edge.coord[1, 2] - edge.coord[1, 1]
-    f[1] = Kl_avg * (pl1 - pl2) + Kl_avg * m.rho_l * m.gravite * dx
-end
-
-"""Storage term: ρ_l φ S_l(p_c)."""
-function PoroMechanics.storage!(f, u, ::Any, m::RichardsModel, ::Any)
-    f[1] = m.rho_l * m.phi * Sl(m, m.p_g - u[1])
-end
-
-"""
-Boundary conditions:
-  Region 1 (x = 0) : zero Neumann (impermeable — the default behaviour)
-  Region 2 (x = L) : Dirichlet p_l = p_g (full saturation)
-"""
-function PoroMechanics.bcondition!(f, u, bnode, m::RichardsModel, ::Any)
-    boundary_dirichlet!(f, u, bnode; species = 1, region = 2, value = m.p_g)
-end
+richards_material(; p_g = 1.0e5) = RichardsModel(;
+    phi = 0.30,                       # porosity [-]
+    rho_l = 1.0e3,                    # liquid density [kg/m³]
+    k_int = 1.0e-20,                  # intrinsic permeability [m²]
+    mu_l = 1.0e-3,                    # dynamic viscosity [Pa·s]
+    p_g = p_g,                        # gas pressure [Pa]
+    gravity = 0.0,                    # horizontal column
+    retention = VanGenuchten(1.5e6, 0.06),
+    rel_perm = Mualem(3.0e6, 0.5),
+    dirichlet = ((2, p_g),),          # full saturation at x = L
+)
 
 # ## Solving
 #
@@ -152,7 +106,7 @@ end
 - `verbose`   : print Newton iterations and time steps
 """
 function run_richards(; L = 0.2, N = 101, t_max_ans = 10, verbose = false)
-    m = RichardsModel()
+    m = richards_material()
 
     grid = simplexgrid(range(0.0, L; length = N))
 
@@ -199,7 +153,7 @@ using Plots
 xcoords = grid[Coordinates][1, :]
 nn = length(xcoords)
 
-sat_at(i, it) = Sl(model, model.p_g - tsol[1, i, it])
+sat_at(i, it) = liquid_saturation(model, model.p_g - tsol[1, i, it])
 
 """Column water content ∫ φ S_l dx [m], by the trapezoidal rule."""
 function water_content(it)

@@ -178,6 +178,22 @@ assemble_axisymmetric!
 newton_solve!
 ```
 
+## Models
+
+Physics models that the package ships, as opposed to those a script defines for itself. A
+model earns its place here when it has constitutive content worth sharing — a model that is
+only a storage term and a flux, like the advection–dispersion example of
+[Writing a model](demos/writing_a_model.md), gains nothing from being here and is better
+written where it is used.
+
+### Richards' equation
+
+```@docs
+RichardsModel
+liquid_saturation
+liquid_conductivity
+```
+
 ## Materials
 
 ### Barcelona Basic Model
