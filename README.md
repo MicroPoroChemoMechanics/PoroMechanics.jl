@@ -148,11 +148,11 @@ Pkg.activate("examples")
 Pkg.develop(path = ".")     # once, to point the environment at this checkout
 Pkg.instantiate()
 
-include("examples/M1_diffusion/run.jl"); run_M1()
+include("examples/fickian_diffusion/run.jl"); run_fickian_diffusion()
 ```
 
-`examples/Richard_2D` also needs a tabulated retention curve. A synthetic one is generated
-by `examples/Richard_2D/make_retention_table.jl`; point the `RICHARDS_2D_DATA` environment
+`examples/richards_2d` also needs a tabulated retention curve. A synthetic one is generated
+by `examples/richards_2d/make_retention_table.jl`; point the `RICHARDS_2D_DATA` environment
 variable at your own measurements to replace it.
 
 Load one example per Julia session: Ferrite and VoronoiFVM both export `update!`, so

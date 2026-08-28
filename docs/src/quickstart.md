@@ -89,5 +89,5 @@ numbers pass through.
 
 ## Next
 
-The [examples](examples/M1_diffusion.md) carry one worked problem per physics — each with its
+The [examples](examples/fickian_diffusion.md) carry one worked problem per physics — each with its
 governing equations, its material data, and the reference solution it is checked against.

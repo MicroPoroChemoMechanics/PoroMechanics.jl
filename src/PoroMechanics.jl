@@ -33,12 +33,55 @@ MIT — see `LICENSE`.
 """
 module PoroMechanics
 
+using VoronoiFVM: VoronoiFVM
+using Ferrite: Ferrite
+using Tensors: Tensors, SymmetricTensor, ⊡, ⊗, ⋅
+using LinearAlgebra: norm
+using ForwardDiff: ForwardDiff
+
 # ── Public re-exports ──────────────────────────────────────────────────────────
 export AbstractPoroModel, AbstractPoroSolver
 export storage!, flux!, bcondition!, reaction!, assemble_element!
 export element_matrices!, facet_load!
 
+# Constitutive layer
+export AbstractRetention, VanGenuchten, ExponentialCutoff, Gardner
+export saturation, dsaturation_dpc
+export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl
+export relative_permeability, gas_relative_permeability
+export AbstractTortuosity, OhJang, tortuosity
+export AbstractPoroelastic, BiotPoroelastic
+export lame, shear_modulus, bulk_modulus, oedometric_modulus, biot_modulus
+export compaction_coefficient, storage_coefficient, consolidation_coefficient
+export hydraulic_conductivity, skempton, undrained_poisson, undrained_bulk_modulus
+export AbstractMaterial, AbstractMaterialState, NoState, LinearElastic
+export material_response, stress_controlled_response, initial_state, elastic_stiffness
+export skeleton, total_stress, poro_response
+export LogarithmicElastic, LogarithmicElasticState, tangent_moduli, mean_compressive_stress
+export AbstractBishop, SaturationBishop, PowerBishop, bishop_coefficient
+export equivalent_pore_pressure, unsaturated_total_stress, suction_stress
+
+# Materials
+export BBM, BBMState, compression_index, preconsolidation, yield_function
+export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_mean, step_shear_modulus, trial_stress, suction_stress_increment, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent, ExplicitPredictor
+
+# Backends
+export fvm_system
+export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
+export RichardsModel, liquid_saturation, liquid_conductivity
+export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, newton_solve!
+
 # ── Core abstractions ──────────────────────────────────────────────────────────
+
+# ── Constitutive layer ─────────────────────────────────────────────────────────
+# Material laws, owned by the package: retention curves, relative permeabilities,
+# tortuosity models. They know nothing about grids, assembly or time stepping, and
+# their coefficients are type-parameterised so that a result can be differentiated
+# with respect to the parameters themselves.
+
+include("Constitutive/Retention.jl")
+include("Constitutive/RelativePermeability.jl")
+include("Constitutive/Tortuosity.jl")
 
 """
     AbstractPoroModel
@@ -67,6 +110,26 @@ abstract type AbstractPoroModel end
 Supertype for time-stepping strategies.
 """
 abstract type AbstractPoroSolver end
+
+# ── Helper: number of species ──────────────────────────────────────────────────
+
+"""
+    nspecies(model::AbstractPoroModel) -> Int
+
+Return the number of primary unknowns (species) solved by `model`.
+"""
+function nspecies(::AbstractPoroModel)
+    error("nspecies not implemented for this model")
+end
+
+"""
+    species_names(model::AbstractPoroModel) -> Vector{Symbol}
+
+Return the symbolic names of the primary unknowns, e.g. `[:p_l, :T]`.
+"""
+function species_names(::AbstractPoroModel)
+    error("species_names not implemented for this model")
+end
 
 # ── Interface stubs (fall-through implementations raise informative errors) ────
 
@@ -156,24 +219,19 @@ function facet_load!(fe, facet, model::AbstractPoroModel, fv)
     return nothing
 end
 
-# ── Helper: number of species ──────────────────────────────────────────────────
+include("Constitutive/Poroelasticity.jl")
+include("Constitutive/MaterialInterface.jl")
+include("Constitutive/EffectiveStress.jl")
 
-"""
-    nspecies(model::AbstractPoroModel) -> Int
+# ── Materials ──────────────────────────────────────────────────────────────────
 
-Return the number of primary unknowns (species) solved by `model`.
-"""
-function nspecies(::AbstractPoroModel)
-    error("nspecies not implemented for this model")
-end
+include("Materials/BBM.jl")
 
-"""
-    species_names(model::AbstractPoroModel) -> Vector{Symbol}
+# ── Backends ───────────────────────────────────────────────────────────────────
+# Glue to the solver packages. The physics lives above; these only wire it up.
 
-Return the symbolic names of the primary unknowns, e.g. `[:p_l, :T]`.
-"""
-function species_names(::AbstractPoroModel)
-    error("species_names not implemented for this model")
-end
+include("Models/Richards.jl")
+include("Backends/FVM.jl")
+include("Backends/FEM.jl")
 
 end # module PoroMechanics

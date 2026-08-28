@@ -27,4 +27,17 @@ using PoroMechanics
         @test isnothing(bcondition!(zeros(1), zeros(1), nothing, m, nothing))
     end
 
+    # ── Constitutive layer: values and differentiability ──────────────────────
+    include("constitutive.jl")
+
+    # ── The Barcelona Basic Model ──────────────────────────────────────────────
+    include("bbm.jl")
+
+    # ── Validation against closed-form solutions ──────────────────────────────
+    include("benchmarks.jl")
+    include("differentiability.jl")
+
+    # ── Examples still produce the profiles they used to ───────────────────────
+    include("regression.jl")
+
 end

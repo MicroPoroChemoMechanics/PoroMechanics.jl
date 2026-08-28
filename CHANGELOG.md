@@ -30,15 +30,15 @@ reference solution it is checked against. They move to `src/Models/` as they are
 
 | Example | Physics | Backend |
 | :--- | :--- | :--- |
-| `M1_diffusion` | Fick diffusion, saturated medium | VoronoiFVM |
+| `fickian_diffusion` | Fick diffusion, saturated medium | VoronoiFVM |
 | `darcy_column` | transient single-phase Darcy flow | VoronoiFVM |
-| `M1_Richards` | unsaturated flow, Van Genuchten / Mualem | VoronoiFVM |
-| `Richard_2D` | unsaturated drainage of a composite column | VoronoiFVM |
-| `M6_drying` | non-isothermal drying: liquid, dry air, heat | VoronoiFVM |
-| `M7_Biot` | Biot poroelasticity, two materials | Ferrite |
-| `Chloricem` | reactive chloride transport in cementitious materials | VoronoiFVM |
+| `richards_1d` | unsaturated flow, Van Genuchten / Mualem | VoronoiFVM |
+| `richards_2d` | unsaturated drainage of a composite column | VoronoiFVM |
+| `nonisothermal_drying` | non-isothermal drying: liquid, dry air, heat | VoronoiFVM |
+| `biot_consolidation` | Biot poroelasticity, two materials | Ferrite |
+| `chloride_ingress` | reactive chloride transport in cementitious materials | VoronoiFVM |
 
-The `Chloricem` family is staged: single-species Langmuir adsorption, then multi-ionic
+The `chloride_ingress` family is staged: single-species Langmuir adsorption, then multi-ionic
 transport with electroneutrality, then operator splitting against `ChemistryLab.jl`
 equilibria, then surface complexation on C-S-H. Only the earlier stages are validated
 against reference profiles; the later ones and the ternary binder variants are implemented

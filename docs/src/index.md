@@ -68,6 +68,6 @@ Pkg.add("PoroMechanics")
 | Section | For |
 | :--- | :--- |
 | [Getting Started](quickstart.md) | writing and running a first model, end to end |
-| [Examples](examples/M1_diffusion.md) | one worked problem per physics, with its equations, data and reference solution |
+| [Examples](examples/fickian_diffusion.md) | one worked problem per physics, with its equations, data and reference solution |
 | [API](api.md) | every exported name |
 | [References](references.md) | the literature the models are built from |
