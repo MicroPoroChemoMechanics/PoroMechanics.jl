@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Cryer&#39;s sphere · PoroMechanics.jl</title><meta name="title" content="Cryer&#39;s sphere · PoroMechanics.jl"/><meta property="og:title" content="Cryer&#39;s sphere · PoroMechanics.jl"/><meta property="twitter:title" content="Cryer&#39;s sphere · PoroMechanics.jl"/><meta name="description" content="Documentation for PoroMechanics.jl."/><meta property="og:description" content="Documentation for PoroMechanics.jl."/><meta property="twitter:description" content="Documentation for PoroMechanics.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/validation/cryer/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/validation/cryer/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/validation/cryer/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/documentercitations/citations-hover.css" rel="stylesheet" type="text/css"/><link href="../../assets/documentercitations/citations.css" rel="stylesheet" type="text/css"/><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercitations/citations-data.js"></script><script src="../../assets/documentercitations/citations-hover.js"></script><script src="../../assets/documentercitations/citations-backlinks.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="PoroMechanics.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">PoroMechanics.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><label class="tocitem" for="menuitem-3"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/fickian_diffusion/">Fickian diffusion 1D</a></li><li><a class="tocitem" href="../../examples/darcy_column/">Darcy column</a></li><li><a class="tocitem" href="../../examples/richards_1d/">Richards 1D</a></li><li><a class="tocitem" href="../../examples/nonisothermal_drying/">Non-isothermal drying</a></li><li><a class="tocitem" href="../../examples/biot_consolidation/">Biot consolidation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox" checked/><label class="tocitem" for="menuitem-4"><span class="docs-label">Validation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../terzaghi/">Terzaghi consolidation</a></li><li><a class="tocitem" href="../mandel/">Mandel&#39;s problem</a></li><li class="is-active"><a class="tocitem" href>Cryer&#39;s sphere</a><ul class="internal"><li><a class="tocitem" href="#Problem"><span>Problem</span></a></li><li><a class="tocitem" href="#Reference-solution"><span>Reference solution</span></a></li><li><a class="tocitem" href="#Model"><span>Model</span></a></li><li><a class="tocitem" href="#Reference-solution-in-Laplace-space"><span>Reference solution in Laplace space</span></a></li><li><a class="tocitem" href="#The-spherical-element"><span>The spherical element</span></a></li><li><a class="tocitem" href="#Solving"><span>Solving</span></a></li><li><a class="tocitem" href="#Results"><span>Results</span></a></li><li><a class="tocitem" href="#Notes"><span>Notes</span></a></li></ul></li><li><a class="tocitem" href="../deleeuw/">De Leeuw&#39;s cylinder</a></li><li><a class="tocitem" href="../gardner_infiltration/">Gardner infiltration</a></li><li><a class="tocitem" href="../gardner_transient/">Transient drainage</a></li><li><a class="tocitem" href="../bbm_bil/">BBM — Bil reference cases</a></li></ul></li><li><a class="tocitem" href="../../demos/writing_a_model/">Writing a model</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox"/><label class="tocitem" for="menuitem-6"><span class="docs-label">Differentiability</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../demos/parameter_identification/">Parameter identification</a></li><li><a class="tocitem" href="../../demos/solver_sensitivity/">Differentiating a solve</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Validation</a></li><li class="is-active"><a href>Cryer&#39;s sphere</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Cryer&#39;s sphere</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/benchmarks/cryer.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Cryer&#39;s-Problem"><a class="docs-heading-anchor" href="#Cryer&#39;s-Problem">Cryer&#39;s Problem</a><a id="Cryer&#39;s-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Cryer&#39;s-Problem" title="Permalink"></a></h1><p>A saturated poroelastic sphere, drained at its surface, loaded at <span>$t = 0$</span> by a uniform radial compression. The pore pressure at the centre rises <strong>23 % above</strong> its undrained value before decaying — the Mandel–Cryer effect (<a href="../../references/#cryer1963" id="cryer1963-cite-1">Cryer, 1963</a>), three times stronger here than in the plane-strain Mandel case, which makes this the most severe of the three poroelastic benchmarks.</p><p>It is also the case that forces a curvilinear element. Terzaghi and Mandel are Cartesian; spherical symmetry brings in hoop strains <span>$\varepsilon_{\theta\theta} = u_r/r$</span> that no Cartesian element produces, and an <span>$r^2$</span> integration weight. The element written below is the prototype of the axisymmetric machinery the Barcelona Basic Model will need.</p><h2 id="Problem"><a class="docs-heading-anchor" href="#Problem">Problem</a><a id="Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Problem" title="Permalink"></a></h2><p>Sphere of radius <span>$R$</span>. At <span>$t = 0$</span> a compressive radial traction <span>$P_c$</span> is applied to the surface, which is held drained.</p><table><tr><th style="text-align: right">Boundary</th><th style="text-align: right">Condition</th></tr><tr><td style="text-align: right"><span>$r = 0$</span></td><td style="text-align: right">symmetry: <span>$u_r = 0$</span>, no flux</td></tr><tr><td style="text-align: right"><span>$r = R$</span></td><td style="text-align: right">drained <span>$p = 0$</span>, traction <span>$\sigma_{rr} = -P_c$</span></td></tr></table><h2 id="Reference-solution"><a class="docs-heading-anchor" href="#Reference-solution">Reference solution</a><a id="Reference-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Reference-solution" title="Permalink"></a></h2><p>Derived here rather than transcribed, from the single-porosity formulation of (<a href="../../references/#mehrabian2018" id="mehrabian2018-cite-1">Mehrabian and Abousleiman, 2018</a>) (their Table 1). Spherical symmetry makes the displacement field irrotational, so the momentum balance integrates once to</p><p class="math-container">\[\varepsilon = c_m\,p + f(t), \qquad c_m = \frac{\alpha(1-2\nu)}{2G(1-\nu)} = \frac{\alpha}{M_o}\]</p><p>with <span>$f$</span> an unknown function of time alone. Substituting into the fluid mass balance leaves a diffusion equation for the pressure with a source driven by <span>$f$</span>:</p><p class="math-container">\[S \frac{\partial p}{\partial t}
+  - \kappa \frac{1}{r^2}\frac{\partial}{\partial r}\left(r^2 \frac{\partial p}{\partial r}\right)
+  = -\alpha f&#39;(t), \qquad S = \frac{1}{M} + \frac{\alpha^2}{M_o}\]</p><p><span>$S$</span> is exactly the storage coefficient the package already uses: <span>$c = \kappa/S$</span> is the same consolidation coefficient as in the Terzaghi and Mandel benchmarks.</p><p>In Laplace space this is an ordinary differential equation. Taking the solution regular at <span>$r = 0$</span>, imposing <span>$p(R) = 0$</span>, integrating <span>$u_r = r^{-2}\int_0^r x^2 \varepsilon\,\mathrm{d}x$</span> and closing with the traction condition <span>$\sigma_{rr}(R) = -P_c H(t)$</span> gives, in <span>$r^* = r/R$</span> and <span>$t^* = ct/R^2$</span> with <span>$\hat s$</span> conjugate to <span>$t^*$</span>:</p><p class="math-container">\[\tilde P(r^*, \hat s) = \frac{P_c}{\hat s}\,\frac{\alpha}{2GS}\,
+  \frac{1 - \dfrac{\sinh(r^*\sqrt{\hat s})}{r^*\sinh\sqrt{\hat s}}}{D(\hat s)},
+\qquad
+D(\hat s) = \frac{1+\nu}{3(1-2\nu)} + \frac{2q}{3}
+  - 2q\left[\frac{\coth\sqrt{\hat s}}{\sqrt{\hat s}} - \frac{1}{\hat s}\right]\]</p><p>with <span>$q = \alpha c_m/S$</span>. The inversion to the time domain is numerical, by the Stehfest algorithm — the same route the source paper takes.</p><p>The expression is checked by the initial and final value theorems before it is used: it must give the Skempton response <span>$p(r,0^+) = B P_c$</span>, uniform in <span>$r$</span>, and decay to zero.</p><pre><code class="language-julia hljs">include(&quot;biot_common.jl&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.uniform_schedule</code></pre><h2 id="Model"><a class="docs-heading-anchor" href="#Model">Model</a><a id="Model-1"></a><a class="docs-heading-anchor-permalink" href="#Model" title="Permalink"></a></h2><p>The same material as Mandel&#39;s problem, so the two spherical and plane-strain overshoots are directly comparable.</p><pre><code class="language-julia hljs">const CRYER_MATERIAL = HomogeneousBiot(;
+    E = 1.0e8, nu = 0.2, k = 1.0e-13, mu_l = 1.0e-3, b = 1.0, N = 7.2e-9,
+)
+
+const R_SPHERE = 1.0    # radius [m]
+const P_CONF = 1.0e6    # confining traction [Pa]
+
+# `compaction_coefficient` and `storage_coefficient` come from the package.</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1.0e6</code></pre><h2 id="Reference-solution-in-Laplace-space"><a class="docs-heading-anchor" href="#Reference-solution-in-Laplace-space">Reference solution in Laplace space</a><a id="Reference-solution-in-Laplace-space-1"></a><a class="docs-heading-anchor-permalink" href="#Reference-solution-in-Laplace-space" title="Permalink"></a></h2><p><code>sinh(√ŝ)</code> overflows above <code>ŝ ≈ 1e5</code>, so both quotients are written in forms that stay finite: the ratio as decaying exponentials, and <code>g(x)/(x² sinh x)</code> as <code>coth(x)/x − 1/x²</code>.</p><pre><code class="language-julia hljs">_shape_ratio(r, x) = exp((r - 1) * x) * (1 - exp(-2r * x)) / (r * (1 - exp(-2x)))
+_g_term(x) = coth(x) / x - 1 / x^2
+
+&quot;&quot;&quot;
+    cryer_laplace(m, r, ŝ; Pc) -&gt; P̃(r*, ŝ)
+
+Pore pressure in Laplace space, with `ŝ` conjugate to the dimensionless time `t* = ct/R²`.
+&quot;&quot;&quot;
+function cryer_laplace(m::HomogeneousBiot, r, ŝ; Pc = P_CONF)
+    _, G = lame(m)
+    S = storage_coefficient(m)
+    q = m.b * compaction_coefficient(m) / S
+    x = sqrt(ŝ)
+    D = (1 + m.nu) / (3 * (1 - 2m.nu)) + 2q / 3 - 2q * _g_term(x)
+    return (Pc / ŝ) * (m.b / (2G * S)) * (1 - _shape_ratio(r, x)) / D
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.cryer_laplace</code></pre><h3 id="Inversion"><a class="docs-heading-anchor" href="#Inversion">Inversion</a><a id="Inversion-1"></a><a class="docs-heading-anchor-permalink" href="#Inversion" title="Permalink"></a></h3><p>By the Stehfest algorithm of <code>biot_common.jl</code>. This transform is elementary, so it evaluates in <code>BigFloat</code> throughout.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    cryer_pressure(m, r, t; Pc) -&gt; p [Pa]
+
+Pore pressure at normalised radius `r = r/R` and dimensionless time `t = c t/R²`.
+&quot;&quot;&quot;
+function cryer_pressure(m::HomogeneousBiot, r, t; Pc = P_CONF)
+    t &lt;= 0 &amp;&amp; return skempton(m) * Pc
+    return stehfest(ŝ -&gt; cryer_laplace(m, big(r), ŝ; Pc = Pc), t)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.cryer_pressure</code></pre><h2 id="The-spherical-element"><a class="docs-heading-anchor" href="#The-spherical-element">The spherical element</a><a id="The-spherical-element-1"></a><a class="docs-heading-anchor-permalink" href="#The-spherical-element" title="Permalink"></a></h2><p>This is the part Terzaghi and Mandel did not need. In spherical symmetry the strain has three non-zero normal components,</p><p class="math-container">\[\varepsilon_{rr} = \frac{\partial u}{\partial r}, \qquad
+\varepsilon_{\theta\theta} = \varepsilon_{\varphi\varphi} = \frac{u}{r}\]</p><p>so the discrete strain operator for shape function <span>$N_i$</span> is <span>$B_i = [\,N_i&#39;,\; N_i/r,\; N_i/r\,]$</span> and the volume element carries <span>$r^2$</span>. Contracting with the isotropic stiffness gives, for the mechanical block,</p><p class="math-container">\[K^{uu}_{ij} = \int \left[ \lambda\,(N_i&#39; + 2N_i/r)(N_j&#39; + 2N_j/r)
+  + 2\mu\left(N_i&#39;N_j&#39; + 2\frac{N_iN_j}{r^2}\right) \right] r^2\,\mathrm{d}r\]</p><p>The hoop terms are what a Cartesian element cannot produce. The element itself lives in <code>benchmarks/biot_common.jl</code> as <code>radial_element_matrices!</code>, parameterised by the number of hoop directions: <code>nhoop = 2</code> here, <code>nhoop = 1</code> for the cylinder of de Leeuw&#39;s problem.</p><h2 id="Solving"><a class="docs-heading-anchor" href="#Solving">Solving</a><a id="Solving-1"></a><a class="docs-heading-anchor-permalink" href="#Solving" title="Permalink"></a></h2><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    run_cryer(; m, nel, T_probe, T_start, dT)
+
+Return `(m, r, T_probe, profiles, T_hist, p_centre)`.
+&quot;&quot;&quot;
+function run_cryer(;
+        m = CRYER_MATERIAL,
+        nel = 80,
+        T_probe = [0.01, 0.03, 0.06, 0.1, 0.2, 0.5],
+        T_start = 1.0e-4,
+        dT = 5.0e-4,
+    )
+    c = consolidation_coefficient(m)
+    t_of_T(T) = T * R_SPHERE^2 / c
+
+    grid = generate_grid(Line, (nel,), Vec(0.0), Vec(R_SPHERE))
+
+    ip = Lagrange{RefLine, 1}()
+    dh = DofHandler(grid)
+    add!(dh, :u, ip)
+    add!(dh, :p, ip)
+    close!(dh)
+
+    qr = QuadratureRule{RefLine}(2)
+    cv_u = CellValues(qr, ip, ip)
+    cv_p = CellValues(qr, ip, ip)
+
+    # Symmetry at the centre, drainage at the surface
+    ch = ConstraintHandler(dh)
+    add!(ch, Dirichlet(:u, getfacetset(grid, &quot;left&quot;), (x, t) -&gt; 0.0))
+    add!(ch, Dirichlet(:p, getfacetset(grid, &quot;right&quot;), (x, t) -&gt; 0.0))
+    close!(ch)
+    update!(ch, 0.0)
+
+    n_loc = ndofs_per_cell(dh)
+    K1 = allocate_matrix(dh)
+    K2 = allocate_matrix(dh)
+    A = allocate_matrix(dh)
+    as1 = start_assemble(K1)
+    as2 = start_assemble(K2)
+    ke1 = zeros(n_loc, n_loc)
+    ke2 = zeros(n_loc, n_loc)
+
+    for cell in CellIterator(dh)
+        reinit!(cv_u, cell)
+        reinit!(cv_p, cell)
+        radial_element_matrices!(ke1, ke2, m, cv_u, cv_p, getcoordinates(cell); nhoop = 2)
+        assemble!(as1, celldofs(cell), ke1)
+        assemble!(as2, celldofs(cell), ke2)
+    end
+
+    # Node → dof maps (scalar u in 1D, so one dof per node per field)
+    u_dof = zeros(Int, getnnodes(grid))
+    p_dof = zeros(Int, getnnodes(grid))
+    u_range = dof_range(dh, :u)
+    p_range = dof_range(dh, :p)
+    for cell in CellIterator(dh)
+        d = celldofs(cell)
+        for (loc, node) in enumerate(cell.nodes)
+            u_dof[node] = d[u_range[loc]]
+            p_dof[node] = d[p_range[loc]]
+        end
+    end
+
+    # Surface traction: the boundary term of the weak form is δu σ_rr r², evaluated at
+    # r = R where σ_rr = −P_c.
+    coords = [node.x[1] for node in grid.nodes]
+    surface_node = argmax(coords)
+    f_ext = zeros(ndofs(dh))
+    f_ext[u_dof[surface_node]] = -P_CONF * R_SPHERE^2
+
+    schedule = uniform_schedule(T_probe; T_start = T_start, dT = dT)
+
+    x = zeros(ndofs(dh))
+    apply!(x, ch)
+
+    profiles = Vector{Vector{Float64}}()
+    probes_left = sort(T_probe)
+    T_hist = Float64[]
+    p_centre = Float64[]
+    centre_node = argmin(coords)
+    t_prev = 0.0
+
+    for T in schedule
+        t = t_of_T(T)
+        dt = t - t_prev
+        combine!(A, K1, K2, 1.0 / dt)
+        rhs = copy(f_ext)
+        mul!(rhs, K2, x, 1.0 / dt, 1.0)
+        apply!(A, rhs, ch)
+        x = A \ rhs
+        t_prev = t
+
+        push!(T_hist, T)
+        push!(p_centre, x[p_dof[centre_node]])
+
+        if !isempty(probes_left) &amp;&amp; isapprox(T, probes_left[1]; rtol = 1.0e-9)
+            push!(profiles, [x[p_dof[i]] for i in 1:getnnodes(grid)])
+            popfirst!(probes_left)
+        end
+    end
+
+    return m, coords, sort(T_probe), profiles, T_hist, p_centre
+end
+
+model, rr, T_probe, p_num, T_hist, p_centre = run_cryer()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(BiotPoroelastic{Float64}(1.0e8, 0.2, 1.0e-13, 0.001, 1.0, 7.2e-9), [0.0, 0.012500000000000011, 0.025000000000000022, 0.03749999999999998, 0.04999999999999999, 0.0625, 0.07500000000000001, 0.08750000000000002, 0.09999999999999998, 0.11249999999999999  …  0.8875, 0.9, 0.9125, 0.925, 0.9375, 0.95, 0.9625, 0.975, 0.9875, 1.0], [0.01, 0.03, 0.06, 0.1, 0.2, 0.5], [[800003.2206950355, 800003.2192483185, 800003.2160303325, 800003.2105762364, 800003.2023894913, 800003.190772095, 800003.1747411089, 800003.1529346228, 800003.1234869884, 800003.0838600155  …  432854.248341831, 391036.1122396625, 346940.3091831691, 300808.7658243396, 252930.75433375972, 203637.78936851732, 153296.75709736897, 102301.5051804413, 51063.22032285308, 0.0], [860148.0521138132, 860134.278773895, 860104.5463724808, 860056.5093525317, 859988.98276412, 859900.7500537476, 859790.3561865982, 859656.0426663518, 859495.7114159956, 859306.8952322436  …  255276.30715822682, 227221.3610046952, 198924.3497869778, 170454.4505437839, 141882.34172599102, 113279.6745830665, 84718.53087958104, 56270.87399047584, 28008.00056990862, 0.0], [860695.3740305044, 860557.8133199579, 860262.6822020645, 859790.5777234271, 859136.071925171, 858295.9850723667, 857267.4700691024, 856047.5361175842, 854632.890654752, 853019.8796500961  …  169720.9800392456, 150525.54831914246, 131360.28786388034, 112248.67135602467, 93214.09482153774, 74279.79515078018, 55468.768421468114, 36803.689534403326, 18306.83366262187, 0.0], [723023.6638140174, 722818.8247265858, 722379.8802134077, 721679.1002836773, 720710.2308822306, 719471.0538522187, 717960.5360965504, 716178.1164561162, 714123.4633496883, 711796.3764477334  …  116617.94496182671, 103300.75888125284, 90050.03532046615, 76876.01242056402, 63788.820295047546, 50798.462423660436, 37914.797387017265, 25147.521009946475, 12506.148979354422, 0.0], [365127.08321779943, 365004.31911807053, 364741.33318669384, 364321.6864141237, 363741.91339162603, 363001.0728697913, 362099.0384802534, 361036.06954494526, 359812.66330024455, 358429.4928577482  …  54196.17651076396, 47983.488191590666, 41810.23088791933, 35680.03912982826, 29596.496342092847, 23563.13195140883, 17583.418552087383, 11660.769133667938, 5798.534373854341, 0.0], [40750.08571105853, 40736.27025316043, 40706.67512494688, 40659.45126046024, 40594.21012573292, 40510.84778740148, 40409.352552053904, 40289.75665657975, 40152.1196241663, 39996.521265678755  …  6021.383735479661, 5330.9862570832875, 4645.022309684494, 3963.888765682286, 3287.9768216631765, 2617.6717113058307, 1953.3524241319658, 1295.3914303201275, 644.1544118242296, 0.0]], [0.0001, 0.0006000000000000001, 0.0011, 0.0016, 0.0021, 0.0026, 0.0031, 0.0036, 0.0041, 0.0046  …  0.4956, 0.4961, 0.4966, 0.4971, 0.4976, 0.4981, 0.4986, 0.4991, 0.4996, 0.5], [722131.6169492967, 733823.1808950979, 741551.138649558, 747637.812165516, 752802.2099091399, 757361.3804915099, 761485.5484977214, 765277.9854336523, 768806.7379772208, 772119.385736724  …  42083.59567087409, 41929.894131803216, 41776.753951728046, 41624.173080539025, 41472.14947555801, 41320.68110150784, 41169.765930767535, 41019.40194278879, 40869.58712461713, 40750.08571105853])</code></pre><h2 id="Results"><a class="docs-heading-anchor" href="#Results">Results</a><a id="Results-1"></a><a class="docs-heading-anchor-permalink" href="#Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Plots
+
+B = skempton(model)
+p0 = B * P_CONF
+
+@printf(&quot;Skempton B         : %.6f\n&quot;, B)
+@printf(&quot;Undrained p₀ = B·P_c: %.4e Pa\n&quot;, p0)
+@printf(&quot;Storage S          : %.4e Pa⁻¹\n&quot;, storage_coefficient(model))
+@printf(&quot;Diffusivity c      : %.4e m²/s\n&quot;, consolidation_coefficient(model))
+println()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Skempton B         : 0.714286
+Undrained p₀ = B·P_c: 7.1429e+05 Pa
+Storage S          : 1.6200e-08 Pa⁻¹
+Diffusivity c      : 6.1728e-03 m²/s</code></pre><h3 id="The-reference-solution,-checked-before-it-is-used"><a class="docs-heading-anchor" href="#The-reference-solution,-checked-before-it-is-used">The reference solution, checked before it is used</a><a id="The-reference-solution,-checked-before-it-is-used-1"></a><a class="docs-heading-anchor-permalink" href="#The-reference-solution,-checked-before-it-is-used" title="Permalink"></a></h3><p>The Laplace expression must reproduce the Skempton response at <span>$t \to 0$</span>, uniformly in <span>$r$</span>, and vanish at the drained surface.</p><pre><code class="language-julia hljs">@printf(&quot;p(r,t→0)/P_c at r* = 0.1, 0.5, 0.9 : %.6f  %.6f  %.6f   (B = %.6f)\n&quot;,
+    cryer_pressure(model, 0.1, 1.0e-6) / P_CONF,
+    cryer_pressure(model, 0.5, 1.0e-6) / P_CONF,
+    cryer_pressure(model, 0.9, 1.0e-6) / P_CONF, B)
+@printf(&quot;p at the drained surface, t* = 0.1 : %.3e Pa\n&quot;,
+    cryer_pressure(model, 0.999999, 0.1))
+println()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">p(r,t→0)/P_c at r* = 0.1, 0.5, 0.9 : 0.715149  0.715149  0.715149   (B = 0.714286)
+p at the drained surface, t* = 0.1 : 9.923e-01 Pa</code></pre><h3 id="The-Mandel–Cryer-overshoot"><a class="docs-heading-anchor" href="#The-Mandel–Cryer-overshoot">The Mandel–Cryer overshoot</a><a id="The-Mandel–Cryer-overshoot-1"></a><a class="docs-heading-anchor-permalink" href="#The-Mandel–Cryer-overshoot" title="Permalink"></a></h3><p>The discriminating quantity, and much larger here than in plane strain.</p><pre><code class="language-julia hljs">p_ref_centre = [cryer_pressure(model, 1.0e-8, T) for T in T_hist]
+
+i_num = argmax(p_centre)
+i_ref = argmax(p_ref_centre)
+@printf(&quot;numerical peak : p/p₀ = %.5f at T = %.4f\n&quot;, p_centre[i_num] / p0, T_hist[i_num])
+@printf(&quot;reference peak : p/p₀ = %.5f at T = %.4f\n&quot;, p_ref_centre[i_ref] / p0, T_hist[i_ref])
+@printf(&quot;overshoot      : %.1f %% above p₀   (Mandel, plane strain: 6.5 %%)\n&quot;,
+    100 * (p_ref_centre[i_ref] / p0 - 1))
+println()
+
+plt_hist = plot(
+    T_hist, p_ref_centre ./ p0;
+    xlabel = &quot;T = c t / R²  [-]&quot;, ylabel = &quot;p(0, t) / p₀  [-]&quot;,
+    title = &quot;Mandel–Cryer effect at the centre of the sphere&quot;,
+    label = &quot;reference (Laplace + Stehfest)&quot;, lw = 2, color = :black,
+    xscale = :log10, legend = :bottomleft, size = (700, 420),
+)
+plot!(
+    plt_hist, T_hist[1:8:end], (p_centre ./ p0)[1:8:end];
+    seriestype = :scatter, ms = 3, mswidth = 0, color = :crimson, label = &quot;finite elements&quot;,
+)
+hline!(plt_hist, [1.0]; ls = :dash, color = :grey, label = &quot;p₀ = B·P_c&quot;)
+plt_hist</code></pre><img src="7a18d6b8.svg" alt="Example block output"/><h3 id="Error-against-the-reference"><a class="docs-heading-anchor" href="#Error-against-the-reference">Error against the reference</a><a id="Error-against-the-reference-1"></a><a class="docs-heading-anchor-permalink" href="#Error-against-the-reference" title="Permalink"></a></h3><pre><code class="language-julia hljs">println(&quot;      T     |  L2 error  |  L∞ error [Pa]&quot;)
+println(&quot;-&quot;^44)
+errors = Float64[]
+for (T, pn) in zip(T_probe, p_num)
+    ref = [cryer_pressure(model, max(r / R_SPHERE, 1.0e-8), T) for r in rr]
+    e2 = norm(pn .- ref) / norm(ref)
+    push!(errors, e2)
+    @printf(&quot;  %8.4f  |  %.3e |  %10.1f\n&quot;, T, e2, maximum(abs.(pn .- ref)))
+end
+println(&quot;-&quot;^44)
+@printf(&quot;worst relative L2 error: %.3e\n&quot;, maximum(errors))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">      T     |  L2 error  |  L∞ error [Pa]
+--------------------------------------------
+    0.0100  |  2.667e-03 |      4986.9
+    0.0300  |  1.621e-03 |      1767.2
+    0.0600  |  1.408e-03 |      1476.1
+    0.1000  |  8.372e-04 |       680.7
+    0.2000  |  2.696e-03 |      1085.3
+    0.5000  |  6.621e-03 |       272.1
+--------------------------------------------
+worst relative L2 error: 6.621e-03</code></pre><h3 id="Convergence"><a class="docs-heading-anchor" href="#Convergence">Convergence</a><a id="Convergence-1"></a><a class="docs-heading-anchor-permalink" href="#Convergence" title="Permalink"></a></h3><pre><code class="language-julia hljs">function worst_error(; nel, dT)
+    mm, rrr, Tp, pn, _, _ = run_cryer(; nel = nel, dT = dT)
+    return maximum(
+        let ref = [cryer_pressure(mm, max(r / R_SPHERE, 1.0e-8), T) for r in rrr]
+            norm(p .- ref) / norm(ref)
+        end for (T, p) in zip(Tp, pn)
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">worst_error (generic function with 1 method)</code></pre><p>Halving <span>$\Delta T$</span> halves the error — backward Euler, first order in time.</p><pre><code class="language-julia hljs">println(&quot;  ΔT        |  worst L2 error |  ratio&quot;)
+println(&quot;-&quot;^42)
+prev = NaN
+for dT in (4.0e-3, 2.0e-3, 1.0e-3, 5.0e-4)
+    e = worst_error(; nel = 80, dT = dT)
+    @printf(&quot;  %.2e  |    %.3e    |  %s\n&quot;, dT, e, isnan(prev) ? &quot;—&quot; : @sprintf(&quot;%.2f&quot;, prev / e))
+    global prev = e
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  ΔT        |  worst L2 error |  ratio
+------------------------------------------
+  4.00e-03  |    5.351e-02    |  —
+  2.00e-03  |    2.682e-02    |  2.00
+  1.00e-03  |    1.334e-02    |  2.01
+  5.00e-04  |    6.621e-03    |  2.01</code></pre><p>Refining the mesh at fixed <span>$\Delta T$</span> changes almost nothing: the spatial error of the radial element is already well under the temporal floor by forty elements.</p><pre><code class="language-julia hljs">println(&quot;\n  elements  |  worst L2 error&quot;)
+println(&quot;-&quot;^32)
+for n in (20, 40, 80, 160)
+    @printf(&quot;  %8d  |    %.3e\n&quot;, n, worst_error(; nel = n, dT = 5.0e-4))
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+  elements  |  worst L2 error
+--------------------------------
+        20  |    7.225e-03
+        40  |    6.714e-03
+        80  |    6.621e-03
+       160  |    6.602e-03</code></pre><h3 id="Radial-profiles"><a class="docs-heading-anchor" href="#Radial-profiles">Radial profiles</a><a id="Radial-profiles-1"></a><a class="docs-heading-anchor-permalink" href="#Radial-profiles" title="Permalink"></a></h3><pre><code class="language-julia hljs">plt = plot(;
+    xlabel = &quot;r / R  [-]&quot;, ylabel = &quot;p / p₀  [-]&quot;,
+    title = &quot;Cryer — radial pressure profiles&quot;,
+    legend = :bottomleft, size = (700, 440),
+)
+rfine = range(0.001, 0.999; length = 200)
+palette = cgrad(:viridis, max(length(T_probe), 2); categorical = true)
+for (i, (T, pn)) in enumerate(zip(T_probe, p_num))
+    plot!(
+        plt, rfine, [cryer_pressure(model, r, T) / p0 for r in rfine];
+        color = palette[i], lw = 2, label = &quot;T = $T&quot;,
+    )
+    plot!(
+        plt, rr ./ R_SPHERE, pn ./ p0;
+        color = palette[i], seriestype = :scatter, ms = 2, mswidth = 0, label = &quot;&quot;,
+    )
+end
+plt</code></pre><img src="934132e2.svg" alt="Example block output"/><h2 id="Notes"><a class="docs-heading-anchor" href="#Notes">Notes</a><a id="Notes-1"></a><a class="docs-heading-anchor-permalink" href="#Notes" title="Permalink"></a></h2><ul><li><strong>The element is the new part</strong> — hoop strains <span>$u_r/r$</span> and an <span>$r^2$</span> weight. It is written out by hand here; the same kinematics, in cylindrical coordinates, is what the Barcelona Basic Model will need for axisymmetry.</li><li><strong><code>BigFloat</code> for the Stehfest weights</strong> is not optional: they alternate in sign and grow to <span>$10^{9}$</span>, and in <code>Float64</code> the cancellation leaves nothing.</li><li><strong>The reference is derived, not transcribed.</strong> The published closed-form series for this problem could not be reproduced from the printed prefactor; deriving the Laplace solution and inverting it numerically avoids the question entirely, and the initial and final value theorems check it independently.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../mandel/">« Mandel&#39;s problem</a><a class="docs-footer-nextpage" href="../deleeuw/">De Leeuw&#39;s cylinder »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 28 August 2026 09:57">Friday 28 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

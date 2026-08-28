@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Differentiating a solve · PoroMechanics.jl</title><meta name="title" content="Differentiating a solve · PoroMechanics.jl"/><meta property="og:title" content="Differentiating a solve · PoroMechanics.jl"/><meta property="twitter:title" content="Differentiating a solve · PoroMechanics.jl"/><meta name="description" content="Documentation for PoroMechanics.jl."/><meta property="og:description" content="Documentation for PoroMechanics.jl."/><meta property="twitter:description" content="Documentation for PoroMechanics.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/demos/solver_sensitivity/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/demos/solver_sensitivity/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/demos/solver_sensitivity/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/documentercitations/citations-hover.css" rel="stylesheet" type="text/css"/><link href="../../assets/documentercitations/citations.css" rel="stylesheet" type="text/css"/><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercitations/citations-data.js"></script><script src="../../assets/documentercitations/citations-hover.js"></script><script src="../../assets/documentercitations/citations-backlinks.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="PoroMechanics.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">PoroMechanics.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><label class="tocitem" for="menuitem-3"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/fickian_diffusion/">Fickian diffusion 1D</a></li><li><a class="tocitem" href="../../examples/darcy_column/">Darcy column</a></li><li><a class="tocitem" href="../../examples/richards_1d/">Richards 1D</a></li><li><a class="tocitem" href="../../examples/nonisothermal_drying/">Non-isothermal drying</a></li><li><a class="tocitem" href="../../examples/biot_consolidation/">Biot consolidation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><label class="tocitem" for="menuitem-4"><span class="docs-label">Validation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../validation/terzaghi/">Terzaghi consolidation</a></li><li><a class="tocitem" href="../../validation/mandel/">Mandel&#39;s problem</a></li><li><a class="tocitem" href="../../validation/cryer/">Cryer&#39;s sphere</a></li><li><a class="tocitem" href="../../validation/deleeuw/">De Leeuw&#39;s cylinder</a></li><li><a class="tocitem" href="../../validation/gardner_infiltration/">Gardner infiltration</a></li><li><a class="tocitem" href="../../validation/gardner_transient/">Transient drainage</a></li><li><a class="tocitem" href="../../validation/bbm_bil/">BBM — Bil reference cases</a></li></ul></li><li><a class="tocitem" href="../writing_a_model/">Writing a model</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox" checked/><label class="tocitem" for="menuitem-6"><span class="docs-label">Differentiability</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../parameter_identification/">Parameter identification</a></li><li class="is-active"><a class="tocitem" href>Differentiating a solve</a><ul class="internal"><li><a class="tocitem" href="#Finite-volumes,-steady-state"><span>Finite volumes, steady state</span></a></li><li><a class="tocitem" href="#Finite-volumes,-transient-—-blocked-upstream"><span>Finite volumes, transient — blocked upstream</span></a></li><li><a class="tocitem" href="#Finite-elements,-transient-and-nonlinear"><span>Finite elements, transient and nonlinear</span></a></li><li><a class="tocitem" href="#What-it-took"><span>What it took</span></a></li><li><a class="tocitem" href="#Coupled-poroelasticity,-checked-against-a-closed-form"><span>Coupled poroelasticity, checked against a closed form</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Differentiability</a></li><li class="is-active"><a href>Differentiating a solve</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Differentiating a solve</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/demos/solver_sensitivity.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Differentiating-a-solve"><a class="docs-heading-anchor" href="#Differentiating-a-solve">Differentiating a solve</a><a id="Differentiating-a-solve-1"></a><a class="docs-heading-anchor-permalink" href="#Differentiating-a-solve" title="Permalink"></a></h1><p>The <a href="../parameter_identification/">companion page</a> differentiates a constitutive model at a material point. This one differentiates a <em>solve</em> — a discretised boundary value problem, with a mesh, a Newton loop and a time loop between the parameter and the answer.</p><p>That is the harder claim, and it is where a library either delivers or does not. A constitutive law that accepts a <code>Dual</code> is worth little if the assembly allocates its element arrays as <code>Float64</code>, or if the solver&#39;s convergence test takes a square root of a residual on its way to zero. Both were true here until this page was written; both are recorded below rather than quietly fixed, because they are the failure modes anyone doing this will meet.</p><pre><code class="language-julia hljs">using PoroMechanics
+using Ferrite
+using Tensors
+using VoronoiFVM
+using ExtendableGrids
+using ForwardDiff
+using SparseArrays
+using LinearAlgebra
+using Printf</code></pre><h2 id="Finite-volumes,-steady-state"><a class="docs-heading-anchor" href="#Finite-volumes,-steady-state">Finite volumes, steady state</a><a id="Finite-volumes,-steady-state-1"></a><a class="docs-heading-anchor-permalink" href="#Finite-volumes,-steady-state" title="Permalink"></a></h2><p>A one-dimensional unsaturated column with a pressure imposed at each end, solved with <code>VoronoiFVM</code> through <a href="../../api/#PoroMechanics.fvm_system"><code>fvm_system</code></a>. The parameters differentiated are the intrinsic permeability and the coefficients of the retention and relative-permeability curves.</p><p>The system is built with <code>valuetype = eltype(θ)</code>, so the whole solve — assembly, Newton, linear algebra — happens in dual numbers.</p><pre><code class="language-julia hljs">Base.@kwdef struct SteadyColumn{T, R, K} &lt;: AbstractPoroModel
+    rho_l::T = 1.0e3        # liquid density [kg/m³]
+    k_int::T = 1.0e-18      # intrinsic permeability [m²]
+    mu_l::T = 1.0e-3        # dynamic viscosity [Pa·s]
+    p_g::T = 1.0e5          # gas pressure [Pa]
+    p_left::T = -5.0e6      # suction imposed at x = 0 [Pa]
+    retention::R = VanGenuchten(1.5e6, 0.06)
+    rel_perm::K = Mualem(3.0e6, 0.5)
+end
+
+# Promote rather than require a single type: a Dual in one parameter leaves the rest Float64.
+function SteadyColumn(rho_l, k_int, mu_l, p_g, p_left, retention, rel_perm)
+    return SteadyColumn(promote(rho_l, k_int, mu_l, p_g, p_left)..., retention, rel_perm)
+end
+
+PoroMechanics.nspecies(::SteadyColumn) = 1
+PoroMechanics.species_names(::SteadyColumn) = [:p_l]
+
+conductivity(m::SteadyColumn, pc) =
+    m.rho_l * m.k_int / m.mu_l * relative_permeability(m.rel_perm, pc)
+
+function PoroMechanics.flux!(f, u, edge, m::SteadyColumn, ::Any)
+    f[1] = conductivity(m, m.p_g - (u[1, 1] + u[1, 2]) / 2) * (u[1, 1] - u[1, 2])
+    return nothing
+end
+
+PoroMechanics.storage!(f, u, ::Any, m::SteadyColumn, ::Any) = (f[1] = 0 * u[1]; nothing)
+
+function PoroMechanics.bcondition!(f, u, bnode, m::SteadyColumn, ::Any)
+    boundary_dirichlet!(f, u, bnode; species = 1, region = 1, value = m.p_left)
+    boundary_dirichlet!(f, u, bnode; species = 1, region = 2, value = m.p_g)
+    return nothing
+end
+
+&quot;Steady mass flux through the column, as a function of four scaled parameters.&quot;
+function column_flux(θ; N = 41, L = 0.2)
+    T = eltype(θ)
+    m = SteadyColumn(
+        k_int = θ[1] * 1.0e-18,
+        retention = VanGenuchten(θ[2] * 1.5e6, θ[3] * 0.06),
+        rel_perm = Mualem(θ[4] * 3.0e6, 0.5),
+    )
+    grid = simplexgrid(range(0.0, L; length = N))
+    sys = fvm_system(m, grid; valuetype = T)
+    inival = unknowns(sys)
+    inival[1, :] .= T(-1.0e6)
+    sol = solve(sys; inival, control = VoronoiFVM.SolverControl(; reltol = 1.0e-10, verbose = &quot;&quot;))
+    u = sol[1, :]
+    return conductivity(m, m.p_g - (u[1] + u[2]) / 2) * (u[1] - u[2]) / (L / (N - 1))
+end
+
+flux_names = (&quot;k_int&quot;, &quot;van Genuchten a&quot;, &quot;van Genuchten m&quot;, &quot;Mualem a&quot;)
+θ_flux = ones(4)
+grad_flux = ForwardDiff.gradient(column_flux, θ_flux)
+grad_flux_fd = map(eachindex(θ_flux)) do i
+    h = 1.0e-6
+    θp = copy(θ_flux); θp[i] += h
+    θm = copy(θ_flux); θm[i] -= h
+    (column_flux(θp) - column_flux(θm)) / (2h)
+end
+
+@printf(&quot;steady flux: %.6e kg/m²/s\n\n&quot;, column_flux(θ_flux))
+println(&quot;  parameter          automatic differentiation   central differences&quot;)
+for i in eachindex(θ_flux)
+    @printf(&quot;  %-17s  %+.8e             %+.8e\n&quot;, flux_names[i], grad_flux[i], grad_flux_fd[i])
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">steady flux: -5.952385e-06 kg/m²/s
+
+  parameter          automatic differentiation   central differences
+  k_int              -5.95238519e-06             -5.95238519e-06
+  van Genuchten a    +0.00000000e+00             +0.00000000e+00
+  van Genuchten m    +0.00000000e+00             +0.00000000e+00
+  Mualem a           -5.64829550e-06             -5.64829550e-06</code></pre><p>The permeability and the Mualem coefficient agree to ten digits. The two retention parameters come back as exactly zero from both — and here that is not a subtlety but a statement about the problem: at steady state the retention curve enters only through the storage term, which is identically zero. No amount of measurement of a steady flux will ever determine them.</p><h2 id="Finite-volumes,-transient-—-blocked-upstream"><a class="docs-heading-anchor" href="#Finite-volumes,-transient-—-blocked-upstream">Finite volumes, transient — blocked upstream</a><a id="Finite-volumes,-transient-—-blocked-upstream-1"></a><a class="docs-heading-anchor-permalink" href="#Finite-volumes,-transient-—-blocked-upstream" title="Permalink"></a></h2><p>The same trick does not work for a transient <code>VoronoiFVM</code> solve, and the reason is worth recording because it is not a property of this package.</p><p><code>VoronoiFVM</code> builds its boundary-node object with the <em>coordinate</em> type rather than the value type,</p><pre><code class="language-julia hljs"># JF: We need to be able to distinguish between dirichlet type and value type.
+# So far we will use Tc for the dirichlet type instead of the valuetype.
+BNode(sys::AbstractSystem{Tv,Tc,Ti,Tm}, time, embedparam; partition = 1) =
+    BNode{Tc, Tc, Ti}(sys, time, embedparam)</code></pre><p>— an acknowledged compromise in <code>vfvm_geometryitems.jl</code>. In a stationary solve nothing notices. In a transient one the solver promotes the time to the system&#39;s value type, and a <code>Dual</code> time cannot be stored in a node whose fields are <code>Float64</code>. The solve fails at initialisation with a conversion error.</p><p>Two ways round it exist and neither is free. <code>VoronoiFVM</code> supports declared parameters (<code>nparams</code>, <code>parameters(node)</code>) and assembles <span>$\partial R/\partial\theta$</span> alongside the Jacobian, which is the raw material for propagating sensitivities forward across time steps by the implicit function theorem — the storage Jacobian at the previous step has to be supplied separately. Or the time loop can be written outside the package. Both are more than this page needs, and the honest summary today is: steady state yes, transient not through this backend.</p><h2 id="Finite-elements,-transient-and-nonlinear"><a class="docs-heading-anchor" href="#Finite-elements,-transient-and-nonlinear">Finite elements, transient and nonlinear</a><a id="Finite-elements,-transient-and-nonlinear-1"></a><a class="docs-heading-anchor-permalink" href="#Finite-elements,-transient-and-nonlinear" title="Permalink"></a></h2><p>Where the time loop belongs to this package, none of that applies. What follows is an axisymmetric elastoplastic problem taken through twelve load steps: at each step a global Newton with a line search, and at every quadrature point of every iteration a return mapping — itself a Newton solve. The whole thing is differentiated with respect to three Barcelona Basic Model parameters.</p><pre><code class="language-julia hljs">grid_fe = Ferrite.generate_grid(
+    Ferrite.Quadrilateral, (2, 2), Ferrite.Vec(1.0, 0.0), Ferrite.Vec(2.0, 1.0)
+)
+ip_fe = Ferrite.Lagrange{Ferrite.RefQuadrilateral, 1}()^2
+dh_fe = Ferrite.DofHandler(grid_fe)
+Ferrite.add!(dh_fe, :u, ip_fe)
+Ferrite.close!(dh_fe)
+qr_fe = Ferrite.QuadratureRule{Ferrite.RefQuadrilateral}(2)
+cv_fe = Ferrite.CellValues(qr_fe, ip_fe, Ferrite.Lagrange{Ferrite.RefQuadrilateral, 1}())
+
+&quot;Mean stress carried by the sample after a prescribed compaction, as a function of κ, λ(0), e₀.&quot;
+function mobilised_stress(θ; nsteps = 12, εv_total = 0.08)
+    T = eltype(θ)
+    m = BBM(κ = θ[1] * 0.011, λ0 = θ[2] * 0.065, e0 = θ[3] * (1 / 3))
+    nq = Ferrite.getnquadpoints(cv_fe)
+    σ0 = -1.0e3 * one(SymmetricTensor{2, 3, T})
+    fresh() = [
+        [initial_state(m, σ0, T(4.0e4); suction = zero(T)) for _ in 1:nq]
+            for _ in 1:Ferrite.getncells(grid_fe)
+    ]
+    states, states_old = fresh(), fresh()
+
+    # The sparsity pattern comes from the mesh; only the numbers become dual.
+    K = convert(SparseMatrixCSC{T, Int}, Ferrite.allocate_matrix(dh_fe))
+    f = zeros(T, Ferrite.ndofs(dh_fe))
+    u = zeros(T, Ferrite.ndofs(dh_fe))
+
+    for k in 1:nsteps
+        εv = εv_total * k / nsteps
+        ch = Ferrite.ConstraintHandler(dh_fe)
+        for (set, comp) in ((&quot;left&quot;, 1), (&quot;right&quot;, 1), (&quot;bottom&quot;, 2), (&quot;top&quot;, 2))
+            Ferrite.add!(
+                ch, Ferrite.Dirichlet(
+                    :u, Ferrite.getfacetset(grid_fe, set), (x, t) -&gt; -εv / 3 * x[comp], [comp]
+                )
+            )
+        end
+        Ferrite.close!(ch)
+        Ferrite.update!(ch, 0.0)
+        newton_solve!(
+            u, K, f, dh_fe, cv_fe, m, states, states_old, ch, 1.0;
+            linsolve = (A, b) -&gt; Matrix(A) \ b,
+        )
+        for c in eachindex(states)
+            states_old[c] .= states[c]
+        end
+    end
+    return mean_pressure(states_old[1][1].σ)
+end
+
+fe_names = (&quot;κ&quot;, &quot;λ(0)&quot;, &quot;e₀&quot;)
+θ_fe = ones(3)
+grad_fe = ForwardDiff.gradient(mobilised_stress, θ_fe)
+grad_fe_fd = map(eachindex(θ_fe)) do i
+    h = 1.0e-6
+    θp = copy(θ_fe); θp[i] += h
+    θm = copy(θ_fe); θm[i] -= h
+    (mobilised_stress(θp) - mobilised_stress(θm)) / (2h)
+end
+
+@printf(&quot;mean stress after 8 %% compaction: %.4f kPa\n\n&quot;, mobilised_stress(θ_fe) / 1.0e3)
+println(&quot;  parameter   automatic differentiation   central differences&quot;)
+for i in eachindex(θ_fe)
+    @printf(&quot;  %-9s   %+.9e            %+.9e\n&quot;, fe_names[i], grad_fe[i], grad_fe_fd[i])
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">mean stress after 8 % compaction: 112.4039 kPa
+
+  parameter   automatic differentiation   central differences
+  κ           -7.054760215e+04            -7.054760214e+04
+  λ(0)        -1.176968931e+05            -1.176968931e+05
+  e₀          +4.706112381e+04            +4.706112381e+04</code></pre><p>Agreement to about <span>$5\times10^{-10}$</span>, through a path that has no closed form and through two nested Newton solves.</p><p>The signs are the physics: a larger <span>$\kappa$</span> is a softer elastic law, so the sample reaches a given compaction at a lower stress; a larger <span>$\lambda(0)$</span> is a flatter virgin compression line, likewise; a larger void ratio stiffens both <span>$K = \bar p(1+e_0)/\kappa$</span> and the hardening, so the stress rises.</p><h2 id="What-it-took"><a class="docs-heading-anchor" href="#What-it-took">What it took</a><a id="What-it-took-1"></a><a class="docs-heading-anchor-permalink" href="#What-it-took" title="Permalink"></a></h2><p>Four things had to be true, and three of them were not.</p><p><strong>Model parameters must be typed by a parameter, not by <code>Float64</code>.</strong> The constitutive layer already obeyed this; the model structs in <code>examples/</code> did not, so a <code>Dual</code> could enter a retention curve but not a permeability. They now carry a type parameter and a promoting constructor, which is what lets one field become a <code>Dual</code> while the rest stay <code>Float64</code>.</p><p><strong>Element arrays must take their type from the system.</strong> <code>assemble_axisymmetric!</code> allocated <code>zeros(n, n)</code>, which confines differentiability to the constitutive layer and stops it at the mesh — silently, with a conversion error far from the cause.</p><p><strong>Convergence tests must not take square roots of quantities going to zero.</strong> <code>√x</code> has an infinite slope at the origin, so a residual norm that reaches zero returns a correct value and a <code>NaN</code> derivative. Both the global Newton and the stress-control loop now compare squares. The same shape of problem, at the apex of the deviatoric cone, is what <a href="../../api/#PoroMechanics.equivalent_stress"><code>equivalent_stress</code></a> guards against.</p><p><strong>The linear solver must be replaceable.</strong> Sparse factorisations are <code>Float64</code>-only, so a tangent full of <code>Dual</code>s cannot go to UMFPACK. <code>newton_solve!</code> takes a <code>linsolve</code> keyword for exactly this.</p><p>None of these is deep. All of them are invisible until something tries to differentiate through the whole stack, which is the argument for having a page that does.</p><h2 id="Coupled-poroelasticity,-checked-against-a-closed-form"><a class="docs-heading-anchor" href="#Coupled-poroelasticity,-checked-against-a-closed-form">Coupled poroelasticity, checked against a closed form</a><a id="Coupled-poroelasticity,-checked-against-a-closed-form-1"></a><a class="docs-heading-anchor-permalink" href="#Coupled-poroelasticity,-checked-against-a-closed-form" title="Permalink"></a></h2><p>The elastoplastic problem above has no analytical solution, so its sensitivity could only be compared with finite differences. Terzaghi&#39;s column does have one, and its derivative with respect to a material parameter is therefore <em>known</em> — which turns the comparison from &quot;two numerical methods agree&quot; into a verification.</p><p>The analytical excess pore pressure is</p><p class="math-container">\[\frac{p(Z,T)}{p_0} = \sum_{n\ge 0}\frac{2}{M_n}\sin(M_n Z)\,e^{-M_n^2 T},
+\qquad M_n = \tfrac{\pi}{2}(2n+1)\]</p><p>with <span>$Z$</span> the normalised depth and <span>$T = c\,t/H^2$</span>. The Biot coefficient enters twice, through the undrained pressure <span>$p_0 = F b/(M_o N + b^2)$</span> and through the consolidation coefficient <span>$c = (k/\mu_l)/(N + b^2/M_o)$</span>, and the two pull against each other. For this material <span>$M_o N \approx 1.1\times10^{-3}$</span> against <span>$b^2 = 1$</span>, so <span>$p_0 \approx F/b$</span> falls as <span>$b$</span> rises while <span>$c \approx (k/\mu_l)M_o/b^2$</span> falls with it, slowing the dissipation: a smaller starting pressure that decays more slowly. Which term wins at a given time is not something to settle by inspection — which is the point of being able to differentiate the code.</p><pre><code class="language-julia hljs">const H_col = 1.0        # column height [m]
+const W_col = 0.1        # width [m] — immaterial, the column is laterally confined
+const F_col = 1.0e4      # surface load [Pa]
+
+biot_material(θ) = BiotPoroelastic(;
+    E = 1.0e7, nu = 0.2, k = θ[3] * 1.0e-13, mu_l = 1.0e-3,
+    b = θ[1] * 1.0, N = θ[2] * 1.0e-10,
+)
+
+&quot;Analytical excess pore pressure at normalised depth `Z` and time `t`.&quot;
+function terzaghi_analytical(θ, Z, t; nterms = 400)
+    m = biot_material(θ)
+    p0 = F_col * m.b / (oedometric_modulus(m) * m.N + m.b^2)
+    T = consolidation_coefficient(m) * t / H_col^2
+    s = zero(T)
+    for n in 0:(nterms - 1)
+        Mn = (2n + 1) * π / 2
+        s += (2 / Mn) * sin(Mn * Z) * exp(-Mn^2 * T)
+    end
+    return p0 * s
+end
+
+&quot;Finite element excess pore pressure at mid-depth and time `t`, differentiable in θ.&quot;
+function terzaghi_numerical(θ, t; nely = 40, nsteps = 200, t_start_frac = 1.0e-3)
+    T = eltype(θ)
+    m = biot_material(θ)
+
+    grid = Ferrite.generate_grid(
+        Ferrite.Quadrilateral, (1, nely), Ferrite.Vec(0.0, 0.0), Ferrite.Vec(W_col, H_col)
+    )
+    ip_geo = Ferrite.Lagrange{Ferrite.RefQuadrilateral, 1}()
+    ip_u = ip_geo^2
+    dh = Ferrite.DofHandler(grid)
+    Ferrite.add!(dh, :u, ip_u)
+    Ferrite.add!(dh, :p, ip_geo)
+    Ferrite.close!(dh)
+
+    qr = Ferrite.QuadratureRule{Ferrite.RefQuadrilateral}(2)
+    cv_u = Ferrite.CellValues(qr, ip_u, ip_geo)
+    cv_p = Ferrite.CellValues(qr, ip_geo, ip_geo)
+    fv_u = Ferrite.FacetValues(
+        Ferrite.FacetQuadratureRule{Ferrite.RefQuadrilateral}(2), ip_u, ip_geo
+    )
+
+    ch = Ferrite.ConstraintHandler(dh)
+    Ferrite.add!(ch, Ferrite.Dirichlet(:p, Ferrite.getfacetset(grid, &quot;top&quot;), (x, t) -&gt; 0.0))
+    for (set, comp) in ((&quot;left&quot;, 1), (&quot;right&quot;, 1), (&quot;bottom&quot;, 2))
+        Ferrite.add!(
+            ch, Ferrite.Dirichlet(:u, Ferrite.getfacetset(grid, set), (x, t) -&gt; 0.0, [comp])
+        )
+    end
+    Ferrite.close!(ch)
+    Ferrite.update!(ch, 0.0)
+
+    # The sparsity pattern is geometry; only the numbers carry derivatives.
+    pattern() = convert(SparseMatrixCSC{T, Int}, Ferrite.allocate_matrix(dh))
+    K1, K2, A = pattern(), pattern(), pattern()
+    n_loc = Ferrite.ndofs_per_cell(dh)
+    ke1, ke2 = zeros(T, n_loc, n_loc), zeros(T, n_loc, n_loc)
+    as1, as2 = Ferrite.start_assemble(K1), Ferrite.start_assemble(K2)
+    for cell in Ferrite.CellIterator(dh)
+        Ferrite.reinit!(cv_u, cell)
+        Ferrite.reinit!(cv_p, cell)
+        biot_element_matrices!(ke1, ke2, m, cv_u, cv_p)
+        Ferrite.assemble!(as1, Ferrite.celldofs(cell), ke1)
+        Ferrite.assemble!(as2, Ferrite.celldofs(cell), ke2)
+    end
+
+    # Surface traction, assembled here rather than through `facet_load!` so that this page
+    # does not define a method the Terzaghi validation page also defines.
+    f_ext = zeros(T, Ferrite.ndofs(dh))
+    u_range = Ferrite.dof_range(dh, :u)
+    fe_u = zeros(T, Ferrite.getnbasefunctions(fv_u))
+    for facet in Ferrite.FacetIterator(dh, Ferrite.getfacetset(grid, &quot;top&quot;))
+        fill!(fe_u, zero(T))
+        Ferrite.reinit!(fv_u, facet)
+        for q in 1:Ferrite.getnquadpoints(fv_u)
+            dΓ = Ferrite.getdetJdV(fv_u, q)
+            traction = Ferrite.Vec{2}((0.0, -F_col))
+            for i in 1:Ferrite.getnbasefunctions(fv_u)
+                fe_u[i] += (Ferrite.shape_value(fv_u, q, i) ⋅ traction) * dΓ
+            end
+        end
+        dofs = Ferrite.celldofs(facet)
+        for (i, d) in enumerate(u_range)
+            f_ext[dofs[d]] += fe_u[i]
+        end
+    end
+
+    # One short step captures the undrained response, then uniform steps. The uniform part
+    # reuses a single factorisation: the problem is linear and Δt is constant, so the
+    # matrix does not change — which is what makes differentiating 200 steps affordable.
+    x = zeros(T, Ferrite.ndofs(dh))
+    Ferrite.apply!(x, ch)
+    t0 = t_start_frac * t
+    dt = (t - t0) / nsteps
+
+    function step!(x, Δt, fact)
+        rhs = copy(f_ext)
+        mul!(rhs, K2, x, 1 / Δt, one(T))
+        if fact === nothing
+            combine!(A, K1, K2, 1 / Δt)
+            Ferrite.apply!(A, rhs, ch)
+            return lu(Matrix(A)) \ rhs, lu(Matrix(A))
+        end
+        Ferrite.apply!(A, rhs, ch)
+        return fact \ rhs, fact
+    end
+
+    x, _ = step!(x, t0, nothing)
+    combine!(A, K1, K2, 1 / dt)
+    A_ref = copy(A)
+    Ferrite.apply!(A_ref, zeros(T, Ferrite.ndofs(dh)), ch)
+    fact = lu(Matrix(A_ref))
+    for _ in 1:nsteps
+        x, fact = step!(x, dt, fact)
+    end
+
+    # Mid-depth pressure
+    p_dof = node_dof_maps(dh, grid, :p).p
+    ys = [node.x[2] for node in grid.nodes]
+    i_mid = argmin(abs.(ys .- H_col / 2))
+    return x[p_dof[i_mid]]
+end
+
+θ_biot = ones(3)
+biot_names = (&quot;b&quot;, &quot;N&quot;, &quot;k&quot;)
+t_probe = 0.1 * H_col^2 / consolidation_coefficient(biot_material(θ_biot))
+
+grad_biot_num = ForwardDiff.gradient(θ -&gt; terzaghi_numerical(θ, t_probe), θ_biot)
+grad_biot_ana = ForwardDiff.gradient(θ -&gt; terzaghi_analytical(θ, 0.5, t_probe), θ_biot)
+
+@printf(
+    &quot;p at mid-depth, T = 0.1:  finite elements %.4f kPa,  closed form %.4f kPa\n\n&quot;,
+    terzaghi_numerical(θ_biot, t_probe) / 1.0e3,
+    terzaghi_analytical(θ_biot, 0.5, t_probe) / 1.0e3
+)
+println(&quot;  parameter   ∂p/∂θ finite elements   ∂p/∂θ closed form      relative gap&quot;)
+for i in eachindex(θ_biot)
+    @printf(
+        &quot;  %-9s   %+.6e         %+.6e      %.2e\n&quot;, biot_names[i],
+        grad_biot_num[i], grad_biot_ana[i],
+        abs(grad_biot_num[i] - grad_biot_ana[i]) / abs(grad_biot_ana[i])
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">p at mid-depth, T = 0.1:  finite elements 7.3536 kPa,  closed form 7.3483 kPa
+
+  parameter   ∂p/∂θ finite elements   ∂p/∂θ closed form      relative gap
+  b           -2.479659e+03         -2.471469e+03      3.31e-03
+  N           -5.463256e+00         -5.455454e+00      1.43e-03
+  k           -2.431519e+03         -2.432984e+03      6.02e-04</code></pre><p>At <span>$T = 0.1$</span> the initial-pressure term wins and <span>$\partial p/\partial b$</span> is negative.</p><p>The gap against the closed form is a few parts in a thousand, the same order as the error in the pressure itself. Refining the discretisation shows it is exactly that:</p><pre><code class="language-julia hljs">println(&quot;  nely  nsteps    error in p     error in ∂p/∂b&quot;)
+for (ne, ns) in ((20, 100), (40, 200), (80, 400))
+    g = ForwardDiff.gradient(θ -&gt; terzaghi_numerical(θ, t_probe; nely = ne, nsteps = ns), θ_biot)
+    pn = terzaghi_numerical(θ_biot, t_probe; nely = ne, nsteps = ns)
+    pa = terzaghi_analytical(θ_biot, 0.5, t_probe)
+    @printf(
+        &quot;  %4d  %6d    %.3e      %.3e\n&quot;, ne, ns,
+        abs(pn - pa) / abs(pa), abs(g[1] - grad_biot_ana[1]) / abs(grad_biot_ana[1])
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  nely  nsteps    error in p     error in ∂p/∂b
+    20     100    1.593e-03      5.372e-03
+    40     200    7.179e-04      3.314e-03
+    80     400    3.396e-04      1.813e-03</code></pre><p>Both halve as the mesh and the step are halved. The sensitivity inherits the convergence of the scheme rather than adding an error of its own — which is precisely what a finite-difference sensitivity cannot promise, since its own step size introduces a second error that has nothing to do with the discretisation and no reason to shrink with it.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../parameter_identification/">« Parameter identification</a><a class="docs-footer-nextpage" href="../../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 28 August 2026 09:57">Friday 28 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

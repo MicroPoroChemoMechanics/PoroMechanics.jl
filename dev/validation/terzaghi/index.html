@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Terzaghi consolidation · PoroMechanics.jl</title><meta name="title" content="Terzaghi consolidation · PoroMechanics.jl"/><meta property="og:title" content="Terzaghi consolidation · PoroMechanics.jl"/><meta property="twitter:title" content="Terzaghi consolidation · PoroMechanics.jl"/><meta name="description" content="Documentation for PoroMechanics.jl."/><meta property="og:description" content="Documentation for PoroMechanics.jl."/><meta property="twitter:description" content="Documentation for PoroMechanics.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/validation/terzaghi/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/validation/terzaghi/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/validation/terzaghi/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/documentercitations/citations-hover.css" rel="stylesheet" type="text/css"/><link href="../../assets/documentercitations/citations.css" rel="stylesheet" type="text/css"/><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercitations/citations-data.js"></script><script src="../../assets/documentercitations/citations-hover.js"></script><script src="../../assets/documentercitations/citations-backlinks.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="PoroMechanics.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">PoroMechanics.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><label class="tocitem" for="menuitem-3"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/fickian_diffusion/">Fickian diffusion 1D</a></li><li><a class="tocitem" href="../../examples/darcy_column/">Darcy column</a></li><li><a class="tocitem" href="../../examples/richards_1d/">Richards 1D</a></li><li><a class="tocitem" href="../../examples/nonisothermal_drying/">Non-isothermal drying</a></li><li><a class="tocitem" href="../../examples/biot_consolidation/">Biot consolidation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox" checked/><label class="tocitem" for="menuitem-4"><span class="docs-label">Validation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li class="is-active"><a class="tocitem" href>Terzaghi consolidation</a><ul class="internal"><li><a class="tocitem" href="#Problem"><span>Problem</span></a></li><li><a class="tocitem" href="#Reference-solution"><span>Reference solution</span></a></li><li><a class="tocitem" href="#Model"><span>Model</span></a></li><li><a class="tocitem" href="#Reference-series"><span>Reference series</span></a></li><li><a class="tocitem" href="#Solving"><span>Solving</span></a></li><li><a class="tocitem" href="#Comparison-with-the-reference-solution"><span>Comparison with the reference solution</span></a></li><li><a class="tocitem" href="#Notes"><span>Notes</span></a></li></ul></li><li><a class="tocitem" href="../mandel/">Mandel&#39;s problem</a></li><li><a class="tocitem" href="../cryer/">Cryer&#39;s sphere</a></li><li><a class="tocitem" href="../deleeuw/">De Leeuw&#39;s cylinder</a></li><li><a class="tocitem" href="../gardner_infiltration/">Gardner infiltration</a></li><li><a class="tocitem" href="../gardner_transient/">Transient drainage</a></li><li><a class="tocitem" href="../bbm_bil/">BBM — Bil reference cases</a></li></ul></li><li><a class="tocitem" href="../../demos/writing_a_model/">Writing a model</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox"/><label class="tocitem" for="menuitem-6"><span class="docs-label">Differentiability</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../demos/parameter_identification/">Parameter identification</a></li><li><a class="tocitem" href="../../demos/solver_sensitivity/">Differentiating a solve</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Validation</a></li><li class="is-active"><a href>Terzaghi consolidation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Terzaghi consolidation</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/benchmarks/terzaghi.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Terzaghi-1D-Consolidation"><a class="docs-heading-anchor" href="#Terzaghi-1D-Consolidation">Terzaghi 1D Consolidation</a><a id="Terzaghi-1D-Consolidation-1"></a><a class="docs-heading-anchor-permalink" href="#Terzaghi-1D-Consolidation" title="Permalink"></a></h1><p>The canonical verification of a poroelastic solver: a saturated column, laterally confined, drained at the top, loaded instantaneously. Terzaghi&#39;s closed-form series gives the excess pore pressure at every depth and time, so the numerical solution can be checked against an exact answer rather than against another code (<a href="../../references/#terzaghi1943" id="terzaghi1943-cite-1">Terzaghi, 1943</a>).</p><h2 id="Problem"><a class="docs-heading-anchor" href="#Problem">Problem</a><a id="Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Problem" title="Permalink"></a></h2><p>A column of height <span>$H$</span>, confined laterally (<span>$u_x = 0$</span> on the sides), resting on a rigid impermeable base (<span>$u_y = 0$</span>, no flow), drained at the top (<span>$p = 0$</span>) where a constant surface load <span>$F$</span> is applied at <span>$t = 0$</span>.</p><p>The one-dimensional Biot equations reduce to</p><p class="math-container">\[\sigma = M_o \varepsilon - b\,p, \qquad
+\frac{\partial}{\partial t}\left(N p + b \varepsilon\right)
+  = \frac{k}{\mu_l}\frac{\partial^2 p}{\partial z^2}\]</p><p>with <span>$M_o = \lambda + 2\mu$</span> the oedometric modulus and <span>$\varepsilon = \partial u/\partial z$</span>. Vertical equilibrium makes <span>$\sigma$</span> uniform and equal to <span>$-F$</span> at all times, so <span>$\varepsilon$</span> can be eliminated, leaving a diffusion equation for the pressure alone.</p><h2 id="Reference-solution"><a class="docs-heading-anchor" href="#Reference-solution">Reference solution</a><a id="Reference-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Reference-solution" title="Permalink"></a></h2><p>With <span>$Z = (H - y)/H$</span> the depth measured <strong>from the drained surface</strong> and <span>$T = c_v t / H^2$</span> the dimensionless time,</p><p class="math-container">\[\frac{p(Z, T)}{p_0} = \sum_{m=0}^{\infty}
+  \frac{4}{(2m+1)\pi}\,
+  \sin\!\left(\frac{(2m+1)\pi Z}{2}\right)
+  \exp\!\left(-\left(\frac{(2m+1)\pi}{2}\right)^{2} T\right)\]</p><p>The two constants follow from the equations above — the consolidation coefficient from eliminating <span>$\varepsilon$</span>, and the initial pressure from the undrained limit <span>$N p + b\varepsilon = 0$</span> at <span>$t = 0^+$</span>:</p><p class="math-container">\[c_v = \frac{k/\mu_l}{N + b^2/M_o}, \qquad
+p_0 = \frac{F\,b}{M_o N + b^2}\]</p><p>At <span>$T = 0$</span> the series is the Fourier expansion of a square wave and returns 1 everywhere, as it must.</p><pre><code class="language-julia hljs">include(&quot;biot_common.jl&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.uniform_schedule</code></pre><h2 id="Model"><a class="docs-heading-anchor" href="#Model">Model</a><a id="Model-1"></a><a class="docs-heading-anchor-permalink" href="#Model" title="Permalink"></a></h2><p>The material is the shared <code>HomogeneousBiot</code> of <code>benchmarks/biot_common.jl</code>; the geometry and the load belong to this benchmark.</p><pre><code class="language-julia hljs">const TERZAGHI_MATERIAL = HomogeneousBiot(;
+    E = 1.0e7, nu = 0.2, k = 1.0e-13, mu_l = 1.0e-3, b = 1.0, N = 1.0e-10,
+)
+
+const H = 1.0        # column height [m]
+const W = 0.1        # column width [m] — immaterial, the column is laterally confined
+const F_LOAD = 1.0e4 # surface load [Pa]
+
+&quot;&quot;&quot;Initial (undrained) excess pore pressure ``p_0 = F b / (M_o N + b^2)`` [Pa].&quot;&quot;&quot;
+initial_pressure(m::HomogeneousBiot, F = F_LOAD) =
+    F * m.b / (oedometric_modulus(m) * m.N + m.b^2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.initial_pressure</code></pre><h2 id="Reference-series"><a class="docs-heading-anchor" href="#Reference-series">Reference series</a><a id="Reference-series-1"></a><a class="docs-heading-anchor-permalink" href="#Reference-series" title="Permalink"></a></h2><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    terzaghi_pressure(Z, T; nterms = 400)
+
+Excess pore pressure `p/p₀` at normalised depth `Z = (H-y)/H` below the drained surface
+and dimensionless time `T = c_v t / H²`.
+
+The series converges slowly for small `T` — the terms decay like `exp(-(2m+1)²π²T/4)` — so
+`nterms` is generous by default; the summation cost is negligible next to the solve.
+&quot;&quot;&quot;
+function terzaghi_pressure(Z, T; nterms = 400)
+    T &lt;= 0 &amp;&amp; return 1.0
+    s = 0.0
+    for m in 0:(nterms - 1)
+        a = (2m + 1) * π / 2
+        s += (2 / a) * sin(a * Z) * exp(-a^2 * T)
+    end
+    return s
+end
+
+&quot;&quot;&quot;Downward traction `-F_LOAD` on the loaded top facet.&quot;&quot;&quot;
+function PoroMechanics.facet_load!(fe, facet, m::HomogeneousBiot, fv_u)
+    fill!(fe, 0.0)
+    reinit!(fv_u, facet)
+    for q in 1:getnquadpoints(fv_u)
+        dΓ = getdetJdV(fv_u, q)
+        traction = Vec{2}((0.0, -F_LOAD))
+        for i in 1:getnbasefunctions(fv_u)
+            fe[i] += (shape_value(fv_u, q, i) ⋅ traction) * dΓ
+        end
+    end
+    return nothing
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">PoroMechanics.facet_load!</code></pre><h2 id="Solving"><a class="docs-heading-anchor" href="#Solving">Solving</a><a id="Solving-1"></a><a class="docs-heading-anchor-permalink" href="#Solving" title="Permalink"></a></h2><p>One short step to <code>T_start</code> captures the undrained response — the load produces <span>$p_0$</span> instantaneously, and a first step that is too long would already have dissipated part of it. The rest is marched with a uniform <span>$\Delta T$</span>. Backward Euler is first order in time, so it is <span>$\Delta T$</span> itself, not the number of steps, that sets the temporal error; it has to be small enough not to mask the spatial error being measured.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    run_terzaghi(; m, nely, T_probe, T_start)
+
+Solve the column and return `(m, y, times, pressures)` where `pressures[i]` is the
+pressure profile sampled at the nodes of `y` at dimensionless time `T_probe[i]`.
+&quot;&quot;&quot;
+function run_terzaghi(;
+        m = TERZAGHI_MATERIAL,
+        nely = 60,
+        T_probe = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0],
+        T_start = 1.0e-4,
+        dT = 2.5e-4,
+    )
+    c_v = consolidation_coefficient(m)
+    t_of_T(T) = T * H^2 / c_v
+
+    grid = generate_grid(Quadrilateral, (1, nely), Vec(0.0, 0.0), Vec(W, H))
+
+    ip_geo = Lagrange{RefQuadrilateral, 1}()
+    ip_u = Lagrange{RefQuadrilateral, 1}()^2
+    ip_p = Lagrange{RefQuadrilateral, 1}()
+
+    dh = DofHandler(grid)
+    add!(dh, :u, ip_u)
+    add!(dh, :p, ip_p)
+    close!(dh)
+
+    qr = QuadratureRule{RefQuadrilateral}(2)
+    qr_fac = FacetQuadratureRule{RefQuadrilateral}(2)
+    cv_u = CellValues(qr, ip_u, ip_geo)
+    cv_p = CellValues(qr, ip_p, ip_geo)
+    fv_u = FacetValues(qr_fac, ip_u, ip_geo)
+
+    # Drained top, rollers on the sides, clamped base.
+    ch = ConstraintHandler(dh)
+    add!(ch, Dirichlet(:p, getfacetset(grid, &quot;top&quot;), (x, t) -&gt; 0.0))
+    add!(ch, Dirichlet(:u, getfacetset(grid, &quot;left&quot;), (x, t) -&gt; 0.0, [1]))
+    add!(ch, Dirichlet(:u, getfacetset(grid, &quot;right&quot;), (x, t) -&gt; 0.0, [1]))
+    add!(ch, Dirichlet(:u, getfacetset(grid, &quot;bottom&quot;), (x, t) -&gt; 0.0, [2]))
+    close!(ch)
+    update!(ch, 0.0)
+
+    n_loc = ndofs_per_cell(dh)
+    K1 = allocate_matrix(dh)
+    K2 = allocate_matrix(dh)
+    A = allocate_matrix(dh)
+    as1 = start_assemble(K1)
+    as2 = start_assemble(K2)
+    ke1 = zeros(n_loc, n_loc)
+    ke2 = zeros(n_loc, n_loc)
+
+    for cell in CellIterator(dh)
+        reinit!(cv_u, cell)
+        reinit!(cv_p, cell)
+        biot_element_matrices!(ke1, ke2, m, cv_u, cv_p)
+        assemble!(as1, celldofs(cell), ke1)
+        assemble!(as2, celldofs(cell), ke2)
+    end
+
+    # Surface load on the top facet
+    f_ext = zeros(ndofs(dh))
+    u_range = dof_range(dh, :u)
+    fe_u = zeros(getnbasefunctions(fv_u))
+    for facet in FacetIterator(dh, getfacetset(grid, &quot;top&quot;))
+        PoroMechanics.facet_load!(fe_u, facet, m, fv_u)
+        dofs = celldofs(facet)
+        for (i, d) in enumerate(u_range)
+            f_ext[dofs[d]] += fe_u[i]
+        end
+    end
+
+    coords = [node.x for node in grid.nodes]
+    y = [c[2] for c in coords]
+    p_dof = node_dof_maps(dh, grid, :p).p
+
+    # One short step to T_start captures the undrained response, then uniform steps.
+    # Backward Euler is first order in time, so ΔT — not the number of steps — sets the
+    # temporal error; it must be small enough not to mask the spatial error.
+    schedule = uniform_schedule(T_probe; T_start = T_start, dT = dT)
+
+    x = zeros(ndofs(dh))
+    apply!(x, ch)
+
+    pressures = Vector{Vector{Float64}}()
+    probes_left = sort(T_probe)
+    t_prev = 0.0
+    for T in schedule
+        t = t_of_T(T)
+        dt = t - t_prev
+        combine!(A, K1, K2, 1.0 / dt)
+        rhs = copy(f_ext)
+        mul!(rhs, K2, x, 1.0 / dt, 1.0)
+        apply!(A, rhs, ch)
+        x = A \ rhs
+        t_prev = t
+
+        if !isempty(probes_left) &amp;&amp; isapprox(T, probes_left[1]; rtol = 1.0e-9)
+            push!(pressures, [x[p_dof[i]] for i in 1:getnnodes(grid)])
+            popfirst!(probes_left)
+        end
+    end
+
+    return m, y, sort(T_probe), pressures
+end
+
+model, y, T_probe, p_num = run_terzaghi()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(BiotPoroelastic{Float64}(1.0e7, 0.2, 1.0e-13, 0.001, 1.0, 1.0e-10), [0.0, 0.0, 0.016666666666666663, 0.016666666666666663, 0.033333333333333326, 0.033333333333333326, 0.04999999999999999, 0.04999999999999999, 0.06666666666666665, 0.06666666666666665  …  0.9333333333333333, 0.9333333333333333, 0.95, 0.95, 0.9666666666666667, 0.9666666666666667, 0.9833333333333333, 0.9833333333333333, 1.0, 1.0], [0.01, 0.05, 0.1, 0.2, 0.5, 1.0], [[9988.90122005774, 9988.901220057747, 9988.901219882522, 9988.901219882528, 9988.901219285675, 9988.901219285692, 9988.901218026862, 9988.901218026886, 9988.901215606988, 9988.901215607018  …  3648.4254278099293, 3648.4254278099443, 2781.166539557627, 2781.1665395576288, 1876.0265483994974, 1876.0265483994929, 944.7028140404528, 944.7028140404603, 0.0, 0.0], [9956.858101611622, 9956.85810161165, 9956.38441014636, 9956.384410146396, 9954.954241717302, 9954.95424171734, 9952.540259568503, 9952.540259568526, 9949.096721780948, 9949.096721780972  …  1670.520040776771, 1670.520040776719, 1256.9606982453065, 1256.9606982452647, 839.921997075743, 839.9219970757038, 420.54742486431303, 420.5474248642909, 0.0, 0.0], [9482.05060962688, 9482.050609626905, 9480.023274873956, 9480.02327487398, 9473.93561593261, 9473.935615932634, 9463.770707768985, 9463.770707769, 9449.500471935089, 9449.500471935102  …  1184.5462717256526, 1184.5462717257678, 889.8538889204765, 889.8538889205718, 593.9253425836937, 593.9253425836841, 297.1698390454732, 297.1698390454344, 0.0, 0.0], [7715.734589656517, 7715.734589656521, 7713.22854402918, 7713.228544029192, 7705.711275262615, 7705.711275262627, 7693.185392326762, 7693.185392326772, 7675.655258881934, 7675.655258881942  …  827.3530920732672, 827.3530920736323, 621.086990544859, 621.0869905451149, 414.33070214584706, 414.33070214593903, 207.24721284607486, 207.2472128461085, 0.0, 0.0], [3704.9665137307506, 3704.9665137307607, 3703.697092800964, 3703.6970928009787, 3699.8896989084183, 3699.8896989084365, 3693.5469381548314, 3693.5469381548487, 3684.673152081052, 3684.673152081078  …  387.3014062374995, 387.3014062378634, 290.7086486863471, 290.7086486866596, 193.91657058018367, 193.91657058045598, 96.99153587679466, 96.9915358768687, 0.0, 0.0], [1079.211561932252, 1079.2115619322883, 1078.8417430866307, 1078.8417430866675, 1077.7325400051143, 1077.7325400051511, 1075.884712880033, 1075.8847128800758, 1073.29952811972, 1073.2995281197598  …  112.80832652353267, 112.80832652318207, 84.6739635605254, 84.67396356036632, 56.48156929114351, 56.48156929115405, 28.250465374681273, 28.250465374697534, 0.0, 0.0]])</code></pre><h2 id="Comparison-with-the-reference-solution"><a class="docs-heading-anchor" href="#Comparison-with-the-reference-solution">Comparison with the reference solution</a><a id="Comparison-with-the-reference-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Comparison-with-the-reference-solution" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Plots
+
+p0 = initial_pressure(model)
+c_v = consolidation_coefficient(model)
+
+@printf(&quot;Oedometric modulus M_o : %.4e Pa\n&quot;, oedometric_modulus(model))
+@printf(&quot;Consolidation coeff c_v: %.4e m²/s\n&quot;, c_v)
+@printf(&quot;Undrained pressure p₀  : %.4e Pa  (load F = %.1e Pa)\n&quot;, p0, F_LOAD)
+println()
+
+Z = (H .- y) ./ H
+
+&quot;&quot;&quot;Relative L2 error of a numerical profile against the reference series.&quot;&quot;&quot;
+function l2_error(pnum, T)
+    ref = [terzaghi_pressure(z, T) * p0 for z in Z]
+    return norm(pnum .- ref) / norm(ref)
+end
+
+println(&quot;      T     |  L2 error  |  L∞ error [Pa]&quot;)
+println(&quot;-&quot;^44)
+errors = Float64[]
+for (T, pn) in zip(T_probe, p_num)
+    ref = [terzaghi_pressure(z, T) * p0 for z in Z]
+    e2 = norm(pn .- ref) / norm(ref)
+    einf = maximum(abs.(pn .- ref))
+    push!(errors, e2)
+    @printf(&quot;  %8.4f  |  %.3e |  %10.3f\n&quot;, T, e2, einf)
+end
+println(&quot;-&quot;^44)
+@printf(&quot;worst relative L2 error: %.3e\n&quot;, maximum(errors))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Oedometric modulus M_o : 1.1111e+07 Pa
+Consolidation coeff c_v: 1.1099e-03 m²/s
+Undrained pressure p₀  : 9.9889e+03 Pa  (load F = 1.0e+04 Pa)
+
+      T     |  L2 error  |  L∞ error [Pa]
+--------------------------------------------
+    0.0100  |  1.240e-03 |      31.821
+    0.0500  |  4.275e-04 |       6.412
+    0.1000  |  2.765e-04 |       3.149
+    0.2000  |  2.162e-04 |       1.467
+    0.5000  |  3.533e-04 |       1.307
+    1.0000  |  5.929e-04 |       0.640
+--------------------------------------------
+worst relative L2 error: 1.240e-03</code></pre><h3 id="Convergence"><a class="docs-heading-anchor" href="#Convergence">Convergence</a><a id="Convergence-1"></a><a class="docs-heading-anchor-permalink" href="#Convergence" title="Permalink"></a></h3><p>A single error figure proves little — it could hide a compensating pair of mistakes. What a benchmark has to show is that the error goes to zero <em>at the expected rate</em>.</p><pre><code class="language-julia hljs">function worst_error(; nely, dT)
+    mm, yy, Tp, pn = run_terzaghi(; nely = nely, dT = dT)
+    q0 = initial_pressure(mm)
+    ZZ = (H .- yy) ./ H
+    return maximum(
+        let ref = [terzaghi_pressure(z, T) * q0 for z in ZZ]
+            norm(pv .- ref) / norm(ref)
+        end for (T, pv) in zip(Tp, pn)
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">worst_error (generic function with 1 method)</code></pre><p>Halving <span>$\Delta T$</span> halves the error: backward Euler is first order in time, and the measurement confirms it.</p><pre><code class="language-julia hljs">println(&quot;  ΔT        |  worst L2 error |  ratio&quot;)
+println(&quot;-&quot;^42)
+prev = NaN
+for dT in (2.0e-3, 1.0e-3, 5.0e-4, 2.5e-4)
+    e = worst_error(; nely = 60, dT = dT)
+    @printf(&quot;  %.2e  |    %.3e    |  %s\n&quot;, dT, e, isnan(prev) ? &quot;—&quot; : @sprintf(&quot;%.2f&quot;, prev / e))
+    global prev = e
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">  ΔT        |  worst L2 error |  ratio
+------------------------------------------
+  2.00e-03  |    9.871e-03    |  —
+  1.00e-03  |    4.996e-03    |  1.98
+  5.00e-04  |    2.494e-03    |  2.00
+  2.50e-04  |    1.240e-03    |  2.01</code></pre><p>Refining the mesh instead, at a fixed <span>$\Delta T$</span>, the error stops falling once the spatial contribution drops below the temporal floor — which is why the default configuration uses 60 elements and no more.</p><pre><code class="language-julia hljs">println(&quot;\n  elements  |  worst L2 error&quot;)
+println(&quot;-&quot;^32)
+for n in (15, 30, 60, 120)
+    @printf(&quot;  %8d  |    %.3e\n&quot;, n, worst_error(; nely = n, dT = 2.5e-4))
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+  elements  |  worst L2 error
+--------------------------------
+        15  |    5.072e-03
+        30  |    1.560e-03
+        60  |    1.240e-03
+       120  |    1.273e-03</code></pre><h3 id="Pressure-profiles"><a class="docs-heading-anchor" href="#Pressure-profiles">Pressure profiles</a><a id="Pressure-profiles-1"></a><a class="docs-heading-anchor-permalink" href="#Pressure-profiles" title="Permalink"></a></h3><p>Markers are the finite element solution, solid lines the Terzaghi series. The isochrones flatten as the pressure diffuses towards the drained surface at <span>$Z = 0$</span>.</p><pre><code class="language-julia hljs">plt = plot(;
+    xlabel = &quot;p / p₀  [-]&quot;,
+    ylabel = &quot;Z = (H − y) / H  [-]&quot;,
+    title = &quot;Terzaghi consolidation — numerical vs analytical&quot;,
+    yflip = true,
+    legend = :bottomleft,
+    size = (700, 460),
+)
+
+Zfine = range(0, 1; length = 400)
+order = sortperm(Z)
+palette = cgrad(:viridis, max(length(T_probe), 2); categorical = true)
+
+for (i, (T, pn)) in enumerate(zip(T_probe, p_num))
+    plot!(
+        plt, [terzaghi_pressure(z, T) for z in Zfine], Zfine;
+        color = palette[i], lw = 2, label = &quot;T = $T&quot;,
+    )
+    plot!(
+        plt, (pn ./ p0)[order], Z[order];
+        color = palette[i], seriestype = :scatter, ms = 3, mswidth = 0, label = &quot;&quot;,
+    )
+end
+plt</code></pre><img src="b4d3f1c1.svg" alt="Example block output"/><h2 id="Notes"><a class="docs-heading-anchor" href="#Notes">Notes</a><a id="Notes-1"></a><a class="docs-heading-anchor-permalink" href="#Notes" title="Permalink"></a></h2><ul><li><strong>Equal-order elements</strong> — <span>$u$</span> and <span>$p$</span> both P1. This is not inf-sup stable in general, but the Biot storage term <span>$N &gt; 0$</span> regularises the pressure block. The error is largest at the earliest probe time, where the pressure gradient at the drained surface is steepest and the mesh resolves it least well.</li><li><strong>The first step sets the initial condition</strong> — the column starts unloaded, and the load is applied over the first step. That step must be short enough that the column is still essentially undrained, so it produces <span>$p_0$</span> and not a partly dissipated pressure. Everything after it is marched with a uniform <span>$\Delta T$</span>.</li><li><strong>Series truncation</strong> — the reference sum converges slowly at small <span>$T$</span>; 400 terms keeps the truncation error far below the discretisation error being measured.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../examples/biot_consolidation/">« Biot consolidation</a><a class="docs-footer-nextpage" href="../mandel/">Mandel&#39;s problem »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 28 August 2026 09:57">Friday 28 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

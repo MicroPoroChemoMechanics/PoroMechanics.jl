@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Richards 1D · PoroMechanics.jl</title><meta name="title" content="Richards 1D · PoroMechanics.jl"/><meta property="og:title" content="Richards 1D · PoroMechanics.jl"/><meta property="twitter:title" content="Richards 1D · PoroMechanics.jl"/><meta name="description" content="Documentation for PoroMechanics.jl."/><meta property="og:description" content="Documentation for PoroMechanics.jl."/><meta property="twitter:description" content="Documentation for PoroMechanics.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/examples/richards_1d/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/examples/richards_1d/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/examples/richards_1d/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/documentercitations/citations-hover.css" rel="stylesheet" type="text/css"/><link href="../../assets/documentercitations/citations.css" rel="stylesheet" type="text/css"/><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercitations/citations-data.js"></script><script src="../../assets/documentercitations/citations-hover.js"></script><script src="../../assets/documentercitations/citations-backlinks.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="PoroMechanics.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">PoroMechanics.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox" checked/><label class="tocitem" for="menuitem-3"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../fickian_diffusion/">Fickian diffusion 1D</a></li><li><a class="tocitem" href="../darcy_column/">Darcy column</a></li><li class="is-active"><a class="tocitem" href>Richards 1D</a><ul class="internal"><li><a class="tocitem" href="#Physical-problem"><span>Physical problem</span></a></li><li><a class="tocitem" href="#Retention-curves"><span>Retention curves</span></a></li><li><a class="tocitem" href="#Parameters-(material-&quot;bo&quot;)"><span>Parameters (material &quot;bo&quot;)</span></a></li><li><a class="tocitem" href="#The-model"><span>The model</span></a></li><li><a class="tocitem" href="#Solving"><span>Solving</span></a></li><li><a class="tocitem" href="#Results"><span>Results</span></a></li><li><a class="tocitem" href="#Key-points"><span>Key points</span></a></li></ul></li><li><a class="tocitem" href="../nonisothermal_drying/">Non-isothermal drying</a></li><li><a class="tocitem" href="../biot_consolidation/">Biot consolidation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><label class="tocitem" for="menuitem-4"><span class="docs-label">Validation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../validation/terzaghi/">Terzaghi consolidation</a></li><li><a class="tocitem" href="../../validation/mandel/">Mandel&#39;s problem</a></li><li><a class="tocitem" href="../../validation/cryer/">Cryer&#39;s sphere</a></li><li><a class="tocitem" href="../../validation/deleeuw/">De Leeuw&#39;s cylinder</a></li><li><a class="tocitem" href="../../validation/gardner_infiltration/">Gardner infiltration</a></li><li><a class="tocitem" href="../../validation/gardner_transient/">Transient drainage</a></li><li><a class="tocitem" href="../../validation/bbm_bil/">BBM — Bil reference cases</a></li></ul></li><li><a class="tocitem" href="../../demos/writing_a_model/">Writing a model</a></li><li><input class="collapse-toggle" id="menuitem-6" type="checkbox"/><label class="tocitem" for="menuitem-6"><span class="docs-label">Differentiability</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../demos/parameter_identification/">Parameter identification</a></li><li><a class="tocitem" href="../../demos/solver_sensitivity/">Differentiating a solve</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Richards 1D</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Richards 1D</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/examples/richards_1d/run.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Richards-Equation-1D-—-Barrier-Imbibition"><a class="docs-heading-anchor" href="#Richards-Equation-1D-—-Barrier-Imbibition">Richards Equation 1D — Barrier Imbibition</a><a id="Richards-Equation-1D-—-Barrier-Imbibition-1"></a><a class="docs-heading-anchor-permalink" href="#Richards-Equation-1D-—-Barrier-Imbibition" title="Permalink"></a></h1><p>Progressive imbibition of an initially dry containment barrier, in the Van Genuchten / Mualem formulation, on <a href="https://github.com/j-fu/VoronoiFVM.jl">VoronoiFVM.jl</a>. The liquid pressure <span>$p_l$</span> [Pa] is the only unknown.</p><h2 id="Physical-problem"><a class="docs-heading-anchor" href="#Physical-problem">Physical problem</a><a id="Physical-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Physical-problem" title="Permalink"></a></h2><p class="math-container">\[\rho_l \phi \frac{\partial S_l(p_c)}{\partial t} + \nabla \cdot W_l = 0\]</p><p>with the unsaturated Darcy flux</p><p class="math-container">\[W_l = -K_l \nabla p_l + K_l \rho_l g, \qquad
+K_l = \frac{\rho_l k_\text{int} k_{rl}(p_c)}{\mu_l}\]</p><p>and the capillary pressure <span>$p_c = p_g - p_l$</span>.</p><table><tr><th style="text-align: right">Boundary</th><th style="text-align: right">Condition</th></tr><tr><td style="text-align: right"><span>$x = 0$</span> (left)</td><td style="text-align: right">Zero Neumann — impermeable</td></tr><tr><td style="text-align: right"><span>$x = L$</span> (right)</td><td style="text-align: right">Dirichlet <span>$p_l = p_g$</span> — full saturation imposed</td></tr></table><p>The initial condition is <span>$p_l = -7.611\,930 \times 10^7$</span> Pa throughout: a dry barrier.</p><h2 id="Retention-curves"><a class="docs-heading-anchor" href="#Retention-curves">Retention curves</a><a id="Retention-curves-1"></a><a class="docs-heading-anchor-permalink" href="#Retention-curves" title="Permalink"></a></h2><p>Liquid saturation, Van Genuchten:</p><p class="math-container">\[S_l(p_c) = \begin{cases}
+  1 &amp; p_c \leq 0 \\
+  \left(1 + \left(p_c / a_{S_l}\right)^n\right)^{-m_{S_l}} &amp; p_c &gt; 0
+\end{cases}, \qquad n = \frac{1}{1 - m_{S_l}}\]</p><p>Relative permeability, Mualem:</p><p class="math-container">\[k_{rl}(p_c) = \sqrt{S_e}
+  \left(1 - \left(1 - S_e^{1/m_{krl}}\right)^{m_{krl}}\right)^2, \qquad
+S_e = \left(1 + \left(p_c / a_{krl}\right)^n\right)^{-m_{krl}}\]</p><h2 id="Parameters-(material-&quot;bo&quot;)"><a class="docs-heading-anchor" href="#Parameters-(material-&quot;bo&quot;)">Parameters (material &quot;bo&quot;)</a><a id="Parameters-(material-&quot;bo&quot;)-1"></a><a class="docs-heading-anchor-permalink" href="#Parameters-(material-&quot;bo&quot;)" title="Permalink"></a></h2><table><tr><th style="text-align: right">Symbol</th><th style="text-align: right">Value</th><th style="text-align: right">Unit</th><th style="text-align: right">Description</th></tr><tr><td style="text-align: right"><span>$\phi$</span></td><td style="text-align: right"><span>$0.30$</span></td><td style="text-align: right">—</td><td style="text-align: right">Porosity</td></tr><tr><td style="text-align: right"><span>$\rho_l$</span></td><td style="text-align: right"><span>$10^3$</span></td><td style="text-align: right">kg/m³</td><td style="text-align: right">Liquid density</td></tr><tr><td style="text-align: right"><span>$k_\text{int}$</span></td><td style="text-align: right"><span>$10^{-20}$</span></td><td style="text-align: right">m²</td><td style="text-align: right">Intrinsic permeability</td></tr><tr><td style="text-align: right"><span>$\mu_l$</span></td><td style="text-align: right"><span>$10^{-3}$</span></td><td style="text-align: right">Pa·s</td><td style="text-align: right">Dynamic viscosity</td></tr><tr><td style="text-align: right"><span>$p_g$</span></td><td style="text-align: right"><span>$10^5$</span></td><td style="text-align: right">Pa</td><td style="text-align: right">Gas pressure</td></tr><tr><td style="text-align: right"><span>$a_{S_l}$</span></td><td style="text-align: right"><span>$1.5 \times 10^6$</span></td><td style="text-align: right">Pa</td><td style="text-align: right">Van Genuchten parameter (<span>$S_l$</span> curve)</td></tr><tr><td style="text-align: right"><span>$m_{S_l}$</span></td><td style="text-align: right"><span>$0.06$</span></td><td style="text-align: right">—</td><td style="text-align: right">Van Genuchten exponent (<span>$S_l$</span> curve)</td></tr><tr><td style="text-align: right"><span>$a_{krl}$</span></td><td style="text-align: right"><span>$3.0 \times 10^6$</span></td><td style="text-align: right">Pa</td><td style="text-align: right">Van Genuchten parameter (<span>$k_{rl}$</span> curve)</td></tr><tr><td style="text-align: right"><span>$m_{krl}$</span></td><td style="text-align: right"><span>$0.5$</span></td><td style="text-align: right">—</td><td style="text-align: right">Mualem exponent (<span>$k_{rl}$</span> curve)</td></tr></table><p>The case is horizontal, so <span>$g = 0$</span> and the physics is purely capillary.</p><pre><code class="language-julia hljs">using PoroMechanics
+using VoronoiFVM
+using ExtendableGrids
+using Printf</code></pre><h2 id="The-model"><a class="docs-heading-anchor" href="#The-model">The model</a><a id="The-model-1"></a><a class="docs-heading-anchor-permalink" href="#The-model" title="Permalink"></a></h2><p><a href="../../api/#PoroMechanics.RichardsModel"><code>RichardsModel</code></a> lives in the package, not in this script: the equation is the same whatever column it is solved on, and only the material data, the geometry and the boundary conditions belong here. That split is the whole point of having a library — the physics is written once, documented once, and differentiable once.</p><p>The retention and relative-permeability curves come from the constitutive layer. Both are type-stable for <code>ForwardDiff.Dual</code>, which <code>VoronoiFVM</code> needs for the Jacobian, and both carry their coefficients as type parameters, so a result can also be differentiated with respect to <code>retention.a</code> or <code>rel_perm.m</code>.</p><p>The imposed pressure is given as data — <code>dirichlet = ((2, p_g),)</code>, meaning &quot;impose <span>$p_g$</span> on boundary region 2&quot; — rather than written into a method, so the same model can be used with the boundary on the other side without editing anything.</p><pre><code class="language-julia hljs">richards_material(; p_g = 1.0e5) = RichardsModel(;
+    phi = 0.30,                       # porosity [-]
+    rho_l = 1.0e3,                    # liquid density [kg/m³]
+    k_int = 1.0e-20,                  # intrinsic permeability [m²]
+    mu_l = 1.0e-3,                    # dynamic viscosity [Pa·s]
+    p_g = p_g,                        # gas pressure [Pa]
+    gravity = 0.0,                    # horizontal column
+    retention = VanGenuchten(1.5e6, 0.06),
+    rel_perm = Mualem(3.0e6, 0.5),
+    dirichlet = ((2, p_g),),          # full saturation at x = L
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">richards_material (generic function with 1 method)</code></pre><h2 id="Solving"><a class="docs-heading-anchor" href="#Solving">Solving</a><a id="Solving-1"></a><a class="docs-heading-anchor-permalink" href="#Solving" title="Permalink"></a></h2><p>The permeability <span>$k_\text{int} = 10^{-20}$</span> m² makes this case extremely stiff: the characteristic times are decadal, yet the gradients near the front are steep.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    run_richards(; L, N, t_max_ans, verbose)
+
+- `t_max_ans` : simulated duration in years (10 for a quick test, 100 for the full run)
+- `verbose`   : print Newton iterations and time steps
+&quot;&quot;&quot;
+function run_richards(; L = 0.2, N = 101, t_max_ans = 10, verbose = false)
+    m = richards_material()
+
+    grid = simplexgrid(range(0.0, L; length = N))
+
+    sys = fvm_system(m, grid)
+
+    # Initial condition: p_l = −7.611930e7 Pa (dry state)
+    inival = unknowns(sys)
+    inival[1, :] .= -7.611930e7
+    inival[1, end] = m.p_g    # pre-apply the right-hand BC
+
+    an = 3.1536e7   # one year in seconds
+    t_max = t_max_ans * an
+
+    # Output times up to t_max
+    all_saves = [0.0, 1an, 2an, 4an, 6an, 8an, 10an, 20an, 40an, 50an, 100an]
+    tsave = filter(t -&gt; t ≤ t_max + 1.0, all_saves)
+    tsave[end] != t_max &amp;&amp; push!(tsave, t_max)
+
+    ctrl = VoronoiFVM.SolverControl(;
+        Δt = 1.0e6,
+        Δt_max = an,
+        Δt_min = 1.0,
+        # The total range of p_l is ~7.7e7 Pa.
+        # Δu_opt = 1e5 Pa means 0.13 % variation per step → far too restrictive
+        # (27 000+ steps for 10 years). 1e6 Pa ≈ 1.3 % stays accurate and cuts
+        # the step count by a factor of ~10.
+        Δu_opt = 1.0e6,
+        reltol = 1.0e-4,
+        abstol = 1.0e-8,
+        verbose = verbose,
+    )
+
+    tsol = solve(sys; inival, times = tsave, control = ctrl)
+
+    return tsol, grid, m, tsave, an
+end
+
+tsol, grid, model, tsave, an = run_richards()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">([-7.61193e7 -7.61193e7 … -7.61193e7 100000.0;;; -7.61193e7 -7.61193e7 … -7.544217414151426e7 100000.0;;; -7.61193e7 -7.61193e7 … -7.460678802681065e7 100000.0;;; … ;;; -7.61193e7 -7.61193e7 … 93342.70855563146 100000.0;;; -7.61193e7 -7.61193e7 … 93331.7571265825 100000.0;;; -7.61193e7 -7.61193e7 … 93393.01972750867 100000.0], ExtendableGrids.ExtendableGrid{Float64, Int32}(dim=1, nnodes=101, ncells=100, nbfaces=2), RichardsModel{Float64, VanGenuchten{Float64}, Mualem{Float64}, Tuple{Tuple{Int64, Float64}}}(0.3, 1000.0, 1.0e-20, 0.001, 100000.0, 0.0, VanGenuchten{Float64}(1.5e6, 1.0638297872340425, 0.06), Mualem{Float64}(3.0e6, 0.5), ((2, 100000.0),)), [0.0, 3.1536e7, 6.3072e7, 1.26144e8, 1.89216e8, 2.52288e8, 3.1536e8], 3.1536e7)</code></pre><h2 id="Results"><a class="docs-heading-anchor" href="#Results">Results</a><a id="Results-1"></a><a class="docs-heading-anchor-permalink" href="#Results" title="Permalink"></a></h2><pre><code class="language-julia hljs">using Plots
+
+xcoords = grid[Coordinates][1, :]
+nn = length(xcoords)
+
+sat_at(i, it) = liquid_saturation(model, model.p_g - tsol[1, i, it])
+
+&quot;&quot;&quot;Column water content ∫ φ S_l dx [m], by the trapezoidal rule.&quot;&quot;&quot;
+function water_content(it)
+    return model.phi * sum(
+        (sat_at(i, it) + sat_at(i + 1, it)) / 2 *
+            (xcoords[i + 1] - xcoords[i]) for i in 1:(nn - 1)
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Main.water_content</code></pre><p>The wetting front is the leftmost node whose saturation has risen appreciably above the initial value. Water enters at the saturated boundary <span>$x = L$</span>, so the front travels right to left and its position decreases with time.</p><pre><code class="language-julia hljs">function front_position(it; δ = 1.0e-3)
+    sl_dry = sat_at(1, 1)
+    i = findfirst(i -&gt; sat_at(i, it) &gt; sl_dry + δ, 1:nn)
+    return i === nothing ? xcoords[end] : xcoords[i]
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">front_position (generic function with 1 method)</code></pre><h3 id="Front-progression"><a class="docs-heading-anchor" href="#Front-progression">Front progression</a><a id="Front-progression-1"></a><a class="docs-heading-anchor-permalink" href="#Front-progression" title="Permalink"></a></h3><pre><code class="language-julia hljs">i_probe = round(Int, 0.9 * (nn - 1)) + 1   # a node the front does reach
+
+@printf(&quot;t [years]      | front x [m] | water content [m] | S_l[x=%.2f m]\n&quot;, xcoords[i_probe])
+println(&quot;-&quot;^72)
+for t_s in tsave
+    it = argmin(abs.(tsol.t .- t_s))
+    @printf(
+        &quot;%-14.4f | %11.4f | %17.6e | %.6f\n&quot;,
+        tsol.t[it] / an, front_position(it), water_content(it), sat_at(i_probe, it)
+    )
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">t [years]      | front x [m] | water content [m] | S_l[x=0.18 m]
+------------------------------------------------------------------------
+0.0000         |      0.2000 |      4.671799e-02 | 0.777521
+1.0000         |      0.1920 |      4.713982e-02 | 0.777521
+2.0000         |      0.1840 |      4.766841e-02 | 0.777521
+4.0000         |      0.1680 |      4.872980e-02 | 0.999823
+6.0000         |      0.1520 |      4.979170e-02 | 0.999785
+8.0000         |      0.1360 |      5.083064e-02 | 0.998884
+10.0000        |      0.1200 |      5.183032e-02 | 0.997843</code></pre><h3 id="Physical-check"><a class="docs-heading-anchor" href="#Physical-check">Physical check</a><a id="Physical-check-1"></a><a class="docs-heading-anchor-permalink" href="#Physical-check" title="Permalink"></a></h3><p>The natural measure of imbibition is the water the column has taken up — not the pressure at mid-column, which stays at its initial value simply because the front has not travelled that far in ten years.</p><pre><code class="language-julia hljs">it_end = length(tsol.t)
+w_ini, w_fin = water_content(1), water_content(it_end)
+x_front = front_position(it_end)
+
+@printf(&quot;water content : %.6e → %.6e m  (%+.2f %%)\n&quot;, w_ini, w_fin, 100 * (w_fin / w_ini - 1))
+@printf(&quot;wetting front : x = %.4f m after %.1f years\n&quot;, x_front, tsol.t[it_end] / an)
+if w_fin &gt; w_ini
+    println(&quot;✓ the column took up water (imbibition confirmed)&quot;)
+else
+    println(&quot;✗ WARNING: no water uptake&quot;)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">water content : 4.671799e-02 → 5.183032e-02 m  (+10.94 %)
+wetting front : x = 0.1200 m after 10.0 years
+✓ the column took up water (imbibition confirmed)</code></pre><h3 id="Saturation-profiles"><a class="docs-heading-anchor" href="#Saturation-profiles">Saturation profiles</a><a id="Saturation-profiles-1"></a><a class="docs-heading-anchor-permalink" href="#Saturation-profiles" title="Permalink"></a></h3><pre><code class="language-julia hljs">p = plot(;
+    xlabel = &quot;Position x [m]&quot;,
+    ylabel = &quot;Liquid saturation S_l [-]&quot;,
+    title = &quot;Richards 1D — imbibition front&quot;,
+    legend = :topleft,
+    size = (700, 420),
+)
+
+for t_s in tsave
+    it = argmin(abs.(tsol.t .- t_s))
+    plot!(
+        p, xcoords, [sat_at(i, it) for i in 1:nn];
+        label = &quot;t = $(round(tsol.t[it] / an; digits = 1)) yr&quot;,
+    )
+end
+p</code></pre><img src="6b9d7444.svg" alt="Example block output"/><h2 id="Key-points"><a class="docs-heading-anchor" href="#Key-points">Key points</a><a id="Key-points-1"></a><a class="docs-heading-anchor-permalink" href="#Key-points" title="Permalink"></a></h2><ul><li><strong>Extreme stiffness</strong> — <span>$k_\text{int} = 10^{-20}$</span> m² imposes decadal characteristic times, yet very steep local gradients near the front.</li><li><strong>ForwardDiff type-stability</strong> — essential in <code>_Sl</code> and <code>_krl</code>: use <code>zero(pc)</code> in the early returns, and guard <code>sqrt(Se)</code> against zero.</li><li><strong><code>Δu_opt</code></strong> — set to about 1 % of the range of the unknown. Anything more restrictive multiplies the step count for no accuracy gain.</li><li><strong>No gravity</strong> — the case is horizontal, which isolates the capillary physics.</li></ul></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../darcy_column/">« Darcy column</a><a class="docs-footer-nextpage" href="../nonisothermal_drying/">Non-isothermal drying »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 28 August 2026 09:57">Friday 28 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
