@@ -118,4 +118,25 @@ end
     ## This is the check that differentiability reaches past the constitutive layer.
     @test eltype(S.grad_fe) === Float64
     @test S.mobilised_stress(ones(3)) ≈ 112.4039e3 rtol = 1.0e-5
+
+    ## Coupled poroelasticity, verified against the derivative of Terzaghi's closed form
+    ## rather than against another numerical method.
+    for i in 1:3
+        @test S.grad_biot_num[i] ≈ S.grad_biot_ana[i] rtol = 5.0e-3
+    end
+    @test S.grad_biot_num[1] < 0        # at T = 0.1 the p₀ term wins over the slower decay
+
+    ## The sensitivity is as accurate as the solution: refining halves both errors.
+    errs_p, errs_g = Float64[], Float64[]
+    pa = S.terzaghi_analytical(ones(3), 0.5, S.t_probe)
+    for (ne, ns) in ((20, 100), (40, 200), (80, 400))
+        g = ForwardDiff.gradient(
+            θ -> S.terzaghi_numerical(θ, S.t_probe; nely = ne, nsteps = ns), ones(3)
+        )
+        push!(errs_p, abs(S.terzaghi_numerical(ones(3), S.t_probe; nely = ne, nsteps = ns) - pa) / abs(pa))
+        push!(errs_g, abs(g[1] - S.grad_biot_ana[1]) / abs(S.grad_biot_ana[1]))
+    end
+    @test issorted(errs_p; rev = true)
+    @test issorted(errs_g; rev = true)
+    @test errs_g[1] / errs_g[3] > 2.5
 end

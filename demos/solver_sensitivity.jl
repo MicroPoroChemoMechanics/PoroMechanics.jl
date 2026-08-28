@@ -18,6 +18,7 @@ using VoronoiFVM
 using ExtendableGrids
 using ForwardDiff
 using SparseArrays
+using LinearAlgebra
 using Printf
 
 # ## Finite volumes, steady state
@@ -238,3 +239,193 @@ end
 #
 # None of these is deep. All of them are invisible until something tries to differentiate
 # through the whole stack, which is the argument for having a page that does.
+
+# ## Coupled poroelasticity, checked against a closed form
+#
+# The elastoplastic problem above has no analytical solution, so its sensitivity could only
+# be compared with finite differences. Terzaghi's column does have one, and its derivative
+# with respect to a material parameter is therefore *known* — which turns the comparison
+# from "two numerical methods agree" into a verification.
+#
+# The analytical excess pore pressure is
+#
+# ```math
+# \frac{p(Z,T)}{p_0} = \sum_{n\ge 0}\frac{2}{M_n}\sin(M_n Z)\,e^{-M_n^2 T},
+# \qquad M_n = \tfrac{\pi}{2}(2n+1)
+# ```
+#
+# with ``Z`` the normalised depth and ``T = c\,t/H^2``. The Biot coefficient enters twice,
+# through the undrained pressure ``p_0 = F b/(M_o N + b^2)`` and through the consolidation
+# coefficient ``c = (k/\mu_l)/(N + b^2/M_o)``, and the two pull against each other. For this
+# material ``M_o N \approx 1.1\times10^{-3}`` against ``b^2 = 1``, so ``p_0 \approx F/b``
+# falls as ``b`` rises while ``c \approx (k/\mu_l)M_o/b^2`` falls with it, slowing the
+# dissipation: a smaller starting pressure that decays more slowly. Which term wins at a
+# given time is not something to settle by inspection — which is the point of being able to
+# differentiate the code.
+
+const H_col = 1.0        # column height [m]
+const W_col = 0.1        # width [m] — immaterial, the column is laterally confined
+const F_col = 1.0e4      # surface load [Pa]
+
+biot_material(θ) = BiotPoroelastic(;
+    E = 1.0e7, nu = 0.2, k = θ[3] * 1.0e-13, mu_l = 1.0e-3,
+    b = θ[1] * 1.0, N = θ[2] * 1.0e-10,
+)
+
+"Analytical excess pore pressure at normalised depth `Z` and time `t`."
+function terzaghi_analytical(θ, Z, t; nterms = 400)
+    m = biot_material(θ)
+    p0 = F_col * m.b / (oedometric_modulus(m) * m.N + m.b^2)
+    T = consolidation_coefficient(m) * t / H_col^2
+    s = zero(T)
+    for n in 0:(nterms - 1)
+        Mn = (2n + 1) * π / 2
+        s += (2 / Mn) * sin(Mn * Z) * exp(-Mn^2 * T)
+    end
+    return p0 * s
+end
+
+"Finite element excess pore pressure at mid-depth and time `t`, differentiable in θ."
+function terzaghi_numerical(θ, t; nely = 40, nsteps = 200, t_start_frac = 1.0e-3)
+    T = eltype(θ)
+    m = biot_material(θ)
+
+    grid = Ferrite.generate_grid(
+        Ferrite.Quadrilateral, (1, nely), Ferrite.Vec(0.0, 0.0), Ferrite.Vec(W_col, H_col)
+    )
+    ip_geo = Ferrite.Lagrange{Ferrite.RefQuadrilateral, 1}()
+    ip_u = ip_geo^2
+    dh = Ferrite.DofHandler(grid)
+    Ferrite.add!(dh, :u, ip_u)
+    Ferrite.add!(dh, :p, ip_geo)
+    Ferrite.close!(dh)
+
+    qr = Ferrite.QuadratureRule{Ferrite.RefQuadrilateral}(2)
+    cv_u = Ferrite.CellValues(qr, ip_u, ip_geo)
+    cv_p = Ferrite.CellValues(qr, ip_geo, ip_geo)
+    fv_u = Ferrite.FacetValues(
+        Ferrite.FacetQuadratureRule{Ferrite.RefQuadrilateral}(2), ip_u, ip_geo
+    )
+
+    ch = Ferrite.ConstraintHandler(dh)
+    Ferrite.add!(ch, Ferrite.Dirichlet(:p, Ferrite.getfacetset(grid, "top"), (x, t) -> 0.0))
+    for (set, comp) in (("left", 1), ("right", 1), ("bottom", 2))
+        Ferrite.add!(
+            ch, Ferrite.Dirichlet(:u, Ferrite.getfacetset(grid, set), (x, t) -> 0.0, [comp])
+        )
+    end
+    Ferrite.close!(ch)
+    Ferrite.update!(ch, 0.0)
+
+    ## The sparsity pattern is geometry; only the numbers carry derivatives.
+    pattern() = convert(SparseMatrixCSC{T, Int}, Ferrite.allocate_matrix(dh))
+    K1, K2, A = pattern(), pattern(), pattern()
+    n_loc = Ferrite.ndofs_per_cell(dh)
+    ke1, ke2 = zeros(T, n_loc, n_loc), zeros(T, n_loc, n_loc)
+    as1, as2 = Ferrite.start_assemble(K1), Ferrite.start_assemble(K2)
+    for cell in Ferrite.CellIterator(dh)
+        Ferrite.reinit!(cv_u, cell)
+        Ferrite.reinit!(cv_p, cell)
+        biot_element_matrices!(ke1, ke2, m, cv_u, cv_p)
+        Ferrite.assemble!(as1, Ferrite.celldofs(cell), ke1)
+        Ferrite.assemble!(as2, Ferrite.celldofs(cell), ke2)
+    end
+
+    ## Surface traction, assembled here rather than through `facet_load!` so that this page
+    ## does not define a method the Terzaghi validation page also defines.
+    f_ext = zeros(T, Ferrite.ndofs(dh))
+    u_range = Ferrite.dof_range(dh, :u)
+    fe_u = zeros(T, Ferrite.getnbasefunctions(fv_u))
+    for facet in Ferrite.FacetIterator(dh, Ferrite.getfacetset(grid, "top"))
+        fill!(fe_u, zero(T))
+        Ferrite.reinit!(fv_u, facet)
+        for q in 1:Ferrite.getnquadpoints(fv_u)
+            dΓ = Ferrite.getdetJdV(fv_u, q)
+            traction = Ferrite.Vec{2}((0.0, -F_col))
+            for i in 1:Ferrite.getnbasefunctions(fv_u)
+                fe_u[i] += (Ferrite.shape_value(fv_u, q, i) ⋅ traction) * dΓ
+            end
+        end
+        dofs = Ferrite.celldofs(facet)
+        for (i, d) in enumerate(u_range)
+            f_ext[dofs[d]] += fe_u[i]
+        end
+    end
+
+    ## One short step captures the undrained response, then uniform steps. The uniform part
+    ## reuses a single factorisation: the problem is linear and Δt is constant, so the
+    ## matrix does not change — which is what makes differentiating 200 steps affordable.
+    x = zeros(T, Ferrite.ndofs(dh))
+    Ferrite.apply!(x, ch)
+    t0 = t_start_frac * t
+    dt = (t - t0) / nsteps
+
+    function step!(x, Δt, fact)
+        rhs = copy(f_ext)
+        mul!(rhs, K2, x, 1 / Δt, one(T))
+        if fact === nothing
+            combine!(A, K1, K2, 1 / Δt)
+            Ferrite.apply!(A, rhs, ch)
+            return lu(Matrix(A)) \ rhs, lu(Matrix(A))
+        end
+        Ferrite.apply!(A, rhs, ch)
+        return fact \ rhs, fact
+    end
+
+    x, _ = step!(x, t0, nothing)
+    combine!(A, K1, K2, 1 / dt)
+    A_ref = copy(A)
+    Ferrite.apply!(A_ref, zeros(T, Ferrite.ndofs(dh)), ch)
+    fact = lu(Matrix(A_ref))
+    for _ in 1:nsteps
+        x, fact = step!(x, dt, fact)
+    end
+
+    ## Mid-depth pressure
+    p_dof = node_dof_maps(dh, grid, :p).p
+    ys = [node.x[2] for node in grid.nodes]
+    i_mid = argmin(abs.(ys .- H_col / 2))
+    return x[p_dof[i_mid]]
+end
+
+θ_biot = ones(3)
+biot_names = ("b", "N", "k")
+t_probe = 0.1 * H_col^2 / consolidation_coefficient(biot_material(θ_biot))
+
+grad_biot_num = ForwardDiff.gradient(θ -> terzaghi_numerical(θ, t_probe), θ_biot)
+grad_biot_ana = ForwardDiff.gradient(θ -> terzaghi_analytical(θ, 0.5, t_probe), θ_biot)
+
+@printf(
+    "p at mid-depth, T = 0.1:  finite elements %.4f kPa,  closed form %.4f kPa\n\n",
+    terzaghi_numerical(θ_biot, t_probe) / 1.0e3,
+    terzaghi_analytical(θ_biot, 0.5, t_probe) / 1.0e3
+)
+println("  parameter   ∂p/∂θ finite elements   ∂p/∂θ closed form      relative gap")
+for i in eachindex(θ_biot)
+    @printf(
+        "  %-9s   %+.6e         %+.6e      %.2e\n", biot_names[i],
+        grad_biot_num[i], grad_biot_ana[i],
+        abs(grad_biot_num[i] - grad_biot_ana[i]) / abs(grad_biot_ana[i])
+    )
+end
+
+# At ``T = 0.1`` the initial-pressure term wins and ``\partial p/\partial b`` is negative.
+#
+# The gap against the closed form is a few parts in a thousand, the same order as the error
+# in the pressure itself. Refining the discretisation shows it is exactly that:
+
+println("  nely  nsteps    error in p     error in ∂p/∂b")
+for (ne, ns) in ((20, 100), (40, 200), (80, 400))
+    g = ForwardDiff.gradient(θ -> terzaghi_numerical(θ, t_probe; nely = ne, nsteps = ns), θ_biot)
+    pn = terzaghi_numerical(θ_biot, t_probe; nely = ne, nsteps = ns)
+    pa = terzaghi_analytical(θ_biot, 0.5, t_probe)
+    @printf(
+        "  %4d  %6d    %.3e      %.3e\n", ne, ns,
+        abs(pn - pa) / abs(pa), abs(g[1] - grad_biot_ana[1]) / abs(grad_biot_ana[1])
+    )
+end
+
+# Both halve as the mesh and the step are halved. The sensitivity inherits the convergence
+# of the scheme rather than adding an error of its own — which is precisely what a
+# finite-difference sensitivity cannot promise, since its own step size introduces a second
+# error that has nothing to do with the discretisation and no reason to shrink with it.

@@ -130,13 +130,19 @@ using Printf
 Parameters of one material for model M6 (non-isothermal drying).
 Two instances are embedded in `DryingModel`: clay (mat1) and rock (mat2).
 """
-struct DryingMaterial{R, K}
-    phi::Float64       # porosity [-]
-    k_int::Float64     # intrinsic permeability [m²]
-    lam_s::Float64     # solid thermal conductivity [W/(m·K)]
-    C_s::Float64       # volumetric heat capacity [J/(m³·K)]
+struct DryingMaterial{T, R, K}
+    phi::T             # porosity [-]
+    k_int::T           # intrinsic permeability [m²]
+    lam_s::T           # solid thermal conductivity [W/(m·K)]
+    C_s::T             # volumetric heat capacity [J/(m³·K)]
     retention::R       # S_l(p_c), regularised near saturation
     rel_perm::K        # k_rl(p_c)
+end
+
+## Promote rather than require a single type: differentiating with respect to one
+## coefficient makes that field a `Dual` while the others stay `Float64`.
+function DryingMaterial(phi, k_int, lam_s, C_s, retention, rel_perm)
+    return DryingMaterial(promote(phi, k_int, lam_s, C_s)..., retention, rel_perm)
 end
 
 """
@@ -153,29 +159,29 @@ temperature `T` [K].
 - `x = 0` : Neumann heat flux `Q(t)` [W/m²] (radioactive canister)
 - `x = L` : Dirichlet `p_l`, `p_a`, `T` (initial values of the rock)
 """
-Base.@kwdef struct DryingModel{M1, M2} <: AbstractPoroModel
+Base.@kwdef struct DryingModel{T, M1, M2} <: AbstractPoroModel
     ## ── Parameters common to both materials ───────────────────────────────────
-    rho_l::Float64   = 1000.0       # liquid density [kg/m³]
-    mu_l::Float64    = 1.0e-3       # liquid viscosity [Pa·s]
-    mu_g::Float64    = 1.8e-5       # gas viscosity [Pa·s]
-    M_vsR::Float64   = 0.00216      # M_vapeur/R [kg/J]
-    M_asR::Float64   = 0.00346      # M_air/R [kg/J]
-    p_l0::Float64    = 1.0e5        # reference liquid pressure [Pa]
-    p_v0::Float64    = 2460.0       # saturated vapour pressure at T₀ [Pa]
-    p_a0::Float64    = 97540.0      # reference air pressure [Pa]
-    T_0::Float64     = 293.0        # reference temperature [K]
-    D_av0::Float64   = 0.00248      # air-vapour diffusion at T₀ [m²/s]
-    lam_l::Float64   = 0.6          # liquid thermal conductivity [W/(m·K)]
-    lam_g::Float64   = 0.026        # gas thermal conductivity [W/(m·K)]
-    C_pl::Float64    = 4180.0       # liquid specific heat [J/(kg·K)]
-    C_pv::Float64    = 1800.0       # vapour specific heat [J/(kg·K)]
-    C_pa::Float64    = 1000.0       # dry air specific heat [J/(kg·K)]
-    L_0::Float64     = 2.45e6       # latent heat of vaporisation [J/kg]
-    alpha_T::Float64 = 0.003        # thermal variation coeff. of S_l [1/K]
+    rho_l::T   = 1000.0       # liquid density [kg/m³]
+    mu_l::T    = 1.0e-3       # liquid viscosity [Pa·s]
+    mu_g::T    = 1.8e-5       # gas viscosity [Pa·s]
+    M_vsR::T   = 0.00216      # M_vapeur/R [kg/J]
+    M_asR::T   = 0.00346      # M_air/R [kg/J]
+    p_l0::T    = 1.0e5        # reference liquid pressure [Pa]
+    p_v0::T    = 2460.0       # saturated vapour pressure at T₀ [Pa]
+    p_a0::T    = 97540.0      # reference air pressure [Pa]
+    T_0::T     = 293.0        # reference temperature [K]
+    D_av0::T   = 0.00248      # air-vapour diffusion at T₀ [m²/s]
+    lam_l::T   = 0.6          # liquid thermal conductivity [W/(m·K)]
+    lam_g::T   = 0.026        # gas thermal conductivity [W/(m·K)]
+    C_pl::T    = 4180.0       # liquid specific heat [J/(kg·K)]
+    C_pv::T    = 1800.0       # vapour specific heat [J/(kg·K)]
+    C_pa::T    = 1000.0       # dry air specific heat [J/(kg·K)]
+    L_0::T     = 2.45e6       # latent heat of vaporisation [J/kg]
+    alpha_T::T = 0.003        # thermal variation coeff. of S_l [1/K]
 
     ## ── Geometry ───────────────────────────────────────────────────────────────
-    x_int::Float64 = 0.425          # interface position [m]
-    L::Float64     = 1.225          # total length [m]
+    x_int::T = 0.425          # interface position [m]
+    L::T     = 1.225          # total length [m]
 
     ## ── Materials ──────────────────────────────────────────────────────────────
     ## The exponents are the published values, not recomputed from m: the fitted n of
@@ -193,14 +199,22 @@ Base.@kwdef struct DryingModel{M1, M2} <: AbstractPoroModel
     )
 
     ## ── Initial conditions (reference case, fields 1-5) ───────────────────────
-    p_l_ini1::Float64 = -7.611655e7  # p_l in the clay zone [Pa]
-    p_a_ini1::Float64 =  9.225595e4  # p_a in the clay zone [Pa]
-    p_l_ini2::Float64 =  4.905e6     # p_l in the rock zone [Pa]
-    p_a_ini2::Float64 =  4.891671e6  # p_a in the rock zone [Pa]
-    T_ini::Float64    =  323.0       # initial temperature (zones 1 and 2) [K]
+    p_l_ini1::T = -7.611655e7  # p_l in the clay zone [Pa]
+    p_a_ini1::T =  9.225595e4  # p_a in the clay zone [Pa]
+    p_l_ini2::T =  4.905e6     # p_l in the rock zone [Pa]
+    p_a_ini2::T =  4.891671e6  # p_a in the rock zone [Pa]
+    T_ini::T    =  323.0       # initial temperature (zones 1 and 2) [K]
 end
 
 PoroMechanics.nspecies(::DryingModel)      = 3
+
+## Promote rather than require a single type: differentiating with respect to one parameter
+## makes that field a `Dual` while the rest stay `Float64`, which is what `@kwdef` alone
+## cannot express.
+function DryingModel(rho_l, mu_l, mu_g, M_vsR, M_asR, p_l0, p_v0, p_a0, T_0, D_av0, lam_l, lam_g, C_pl, C_pv, C_pa, L_0, alpha_T, x_int, L, mat1, mat2, p_l_ini1, p_a_ini1, p_l_ini2, p_a_ini2, T_ini)
+    scalars = promote(rho_l, mu_l, mu_g, M_vsR, M_asR, p_l0, p_v0, p_a0, T_0, D_av0, lam_l, lam_g, C_pl, C_pv, C_pa, L_0, alpha_T, x_int, L, p_l_ini1, p_a_ini1, p_l_ini2, p_a_ini2, T_ini)
+    return DryingModel(scalars[1:19]..., mat1, mat2, scalars[20:end]...)
+end
 PoroMechanics.species_names(::DryingModel) = [:p_l, :p_a, :T]
 
 ## Indices of the unknowns (VoronoiFVM species)
