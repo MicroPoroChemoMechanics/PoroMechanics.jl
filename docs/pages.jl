@@ -17,6 +17,7 @@ pages = [
         "Transient drainage"     => "validation/gardner_transient.md",
         "BBM — Bil reference cases" => "validation/bbm_bil.md",
     ],
+    "Writing a model" => "demos/writing_a_model.md",
     "Differentiability" => [
         "Parameter identification" => "demos/parameter_identification.md",
         "Differentiating a solve"  => "demos/solver_sensitivity.md",

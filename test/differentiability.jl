@@ -140,3 +140,44 @@ end
     @test issorted(errs_g; rev = true)
     @test errs_g[1] / errs_g[3] > 2.5
 end
+
+module _WritingAModel
+    include("../demos/writing_a_model.jl")
+end
+
+@testset "writing a model — the decisive test" begin
+    W = _WritingAModel
+
+    ## Going through the package must give exactly the solver's own answer: the callbacks
+    ## are the solver's callbacks with a model argument in front, so any difference would
+    ## mean the abstraction is doing something behind the user's back.
+    @test W.c_pkg == W.c_raw
+
+    ## And both must match the closed form to the discretisation error.
+    @test W.l2(W.c_pkg, W.c_exact) < 1.0e-2
+
+    ## Refining space or time reduces that error; the two are separate contributions.
+    base = W.l2(W.c_pkg, W.c_exact)
+    x_coarse, c_coarse = W.solve_with_package(W.model; N = 101, Δt_max = 2.0e3)
+    x_slow, c_slow = W.solve_with_package(W.model; N = 401, Δt_max = 2.0e4)
+    exact_of(x) = [W.ogata_banks(xi, W.T_END, W.model) for xi in x]
+    @test W.l2(c_coarse, exact_of(x_coarse)) > base
+    @test W.l2(c_slow, exact_of(x_slow)) > base
+
+    ## The line counts the page prints are recounted from its own source, so the claim
+    ## cannot drift away from the code that backs it.
+    src = readlines(joinpath(@__DIR__, "..", "demos", "writing_a_model.jl"))
+    function count_region(first_marker, last_marker, from = 1)
+        i = findfirst(l -> occursin(first_marker, l), @view src[from:end]) + from - 1
+        j = findfirst(l -> occursin(last_marker, l), @view src[(i + 1):end]) + i
+        body = src[i:(j + 1)]
+        return count(l -> !isempty(strip(l)) && !startswith(strip(l), "#"), body)
+    end
+    tail = "return grid[Coordinates][1, :], sol.u[end][1, :]"
+    n_pkg = count_region("Base.@kwdef struct AdvectionDispersion", tail)
+    i_raw = findfirst(l -> occursin("Base.@kwdef struct RawParams", l), src)
+    n_raw = count_region("Base.@kwdef struct RawParams", tail, i_raw)
+    @test n_pkg == W.package_lines
+    @test n_raw == W.direct_lines
+    @test W.package_lines - W.direct_lines == 3      # nspecies, species_names, one wrap
+end
