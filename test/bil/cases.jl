@@ -204,6 +204,98 @@ function richards_2d_ours(; verbose = false)
     return values
 end
 
+# ── Richards 3D — the same beads, drained in three dimensions ─────────────────
+#
+# `base/Richards-3d`: a 2 × 2 × 200 mm column of the same glass beads, one material this
+# time, started away from equilibrium — the deck's initial field is p_l = 1e5 - 3400 z where
+# hydrostatic would be -9810 z — and left to redistribute with the base held at 1e5 Pa.
+#
+# Its value here is that it exercises the harness in three dimensions: `read_gmsh_simplexgrid`
+# builds the grid from 1993 tetrahedra, and `nodal_on` pairs 7972 output rows (1993 × 4) with
+# 815 nodes. The element ordering holds to 3.3e-8, the printing floor, exactly as in 2D.
+#
+# Gravity acts along the last axis, which is `Richards.cpp`'s own convention:
+# `w_l[dim-1] += k_l*rho_l*gravity`.
+
+"Dates from the deck's `Dates` block: `Richards-3d.tN` is `DATES[N+1]`."
+const RICHARDS_3D_DATES = [0.0, 120.0, 300.0]
+
+const RICHARDS_3D_PROBES = (0, 1, 2)
+const RICHARDS_3D_STRIDE = 8
+const RICHARDS_3D_BIL_DT = 1.0
+
+richards_3d_mesh() = read_gmsh_simplexgrid(joinpath(case_dir("Richards-3d"), "Sample.msh"))
+
+"""
+    richards_3d_model() -> (; model, mesh, initial)
+
+Everything the case needs that both halves would otherwise duplicate.
+"""
+function richards_3d_model()
+    dir = case_dir("Richards-3d")
+    mesh = richards_3d_mesh()
+    _, table = read_bil_curve(joinpath(dir, "billes"))
+    model = RichardsModel(;
+        phi = 0.38, rho_l = 1.0e3, k_int = 8.9e-12, mu_l = 1.0e-3,
+        p_g = 1.0e5, gravity = -9.81, gravity_axis = 3,
+        retention = Tabulated(table[:, 1], table[:, 2]),
+        rel_perm = TabulatedKrl(table[:, 1], table[:, 3]),
+    )
+    ## `Field 1` of the deck, used for both the initial state and the base pressure.
+    initial(z) = 1.0e5 - 3400.0 * z
+    return (; model, mesh, initial)
+end
+
+"Bil's pressure at the probe dates, with its own step refined."
+function richards_3d_bil()
+    dir = run_bil("Richards-3d", "Richards-3d"; overrides = ("Dtmax" => RICHARDS_3D_BIL_DT,))
+    cellnodes = richards_3d_mesh().grid[CellNodes]
+    values = Float64[]
+    version = "unknown"
+    for n in RICHARDS_3D_PROBES
+        out = read_bil(joinpath(dir, "Richards-3d.t$n"))
+        version = out.version
+        append!(values, nodal_on(out, cellnodes, "pressure")[1:RICHARDS_3D_STRIDE:end])
+    end
+    return (; values, version)
+end
+
+"The same profile computed here."
+function richards_3d_ours()
+    (; model, mesh, initial) = richards_3d_model()
+    ## All four boundary faces the deck declares sit at z = 0, so the imposed pressure is
+    ## `initial(0) = 1e5` and needs no position dependence. Everything else is no-flow.
+    base = mesh.bface_tag[100]
+
+    sys = VoronoiFVM.System(
+        mesh.grid; species = [1],
+        storage = (f, u, node, data) -> PoroMechanics.storage!(f, u, node, model, data),
+        flux = (f, u, edge, data) -> PoroMechanics.flux!(f, u, edge, model, data),
+        bcondition = (f, u, bnode, data) -> VoronoiFVM.boundary_dirichlet!(
+            f, u, bnode; species = 1, region = base, value = initial(0.0),
+        ),
+    )
+
+    inival = unknowns(sys)
+    for n in 1:num_nodes(mesh.grid)
+        inival[1, n] = initial(mesh.coord[3, n])
+    end
+
+    tsol = solve(
+        sys; inival, times = (0.0, last(RICHARDS_3D_DATES)),
+        control = VoronoiFVM.SolverControl(;
+            Δt = 0.01, Δt_min = 1.0e-8, Δt_max = 1.0, Δu_opt = 10.0,
+            damp_initial = 0.5, damp_growth = 1.5, reltol = 1.0e-10, verbose = "",
+        ),
+    )
+
+    values = Float64[]
+    for n in RICHARDS_3D_PROBES
+        append!(values, tsol(RICHARDS_3D_DATES[n + 1])[1, 1:RICHARDS_3D_STRIDE:end])
+    end
+    return values
+end
+
 # ── The registry ──────────────────────────────────────────────────────────────
 
 const BIL_CASES = [
@@ -224,6 +316,26 @@ const BIL_CASES = [
         Bil's time discretisation, not a disagreement: 2.8e-2 of it separates the shipped
         output from Bil's own refined answer. `benchmarks/bil_richards.jl` has the two-sided
         convergence study.
+        """,
+    ),
+    BilCase(
+        "richards_3d",
+        "Richards-3d", "Richards-3d",
+        richards_3d_bil,
+        richards_3d_ours,
+        5.0e-5,
+        """
+        Measured 8.6e-6 against Bil refined to Dtmax = 1 s — two orders of magnitude tighter
+        than the 2D case, and the reason is the mechanism itself. Here the column stays close
+        to saturation (p_c reaches only ~800 Pa, the gentle end of the `billes` curve), so
+        k_rl barely moves between steps and Bil's lagged mobility costs it almost nothing:
+        even its own coarse deck lands 7.6e-5 away. Where the 2D drainage sweeps k_rl across
+        five orders of magnitude, the same lag costs 2.8e-2.
+
+        That contrast is the useful part. The two cases share a code path and a curve and
+        differ only in how hard they drive it, so the gap tracking the severity of the
+        drainage is direct evidence that the explanation in benchmarks/bil_richards.jl is the
+        right one.
         """,
     ),
 ]

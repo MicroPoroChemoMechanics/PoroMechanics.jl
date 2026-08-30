@@ -47,11 +47,19 @@ mkpath(VALIDATION_DIR)
 # block with the working directory set to the built page's folder, so those files have to
 # sit next to the generated markdown; Documenter copies non-markdown files from src to build.
 
-const BENCHMARK_SHARED = ["laplace.jl", "biot_common.jl", "richards_common.jl"]
+const BENCHMARK_SHARED = ["laplace.jl", "biot_common.jl", "richards_common.jl", "bil_common.jl"]
 
 for f in BENCHMARK_SHARED
     cp(joinpath(BENCHMARKS_DIR, f), joinpath(VALIDATION_DIR, f); force = true)
 end
+
+# `bil_common.jl` includes the Bil output reader, which lives with the tests rather than the
+# benchmarks; it has to travel with it. On a runner without Bil the reader is loaded and
+# never used — `bil_bbm_reference` falls back to its cached table.
+cp(
+    joinpath(@__DIR__, "..", "test", "bil", "harness.jl"),
+    joinpath(VALIDATION_DIR, "harness.jl"); force = true,
+)
 
 for name in LITERATE_BENCHMARKS
     Literate.markdown(

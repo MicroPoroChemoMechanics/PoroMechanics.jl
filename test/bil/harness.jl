@@ -534,9 +534,13 @@ k[mesh.cell_tag[100]] = 8.9e-12    # outer zone
 k[mesh.cell_tag[101]] = 8.9e-13    # inclusion
 ```
 
-Only what a Bil case needs is supported: 2-node lines (type 1) and 3-node triangles
-(type 2), in two dimensions. Points (type 15) are skipped — Bil uses them for output
-locations, not for the discretisation.
+The dimension is read from the mesh rather than assumed: the highest simplex present becomes
+the cell, and the next one down becomes the boundary face. Tetrahedra (Gmsh type 4) give a
+3D grid bounded by triangles, triangles (type 2) a 2D grid bounded by lines (type 1), and
+lines alone a 1D grid bounded by points (type 15). Nothing else is supported, because
+nothing else appears in a Bil deck — Bil also uses points as output locations, which is
+harmless: a `Points` block adds boundary vertices that a 1D grid wants anyway and that a 2D
+or 3D grid ignores.
 """
 function read_gmsh_simplexgrid(path)
     isfile(path) || error("no such mesh: $path")
@@ -544,10 +548,11 @@ function read_gmsh_simplexgrid(path)
 
     version_ok = false
     coord3 = Matrix{Float64}(undef, 3, 0)
-    triangles = Vector{NTuple{3, Int}}()
-    tri_tags = Int[]
-    segments = Vector{NTuple{2, Int}}()
-    seg_tags = Int[]
+
+    ## Gmsh element type → nodes per element, for the simplices Bil uses.
+    simplex_nodes = Dict(15 => 1, 1 => 2, 2 => 3, 4 => 4)
+    by_type = Dict{Int, Vector{Vector{Int}}}()
+    tags_by_type = Dict{Int, Vector{Int}}()
 
     i = 1
     while i <= length(lines)
@@ -580,14 +585,13 @@ function read_gmsh_simplexgrid(path)
                 ntags = parse(Int, t[3])
                 ## Gmsh 2.2 tags are `physical elementary …`; Bil reads the elementary one.
                 elementary = ntags >= 2 ? parse(Int, t[5]) : parse(Int, t[4])
+                haskey(simplex_nodes, etype) || continue
                 nodes = [parse(Int, s) for s in t[(4 + ntags):end]]
-                if etype == 2
-                    push!(triangles, (nodes[1], nodes[2], nodes[3]))
-                    push!(tri_tags, elementary)
-                elseif etype == 1
-                    push!(segments, (nodes[1], nodes[2]))
-                    push!(seg_tags, elementary)
-                end
+                length(nodes) == simplex_nodes[etype] || error(
+                    "$path: element type $etype should have $(simplex_nodes[etype]) nodes, got $(length(nodes))"
+                )
+                push!(get!(by_type, etype, Vector{Vector{Int}}()), nodes)
+                push!(get!(tags_by_type, etype, Int[]), elementary)
             end
             i += n + 2
         else
@@ -596,28 +600,40 @@ function read_gmsh_simplexgrid(path)
     end
 
     version_ok || error("$path has no \$MeshFormat section")
-    isempty(triangles) && error("$path contains no triangles")
+
+    ## The highest simplex present is the cell; the one below it is the boundary face.
+    cell_type = maximum(t for t in keys(by_type) if t in (1, 2, 4); init = 0)
+    cell_type == 0 && error("$path contains no lines, triangles or tetrahedra")
+    face_type = Dict(4 => 2, 2 => 1, 1 => 15)[cell_type]
+    dim = simplex_nodes[cell_type] - 1
+
+    "Pack a list of node lists into a `nodes × count` matrix."
+    pack(list, npe) = begin
+        m = Matrix{Int32}(undef, npe, length(list))
+        for (k, nodes) in pairs(list), j in 1:npe
+            m[j, k] = nodes[j]
+        end
+        m
+    end
 
     ## Compact the tags, keeping the map back to Bil's numbering.
     compact(tags) = Dict(t => k for (k, t) in pairs(sort(unique(tags))))
-    cell_tag = compact(tri_tags)
-    bface_tag = compact(seg_tags)
 
-    coord = coord3[1:2, :]
-    cellnodes = Matrix{Int32}(undef, 3, length(triangles))
-    for (k, tri) in pairs(triangles)
-        cellnodes[1, k], cellnodes[2, k], cellnodes[3, k] = tri
-    end
-    cellregions = Int32[cell_tag[t] for t in tri_tags]
+    cells = by_type[cell_type]
+    cell_tags = tags_by_type[cell_type]
+    cell_tag = compact(cell_tags)
+    cellnodes = pack(cells, simplex_nodes[cell_type])
+    cellregions = Int32[cell_tag[t] for t in cell_tags]
 
-    bfacenodes = Matrix{Int32}(undef, 2, length(segments))
-    for (k, seg) in pairs(segments)
-        bfacenodes[1, k], bfacenodes[2, k] = seg
-    end
-    bfaceregions = Int32[bface_tag[t] for t in seg_tags]
+    faces = get(by_type, face_type, Vector{Vector{Int}}())
+    face_tags = get(tags_by_type, face_type, Int[])
+    bface_tag = compact(face_tags)
+    bfacenodes = pack(faces, simplex_nodes[face_type])
+    bfaceregions = Int32[bface_tag[t] for t in face_tags]
 
+    coord = coord3[1:dim, :]
     grid = simplexgrid(coord, cellnodes, cellregions, bfacenodes, bfaceregions)
-    return (; grid, cell_tag, bface_tag, coord)
+    return (; grid, cell_tag, bface_tag, coord, dim)
 end
 
 # ── Comparing ─────────────────────────────────────────────────────────────────
