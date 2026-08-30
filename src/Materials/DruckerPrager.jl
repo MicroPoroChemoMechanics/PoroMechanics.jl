@@ -231,3 +231,90 @@ function material_response(
     C = at_apex ? elastic_stiffness(m.elastic, Val(3)) : ∂σ∂ε
     return σ, C, DruckerPragerState(σ, ε, εp_new, state.γp + Δγ)
 end
+
+# ── Pairing a plastic skeleton with Biot's coupling ───────────────────────────
+
+"""
+    BiotPlastic(; skeleton, b, beta, N, k, mu_l)
+
+A Biot medium whose skeleton is an arbitrary elastoplastic material.
+
+[`BiotPoroelastic`](@ref) hard-wires a `LinearElastic` skeleton, which is what makes
+`poro_response` short and what stops it short of `base/Poroplast`: that case is a
+Drucker-Prager skeleton under a Biot coupling, and no shipped date of it is elastic. This
+struct is the same hinge with the skeleton left open.
+
+| field | meaning |
+|---|---|
+| `skeleton` | the drained stress–strain law — any `AbstractMaterial` |
+| `b` | Biot coefficient of the stress coupling and of the elastic porosity change [-] |
+| `beta` | coefficient with which the **plastic** volume change enters the porosity [-] |
+| `N` | storage modulus at constant strain [Pa⁻¹] |
+| `k` | intrinsic permeability [m²] |
+| `mu_l` | dynamic viscosity [Pa·s] |
+
+`b` and `beta` are separate because Bil's `Poroplast` keeps them separate: its porosity is
+
+```math
+\\phi = \\phi_0 + b\\,(\\mathrm{tr}\\,\\varepsilon - \\mathrm{tr}\\,\\varepsilon^p)
+      + N (p_l - p_{l0}) + \\beta\\,\\mathrm{tr}\\,\\varepsilon^p
+```
+
+so a plastic volume change opens pore space at a different rate than an elastic one. They
+coincide in `base/Poroplast`, where both are 0.8, and a comparison that assumed they always
+do would pass there and be wrong everywhere else.
+"""
+Base.@kwdef struct BiotPlastic{M <: AbstractMaterial, T} <: AbstractMaterial
+    skeleton::M
+    b::T = 1.0
+    beta::T = 1.0
+    N::T = 0.0
+    k::T = 1.0e-19
+    mu_l::T = 1.0e-3
+end
+
+function BiotPlastic(skeleton::AbstractMaterial, b, beta, N, k, mu_l)
+    return BiotPlastic(skeleton, promote(b, beta, N, k, mu_l)...)
+end
+
+skeleton(m::BiotPlastic) = m.skeleton
+Base.eltype(::BiotPlastic{M, T}) where {M, T} = T
+
+initial_state(m::BiotPlastic, args...; kwargs...) =
+    initial_state(m.skeleton, args...; kwargs...)
+
+"""
+    poro_response(m::BiotPlastic, ε, p, state, Δt) -> (σ, ∂σ∂ε, ∂σ∂p, state)
+
+Total stress of the medium and its tangents, from the skeleton's own response.
+
+Identical in shape to the [`BiotPoroelastic`](@ref) method — ask the skeleton, then add the
+pressure coupling — which is the point: the poromechanical layer does not care whether the
+skeleton yielded, and a plastic skeleton needs no new coupling code.
+"""
+function poro_response(m::BiotPlastic, ε::Tensors.SymmetricTensor{2}, p, state, Δt)
+    σ_eff, ∂σ∂ε, state_new = material_response(m.skeleton, ε, state, Δt)
+    σ = total_stress(m.b, σ_eff, p)
+    ∂σ∂p = -m.b * one(σ_eff)
+    return σ, ∂σ∂ε, ∂σ∂p, state_new
+end
+
+"""
+    porosity(m::BiotPlastic, phi0, ε, εp, p, p0) -> φ
+
+Lagrangian porosity, following Bil's `Poroplast`:
+
+```math
+\\phi = \\phi_0 + b\\,(\\mathrm{tr}\\,\\varepsilon - \\mathrm{tr}\\,\\varepsilon^p)
+      + N (p_l - p_{l0}) + \\beta\\,\\mathrm{tr}\\,\\varepsilon^p
+```
+
+Splitting the volumetric strain into its elastic and plastic parts, each with its own
+coefficient, is what `b` and `beta` are for. With `beta == b` this collapses to the usual
+``\\phi_0 + b\\,\\mathrm{tr}\\,\\varepsilon + N\\,\\Delta p``.
+"""
+function porosity(m::BiotPlastic, phi0, ε, εp, p, p0)
+    tr_e = Tensors.tr(ε)
+    tr_ep = Tensors.tr(εp)
+    return phi0 + m.b * (tr_e - tr_ep) + m.N * (p - p0) + m.beta * tr_ep
+end

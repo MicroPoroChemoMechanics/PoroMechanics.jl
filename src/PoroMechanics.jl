@@ -64,7 +64,7 @@ export equivalent_pore_pressure, unsaturated_total_stress, suction_stress
 
 # Materials
 export BBM, BBMState, compression_index, preconsolidation, yield_function
-export DruckerPrager, DruckerPragerState, drucker_prager_return
+export DruckerPrager, DruckerPragerState, drucker_prager_return, BiotPlastic, porosity
 export friction_coefficient, dilatancy_coefficient, cohesion_intercept, apex_pressure
 export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_mean, step_shear_modulus, trial_stress, suction_stress_increment, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent, ExplicitPredictor
 

@@ -168,3 +168,94 @@ using Tensors: Tensors, SymmetricTensor, ⊡, dev, tr
         @test ε_type == Float64
     end
 end
+
+@testset "BiotPlastic — a Biot medium with an arbitrary skeleton" begin
+    E, ν, c = 5.8e9, 0.3, 1.0e6
+    φ = deg2rad(25)
+    b, β, N = 0.8, 0.8, 4.0e-11
+    I3 = one(SymmetricTensor{2, 3})
+
+    @testset "reduces to BiotPoroelastic on an elastic skeleton" begin
+        ## Same constants, same coupling: the generic hinge must not change the answer for
+        ## the case the specialised one already covered.
+        elastic = BiotPoroelastic(E, ν, 1.0e-19, 1.0e-3, b, N)
+        generic = BiotPlastic(;
+            skeleton = skeleton(elastic), b = b, beta = β, N = N, k = 1.0e-19, mu_l = 1.0e-3
+        )
+
+        ε = SymmetricTensor{2, 3}(
+            (i, j) -> i == j ? -1.0e-4 * i : (((i, j) == (1, 2) || (i, j) == (2, 1)) ? 5.0e-5 : 0.0)
+        )
+        p = 4.7e6
+
+        σ_e, Cε_e, Cp_e, _ = poro_response(elastic, ε, p, NoState(), 1.0)
+        σ_g, Cε_g, Cp_g, _ = poro_response(generic, ε, p, NoState(), 1.0)
+
+        @test σ_g ≈ σ_e
+        @test Cε_g ≈ Cε_e
+        @test Cp_g ≈ Cp_e
+    end
+
+    @testset "a plastic skeleton needs no new coupling code" begin
+        dp = DruckerPrager(; E = E, nu = ν, cohesion = c, friction = φ, dilatancy = φ)
+        m = BiotPlastic(; skeleton = dp, b = b, beta = β, N = N, k = 1.0e-19, mu_l = 1.0e-3)
+
+        state = initial_state(m, -11.5e6 * I3)
+        @test state isa DruckerPragerState
+
+        ## Shear the skeleton past yield under a pore pressure and check the decomposition:
+        ## the effective stress obeys the cone, the total stress is it minus b p I.
+        ε = SymmetricTensor{2, 3}(
+            (i, j) -> i == j ? -1.0e-3 : (((i, j) == (1, 2) || (i, j) == (2, 1)) ? 3.0e-3 : 0.0)
+        )
+        p = 4.7e6
+        σ, _, ∂σ∂p, new_state = poro_response(m, ε, p, state, 1.0)
+
+        @test new_state.γp > 0                              # it did yield
+        @test ∂σ∂p ≈ -b * I3
+        σ_eff = σ + b * p * I3
+        @test isapprox(yield_function(dp, σ_eff), 0.0; atol = 1.0e-6 * cohesion_intercept(dp))
+    end
+
+    @testset "porosity splits the elastic and plastic volume change" begin
+        dp = DruckerPrager(; E = E, nu = ν, cohesion = c, friction = φ, dilatancy = φ)
+        ε = -2.0e-3 * I3
+        εp = -5.0e-4 * I3
+        p, p0, phi0 = 4.0e6, 4.7e6, 0.15
+
+        ## With beta == b the split is invisible and the formula collapses to the usual one.
+        same = BiotPlastic(; skeleton = dp, b = b, beta = b, N = N, k = 1.0e-19, mu_l = 1.0e-3)
+        @test porosity(same, phi0, ε, εp, p, p0) ≈
+            phi0 + b * tr(ε) + N * (p - p0)
+
+        ## With beta ≠ b it is not, which is the whole reason the two are separate fields.
+        other = BiotPlastic(; skeleton = dp, b = b, beta = 0.5, N = N, k = 1.0e-19, mu_l = 1.0e-3)
+        @test porosity(other, phi0, ε, εp, p, p0) != porosity(same, phi0, ε, εp, p, p0)
+        @test porosity(other, phi0, ε, εp, p, p0) ≈
+            phi0 + b * (tr(ε) - tr(εp)) + N * (p - p0) + 0.5 * tr(εp)
+
+        ## No plastic strain at all: the two agree again.
+        @test porosity(other, phi0, ε, zero(ε), p, p0) ≈
+            porosity(same, phi0, ε, zero(ε), p, p0)
+    end
+
+    @testset "differentiable through the coupling" begin
+        ## A Dual in the Biot coefficient has to reach the total stress.
+        function mean_total_stress(θ)
+            dp = DruckerPrager(; E = E, nu = ν, cohesion = c, friction = φ, dilatancy = φ)
+            m = BiotPlastic(;
+                skeleton = dp, b = θ[1], beta = θ[1], N = N, k = 1.0e-19, mu_l = 1.0e-3
+            )
+            state = initial_state(m, zero(SymmetricTensor{2, 3}))
+            ε = SymmetricTensor{2, 3}(
+                (i, j) -> i == j ? -1.0e-3 : (((i, j) == (1, 2) || (i, j) == (2, 1)) ? 3.0e-3 : 0.0)
+            )
+            σ, _, _, _ = poro_response(m, ε, 4.7e6, state, 1.0)
+            return tr(σ) / 3
+        end
+
+        g = ForwardDiff.gradient(mean_total_stress, [b])
+        ## σ = σ' - b p I, and σ' does not depend on b here, so ∂p̄/∂b is exactly -p.
+        @test g[1] ≈ -4.7e6 rtol = 1.0e-8
+    end
+end
