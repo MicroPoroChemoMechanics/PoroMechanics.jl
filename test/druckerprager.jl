@@ -71,6 +71,27 @@ using Tensors: Tensors, SymmetricTensor, ⊡, dev, tr
         @test state.γp > 0
     end
 
+    @testset "an initial stress is a prestress, not decoration" begin
+        ## `base/Poroplast` starts at -11.5 MPa isotropic with the mesh undeformed. A
+        ## predictor that ignored the initial stress would answer zero at zero strain and
+        ## place the material at the wrong point of the cone from the first step onward.
+        state = initial_state(m, -11.5e6 * I3)
+        σ, C, _ = material_response(m, zero(SymmetricTensor{2, 3}), state, 1.0)
+        @test σ ≈ -11.5e6 * I3
+        @test C ≈ elastic_stiffness(m.elastic, Val(3))
+
+        ## A small strain increments the prestress rather than replacing it.
+        ε = -1.0e-5 * I3
+        σ2, _, _ = material_response(m, ε, state, 1.0)
+        K = m.elastic.λ + 2 * m.elastic.μ / 3
+        @test tr(σ2) / 3 ≈ -11.5e6 + K * tr(ε)
+
+        ## Without a prestress the same material starts at the origin.
+        bare = initial_state(m, zero(SymmetricTensor{2, 3}))
+        σ3, _, _ = material_response(m, zero(SymmetricTensor{2, 3}), bare, 1.0)
+        @test σ3 ≈ zero(SymmetricTensor{2, 3})
+    end
+
     @testset "the tangent is the derivative of the return actually performed" begin
         state = initial_state(m, zero(SymmetricTensor{2, 3}))
         for k in 1:8
@@ -205,8 +226,12 @@ end
 
         ## Shear the skeleton past yield under a pore pressure and check the decomposition:
         ## the effective stress obeys the cone, the total stress is it minus b p I.
+        ##
+        ## The shear has to be large here. `initial_state` sets a **prestress** of -11.5 MPa,
+        ## the deck's own initial stress, and a state that deep inside the cone needs
+        ## eps_12 > 3.6e-3 before the trial stress leaves it at all.
         ε = SymmetricTensor{2, 3}(
-            (i, j) -> i == j ? -1.0e-3 : (((i, j) == (1, 2) || (i, j) == (2, 1)) ? 3.0e-3 : 0.0)
+            (i, j) -> i == j ? -1.0e-3 : (((i, j) == (1, 2) || (i, j) == (2, 1)) ? 8.0e-3 : 0.0)
         )
         p = 4.7e6
         σ, _, ∂σ∂p, new_state = poro_response(m, ε, p, state, 1.0)

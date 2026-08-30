@@ -35,6 +35,7 @@ using Dates: Dates
 using PoroMechanics
 using VoronoiFVM: VoronoiFVM, unknowns, solve
 using ExtendableGrids: CellNodes, num_nodes
+using Tensors: Tensors
 
 const BIL_REFERENCE_DIR = joinpath(@__DIR__, "references")
 
@@ -296,6 +297,104 @@ function richards_3d_ours()
     return values
 end
 
+# ── Poroplast — a borehole depressurised in a plastic ground ──────────────────
+#
+# `base/Poroplast`: a cavity at r = 3 m in a saturated ground at -11.5 MPa and 4.7 MPa of
+# pore pressure, whose support and internal pressure are released over 1.5e6 s and then left
+# for ten years. One dimension, axial symmetry, a Drucker-Prager skeleton under a Biot
+# coupling — and no shipped date of it is elastic, which is why it needed
+# `src/Materials/DruckerPrager.jl` before it could be compared at all.
+#
+# The mesh is Bil's own, read back from the coordinates it prints. It is graded, and not by
+# any rule worth reverse-engineering; the printed nodes are exact to seven digits, four
+# orders below the tolerance this case is judged at.
+
+const POROPLAST_DATES = [0.0, 1.5e6, 5.0e7, 3.0e8]
+const POROPLAST_PROBES = (1, 2, 3)
+const POROPLAST_STRIDE = 5
+const POROPLAST_BIL_DT = 1.0e6
+
+"""
+    poroplast_case() -> (; model, nodes, σ0, ramp)
+
+Everything both halves of the comparison need: the model with the deck's parameters, Bil's
+own node coordinates, the initial stress and the release history.
+"""
+function poroplast_case()
+    dir = run_bil("Poroplast", "Poroplast"; overrides = ("Dtmax" => POROPLAST_BIL_DT,))
+    coords = coordinates(read_bil(joinpath(dir, "Poroplast.t0")))[:, 1]
+    nodes = vcat(coords[1], [coords[2e] for e in 1:(length(coords) ÷ 2)])
+
+    skeleton = DruckerPrager(;
+        E = 5.8e9, nu = 0.3, cohesion = 1.0e6,
+        friction = deg2rad(25), dilatancy = deg2rad(25),
+    )
+    material = BiotPlastic(;
+        skeleton = skeleton, b = 0.8, beta = 0.8, N = 4.0e-11,
+        k = 1.0e-19, mu_l = 1.0e-3,
+    )
+    model = PoroplastModel(;
+        material = material, phi0 = 0.15, rho_l0 = 1.0e3, k_l = 2.0e9, p_l0 = 4.7e6,
+    )
+
+    ## `Functions 1` of the deck: 1 at t = 0, 0 from t = 1.5e6 s on.
+    ramp(t) = t <= 1.5e6 ? 1.0 - t / 1.5e6 : 0.0
+    return (; dir, model, nodes, σ0 = -11.5e6 * one(Tensors.SymmetricTensor{2, 3}), ramp)
+end
+
+"Bil's pressure and radial displacement at the probe dates."
+function poroplast_bil()
+    (; dir, nodes) = poroplast_case()
+    values = Float64[]
+    version = "unknown"
+    for n in POROPLAST_PROBES
+        out = read_bil(joinpath(dir, "Poroplast.t$n"))
+        version = out.version
+        p = nodal(out, "Pore pressure"; strict = false)[2]
+        u = nodal(out, "Displacements", 1; strict = false)[2]
+        append!(values, p[1:POROPLAST_STRIDE:end])
+        append!(values, u[1:POROPLAST_STRIDE:end])
+    end
+    return (; values, version)
+end
+
+"The same, computed here."
+function poroplast_ours()
+    (; model, nodes, σ0, ramp) = poroplast_case()
+    states = poroplast_initial_states(model, nodes, σ0)
+    dofs = zeros(2 * length(nodes))
+    dofs[2:2:end] .= model.p_l0
+
+    ## Fine through the release, coarser once the ground is only draining.
+    schedule = vcat(
+        range(0.0, 1.5e6; length = 151)[2:end],
+        range(1.5e6, 5.0e7; length = 61)[2:end],
+        range(5.0e7, 3.0e8; length = 51)[2:end],
+    )
+
+    snapshots = Dict{Float64, Vector{Float64}}()
+    t = 0.0
+    for t_next in schedule
+        dofs, states = poroplast_step!(
+            model, nodes, states, dofs, t_next - t;
+            σ_inner = -11.5e6 * ramp(t_next), σ_outer = -11.5e6,
+            p_inner = model.p_l0 * ramp(t_next), p_outer = model.p_l0,
+        )
+        t = t_next
+        for date in POROPLAST_DATES
+            abs(t - date) < 1.0e-6 && (snapshots[date] = copy(dofs))
+        end
+    end
+
+    values = Float64[]
+    for n in POROPLAST_PROBES
+        d = snapshots[POROPLAST_DATES[n + 1]]
+        append!(values, d[2:2:end][1:POROPLAST_STRIDE:end])   # pressure
+        append!(values, d[1:2:end][1:POROPLAST_STRIDE:end])   # displacement
+    end
+    return values
+end
+
 # ── The registry ──────────────────────────────────────────────────────────────
 
 const BIL_CASES = [
@@ -316,6 +415,24 @@ const BIL_CASES = [
         Bil's time discretisation, not a disagreement: 2.8e-2 of it separates the shipped
         output from Bil's own refined answer. `benchmarks/bil_richards.jl` has the two-sided
         convergence study.
+        """,
+    ),
+    BilCase(
+        "poroplast",
+        "Poroplast", "Poroplast",
+        poroplast_bil,
+        poroplast_ours,
+        3.0e-3,
+        """
+        Measured against Bil refined to Dtmax = 1e6 s: 1.5e-4 on pressure and 1.9e-4 on
+        displacement at the end of the release, 1e-4 to 1.3e-3 at the two later dates. The
+        tolerance sits above the worst of those.
+
+        Against the deck's own Dtmax = 1e8 the same solve is 2.9e-3 and 4.6e-3 away at those
+        later dates — a factor of thirty, and Bil's, not ours: refining its step alone
+        collapses the gap while leaving the release phase untouched, exactly as on
+        `richards_2d`. Two independent codes agreeing to 1e-4 through a plastic
+        depressurisation is the result; the rest is time discretisation.
         """,
     ),
     BilCase(

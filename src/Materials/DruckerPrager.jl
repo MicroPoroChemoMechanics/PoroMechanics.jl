@@ -77,16 +77,22 @@ respect to a material parameter — the cohesion, say — makes the stress and t
 strain `Dual` while the imposed strain stays `Float64`, and a state that demanded one shared
 type would reject exactly the case this package exists to support.
 """
-struct DruckerPragerState{S, E, P, T} <: AbstractMaterialState
+struct DruckerPragerState{S, E, P, T, Z} <: AbstractMaterialState
     σ::S
     ε::E
     εp::P
     γp::T
+    σ0::Z
 end
+
+## A state built without a prestress starts from zero, which is what a laboratory path does.
+DruckerPragerState(σ, ε, εp, γp) = DruckerPragerState(σ, ε, εp, γp, zero(σ))
 
 function initial_state(m::DruckerPrager, σ0::Tensors.SymmetricTensor{2, 3, T}) where {T}
     z = zero(σ0)
-    return DruckerPragerState(σ0, z, z, zero(T))
+    ## The initial stress is both the current stress and the prestress: at zero strain the
+    ## predictor must reproduce it exactly.
+    return DruckerPragerState(σ0, z, z, zero(T), σ0)
 end
 
 initial_state(m::DruckerPrager) = initial_state(m, zero(Tensors.SymmetricTensor{2, 3, eltype(m.elastic)}))
@@ -140,9 +146,14 @@ function yield_function(m::DruckerPrager, σ::Tensors.SymmetricTensor{2})
 end
 
 """
-    drucker_prager_return(m, ε, εp_n) -> (σ, εp, Δγ, at_apex)
+    drucker_prager_return(m, ε, εp_n, σ0 = zero(ε)) -> (σ, εp, Δγ, at_apex)
 
 The elastic predictor and its plastic corrector, as a pure function of the strain.
+
+`σ0` is a **prestress**: the stress the material already carries at zero strain. Geotechnical
+cases are posed this way — `base/Poroplast` starts at −11.5 MPa isotropic with the mesh
+undeformed — and folding it into the predictor is the only place it belongs, because the
+yield check has to see the *total* stress and not the increment.
 
 Perfect plasticity with a linear elastic predictor makes the smooth return closed-form:
 consistency on ``f`` after the return gives
@@ -162,7 +173,9 @@ vanishes entirely. Omitting the apex return is the classic way to get a Drucker-
 implementation that passes every test until a tensile corner appears, and then returns a
 negative ``q``.
 """
-function drucker_prager_return(m::DruckerPrager, ε::Tensors.SymmetricTensor{2, 3}, εp_n)
+function drucker_prager_return(
+        m::DruckerPrager, ε::Tensors.SymmetricTensor{2, 3}, εp_n, σ0 = zero(ε)
+    )
     C = elastic_stiffness(m.elastic, Val(3))
     K = m.elastic.λ + 2 * m.elastic.μ / 3
     G = m.elastic.μ
@@ -173,7 +186,7 @@ function drucker_prager_return(m::DruckerPrager, ε::Tensors.SymmetricTensor{2, 
 
     ## Predict from the previous *plastic* strain rather than the previous stress: the two
     ## agree only while nothing has drifted, and the plastic strain is the state variable.
-    σ_tr = C ⊡ (ε - εp_n)
+    σ_tr = σ0 + C ⊡ (ε - εp_n)
     p_tr = Tensors.tr(σ_tr) / 3
     s_tr = Tensors.dev(σ_tr)
     q_tr = sqrt(3 * (s_tr ⊡ s_tr) / 2)
@@ -201,7 +214,7 @@ function drucker_prager_return(m::DruckerPrager, ε::Tensors.SymmetricTensor{2, 
     ## `Dual`, and `C \\ σ` has no promoting method for that pair.
     p_apex = cc / ff
     σ_new = p_apex * one(σ_tr)
-    εp_new = ε - (p_apex / (3 * K)) * one(σ_tr)
+    εp_new = ε - ((p_apex - Tensors.tr(σ0) / 3) / (3 * K)) * one(σ_tr)
     Δεp_dev = Tensors.dev(εp_new - εp_n)
     return σ_new, εp_new, sqrt(2 * (Δεp_dev ⊡ Δεp_dev) / 3), true
 end
@@ -225,11 +238,11 @@ steps that hit the tip; saying so is better than shipping a matrix that cannot b
 function material_response(
         m::DruckerPrager, ε::Tensors.SymmetricTensor{2, 3}, state::DruckerPragerState, Δt
     )
-    εp_n = state.εp
-    ∂σ∂ε, σ = Tensors.gradient(e -> first(drucker_prager_return(m, e, εp_n)), ε, :all)
-    _, εp_new, Δγ, at_apex = drucker_prager_return(m, ε, εp_n)
+    εp_n, σ0 = state.εp, state.σ0
+    ∂σ∂ε, σ = Tensors.gradient(e -> first(drucker_prager_return(m, e, εp_n, σ0)), ε, :all)
+    _, εp_new, Δγ, at_apex = drucker_prager_return(m, ε, εp_n, σ0)
     C = at_apex ? elastic_stiffness(m.elastic, Val(3)) : ∂σ∂ε
-    return σ, C, DruckerPragerState(σ, ε, εp_new, state.γp + Δγ)
+    return σ, C, DruckerPragerState(σ, ε, εp_new, state.γp + Δγ, σ0)
 end
 
 # ── Pairing a plastic skeleton with Biot's coupling ───────────────────────────
@@ -294,8 +307,13 @@ skeleton yielded, and a plastic skeleton needs no new coupling code.
 """
 function poro_response(m::BiotPlastic, ε::Tensors.SymmetricTensor{2}, p, state, Δt)
     σ_eff, ∂σ∂ε, state_new = material_response(m.skeleton, ε, state, Δt)
-    σ = total_stress(m.b, σ_eff, p)
-    ∂σ∂p = -m.b * one(σ_eff)
+    ## `beta`, not `b`. Bil converts between the two stresses with the coefficient it calls
+    ## beta — `sig += beta*pl` before its return mapping and `sig -= beta*pl` after — while
+    ## `b` appears in its incremental update and in the elastic part of the porosity. The two
+    ## are equal in `base/Poroplast`, so the choice is invisible there; it is written down
+    ## because the deck that separates them is the one that would expose a wrong guess.
+    σ = total_stress(m.beta, σ_eff, p)
+    ∂σ∂p = -m.beta * one(σ_eff)
     return σ, ∂σ∂ε, ∂σ∂p, state_new
 end
 
