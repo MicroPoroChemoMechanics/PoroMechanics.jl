@@ -33,6 +33,9 @@ using PoroMechanics
     # ── The Barcelona Basic Model ──────────────────────────────────────────────
     include("bbm.jl")
 
+    # ── Drucker-Prager ─────────────────────────────────────────────────────────
+    include("druckerprager.jl")
+
     # ── Validation against closed-form solutions ──────────────────────────────
     include("benchmarks.jl")
     include("differentiability.jl")
