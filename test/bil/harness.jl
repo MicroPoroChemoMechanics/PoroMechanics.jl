@@ -114,7 +114,7 @@ function scratch_root()
 end
 
 """
-    run_bil(relative, deck; scratch = nothing) -> String
+    run_bil(relative, deck; scratch = nothing, overrides = ()) -> String
 
 Copy the Bil case directory `relative` (under `base/`) to a scratch location, run
 `bil <deck>` there, and return the path of the copy. The deck's mesh and curve files are
@@ -123,8 +123,20 @@ directory of the run is the copy.
 
 The copy is what makes this safe: `bil` writes `<deck>.t0`, `<deck>.t1`, … next to the deck
 and would otherwise overwrite the outputs committed under `base/`.
+
+`overrides` rewrites `key = value` settings in the deck before running, as pairs:
+
+```julia
+run_bil("Richards-2d", "Richards-2d"; overrides = ("Dtmax" => 1.0))
+```
+
+This is what makes a convergence study possible — refining Bil's own time step and watching
+where its answer goes is the only way to tell a disagreement about the equations from a
+disagreement about how they are stepped. Only the first occurrence of each key is rewritten,
+and a key that is absent is an error rather than a silent no-op, because a study that
+quietly failed to change anything looks exactly like a converged one.
 """
-function run_bil(relative, deck; scratch = nothing)
+function run_bil(relative, deck; scratch = nothing, overrides = ())
     exe = bil_executable()
     exe === nothing && error("the `bil` executable was not found — set BIL_EXE")
 
@@ -143,7 +155,18 @@ function run_bil(relative, deck; scratch = nothing)
     ## `cp` preserves read-only bits from the source; the run needs to write here.
     chmod(dest, 0o755; recursive = true)
 
-    isfile(joinpath(dest, deck)) || error("deck \"$deck\" not found in $src")
+    deck_path = joinpath(dest, deck)
+    isfile(deck_path) || error("deck \"$deck\" not found in $src")
+
+    for (key, value) in overrides
+        text = read(deck_path, String)
+        pattern = Regex("(" * escape_string(String(key)) * "\\s*=\\s*)([0-9.eE+-]+)")
+        occursin(pattern, text) || error(
+            "override \"$key\" matches nothing in $relative/$deck — " *
+                "a study that silently changed nothing looks exactly like a converged one"
+        )
+        write(deck_path, replace(text, pattern => SubstitutionString("\\g<1>$value"); count = 1))
+    end
 
     log = joinpath(dest, deck * ".bil.log")
     open(log, "w") do io

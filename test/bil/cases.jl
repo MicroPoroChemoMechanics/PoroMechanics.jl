@@ -44,10 +44,11 @@ const BIL_REFERENCE_DIR = joinpath(@__DIR__, "references")
 * `name` — test label and reference file stem.
 * `relative`, `deck` — the case directory under Bil's `base/`, and the deck inside it.
 * `bil()` — returns `(; values, version)`: the reference vector, and the Bil version that
-  wrote the file it came from. Needs Bil's source tree but *not* the binary — it reads the
-  shipped outputs, whose trustworthiness is established separately by `drift_report`. The
-  version travels with the values because it is not the installed one: `Richards-2d.t*` was
-  written by 2.9 while the binary here is 2.11.
+  produced it. This runs Bil, so `generate.jl` needs the binary and not only the source
+  tree. It used to read the outputs shipped under `base/`, and that turned out to be the
+  wrong reference: those were produced with the deck's own coarse time step and carry a
+  visible discretisation error (see `richards_2d` below). Freezing them meant testing that
+  we stay a fixed distance from a number known to be wrong.
 * `ours()` — returns the same quantities, computed here.
 * `rtol` — relative L2 tolerance, with `why` recording where the number came from.
 """
@@ -77,7 +78,12 @@ end
 #  * **the same initial state** — hydrostatic, and it matches Bil's `t0` file to 1.4e-7,
 #    which is exactly the printing floor.
 #
-# What is left is the schemes, and they do differ: see `rtol` below.
+# What is left is the schemes, and they do differ — the difference is measured and explained
+# in `benchmarks/bil_richards.jl`. In short: Bil evaluates the flux with the permeability of
+# the *previous* step (`double k_l = val_n.Permeability_liquid;` in `Richards.cpp`), an
+# explicit lag that costs it first-order accuracy in time, while the mobility here is taken
+# at the current iterate. The reference is therefore taken from a Bil run with its own step
+# refined to 1 s, not from the file shipped with the deck.
 
 "Dates written by the deck's `Dates` block, in file order: `Richards-2d.tN` is `DATES[N+1]`."
 const RICHARDS_2D_DATES = collect(0.0:200.0:3000.0)
@@ -87,6 +93,9 @@ const RICHARDS_2D_PROBES = (0, 1, 2, 3, 5, 10, 15)
 
 "Every 16th node of the mesh, so a 1433-node profile reduces to ~90 values per date."
 const RICHARDS_2D_STRIDE = 16
+
+"`Dtmax` forced on Bil when producing the reference. See `benchmarks/bil_richards.jl`."
+const RICHARDS_2D_BIL_DT = 1.0
 
 """
     richards_2d_mesh() -> NamedTuple
@@ -106,7 +115,11 @@ Bil's liquid pressure at the probe dates, subsampled by `RICHARDS_2D_STRIDE`, to
 the version stamped on the files it was read from.
 """
 function richards_2d_bil()
-    dir = case_dir("Richards-2d")
+    ## Bil's own time step refined from the deck's `Dtmax = 1000` down to 1 s. At the deck's
+    ## setting Bil's answer sits 2.8e-2 away from the limit both codes converge to; at 1 s it
+    ## is 7.2e-4 away. Refining further buys little and costs a lot — 102 s of Bil for this
+    ## one case already.
+    dir = run_bil("Richards-2d", "Richards-2d"; overrides = ("Dtmax" => RICHARDS_2D_BIL_DT,))
     cellnodes = richards_2d_mesh().grid[CellNodes]
     values = Float64[]
     version = "unknown"
@@ -199,16 +212,18 @@ const BIL_CASES = [
         "Richards-2d", "Richards-2d",
         richards_2d_bil,
         richards_2d_ours,
-        5.0e-2,
+        1.0e-2,
         """
-        Measured: 1.4e-7 at t = 0 — the printing floor, so the initial states are identical —
-        rising to 3.4e-2 at t = 600 s and falling back to 4e-3 by t = 3000 s. The peak sits on
-        the steepest part of the drainage, where the `billes` curve takes k_rl from 1 to
-        2.6e-8 across 500 Pa of suction; that is where two different time-stepping schemes
-        are furthest apart. The tolerance is set just above the measured peak. It is not a
-        statement that 3 % is acceptable physics — it is a bound on a discrepancy that still
-        has to be explained, and `benchmarks/bil_richards.jl` is where that explanation
-        belongs.
+        Measured 5.6e-3 at t = 600 s, the worst date, against Bil refined to Dtmax = 1 s.
+        Almost all of that is *our* time step: the test solves with Δt_max = 10 s, which sits
+        4.9e-3 from our own converged answer, and Bil's residual error at 1 s is 7.2e-4. The
+        physics agreement is therefore better than 1e-3, between a finite element code and a
+        finite volume one.
+
+        Against the file shipped with the deck the same solve is 3.4e-2 away, and that gap is
+        Bil's time discretisation, not a disagreement: 2.8e-2 of it separates the shipped
+        output from Bil's own refined answer. `benchmarks/bil_richards.jl` has the two-sided
+        convergence study.
         """,
     ),
 ]

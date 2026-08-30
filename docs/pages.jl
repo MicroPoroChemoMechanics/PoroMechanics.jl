@@ -16,6 +16,7 @@ pages = [
         "Gardner infiltration"   => "validation/gardner_infiltration.md",
         "Transient drainage"     => "validation/gardner_transient.md",
         "BBM — Bil reference cases" => "validation/bbm_bil.md",
+        "Richards — Bil reference case" => "validation/bil_richards.md",
     ],
     "Writing a model" => "demos/writing_a_model.md",
     "Differentiability" => [
