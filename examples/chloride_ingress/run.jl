@@ -79,19 +79,13 @@ PoroMechanics.species_names(::ChlorideModel) = [:c_cl]
 # ── Oh-Jang (2004) tortuosity ─────────────────────────────────────────────────
 
 """
-    tortuosity_OhJang(phi, s_l, m)
+    tortuosity_OhJang(phi, s_l, m::ChlorideModel)
 
-Effective liquid tortuosity after Oh & Jang (2004),
-after Oh & Jang (2004).
+Oh-Jang tortuosity of the cement paste, from the package constitutive layer:
 
   τ = τ_paste(φ) · τ_agg · s_l^4.5
 
-For the saturated medium (s_l = 1): τ = τ_paste · τ_agg.
-"""
-"""
-    tortuosity_OhJang(phi, s_l, m::ChlorideModel)
-
-Oh-Jang tortuosity of the cement paste, from the package constitutive layer.
+and for the saturated medium (s_l = 1), τ = τ_paste · τ_agg.
 """
 function tortuosity_OhJang(phi, s_l, m::ChlorideModel)
     oj = OhJang(; phi_c = m.phi_c, n = m.n_OJ, ds = m.ds_OJ, tau_agg = m.tau_agg)
@@ -267,15 +261,14 @@ function compare_reference(tsol, grid, ::ChlorideModel)
     end
     println("=" ^ 60)
 
-    # Diagnostics globaux
     # Global diagnostics
-    idx_front = findlast(c_dm .> 1e-3)   # seuil = 0.001 mol/dm³
-    idx_front = findlast(c_dm .> 1e-3)   # threshold = 0.001 mol/dm³
+    idx_front = findlast(c_dm .> 1.0e-3)          # threshold 0.001 mol/dm³
+    x_front = idx_front === nothing ? 0.0 : x_dm[idx_front]
 
-    @printf("\nDiagnostics :\n")
-    @printf("  c(x=0) = %.4f mol/dm³  (ref: 0.523)\n", c0)
+    @printf("\nDiagnostics:\n")
+    @printf("  c(x=0) = %.4f mol/dm³  (reference 0.523)\n", first(c_dm))
     @printf("  Penetration front (c > 1e-3 mol/dm³) ≈ %.1f mm\n", x_front * 100.0)
-    @printf("  C++ reference: ~75 mm\n")
+    @printf("  Reference front ≈ 7.5 mm\n")
 end
 
 # ── Visualisation ─────────────────────────────────────────────────────────────
