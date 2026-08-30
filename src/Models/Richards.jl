@@ -96,11 +96,17 @@ Two-point flux, with the conductivity evaluated at the mean capillary pressure o
 
 `VoronoiFVM` divides `f` by the edge length, which is why the gravity term carries an
 explicit `dx` while the pressure term does not.
+
+Note `edge.coord` is the coordinate matrix of the **whole grid**, not of the edge's two
+nodes: the endpoints are `edge.coord[:, edge.node[1]]` and `edge.coord[:, edge.node[2]]`.
+Writing `edge.coord[1, 2] - edge.coord[1, 1]` instead reads global nodes 1 and 2 whatever
+edge is being assembled. On a uniform 1D grid those happen to be adjacent and equally
+spaced, so the mistake returns the right number and hides.
 """
 function flux!(f, u, edge, m::RichardsModel, data)
     pl1, pl2 = u[1, 1], u[1, 2]
     K = liquid_conductivity(m, m.p_g - (pl1 + pl2) / 2)
-    dx = edge.coord[1, 2] - edge.coord[1, 1]
+    dx = edge.coord[1, edge.node[2]] - edge.coord[1, edge.node[1]]
     f[1] = K * (pl1 - pl2) + K * m.rho_l * m.gravity * dx
     return nothing
 end
