@@ -40,4 +40,7 @@ using PoroMechanics
     # ── Examples still produce the profiles they used to ───────────────────────
     include("regression.jl")
 
+    # ── Agreement with Bil, an independently written code ─────────────────────
+    include("bil.jl")
+
 end
