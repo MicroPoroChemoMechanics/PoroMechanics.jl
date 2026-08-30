@@ -158,6 +158,16 @@ function run_bil(relative, deck; scratch = nothing, overrides = ())
     deck_path = joinpath(dest, deck)
     isfile(deck_path) || error("deck \"$deck\" not found in $src")
 
+    ## The copy carries Bil's shipped outputs with it, and a run only rewrites as many `.tN`
+    ## as its own `Dates` block has. Leaving the rest in place means a later read can pick up
+    ## a file written years ago by another version — `Plast/Plast1` still ships a `.t5` from
+    ## Bil 2.4 that a 2.11 run does not touch. Purge them, so everything read afterwards was
+    ## produced by this run.
+    for f in readdir(dest)
+        occursin(Regex("^" * escape_string(deck) * raw"\.(t|p)\d+$"), f) &&
+            rm(joinpath(dest, f))
+    end
+
     for (key, value) in overrides
         text = read(deck_path, String)
         pattern = Regex("(" * escape_string(String(key)) * "\\s*=\\s*)([0-9.eE+-]+)")
@@ -174,11 +184,37 @@ function run_bil(relative, deck; scratch = nothing, overrides = ())
         try
             run(cmd)
         catch err
-            tail = join(Iterators.take(Iterators.reverse(collect(eachline(log))), 20), "\n")
-            error("bil failed on $relative/$deck ($err)\nlast lines of $log:\n$tail")
+            error("bil failed on $relative/$deck ($err)\n$(log_tail(log))")
+        end
+    end
+
+    ## Bil reports its errors and then exits **zero**. Without this check a run that died at
+    ## its first plastic step looks exactly like a run that finished, and the comparison
+    ## silently uses whatever partial output is on disk. Both wordings appear and both are
+    ## fatal in practice: `base/Plast/Camclay` aborts at t = 8.1 of 10 with a "fatal error"
+    ## in `PlasticityCamClay_RM`, and `base/Plast/Plast1` never starts, with a "runtime
+    ## error" on an obsolete keyword.
+    for line in eachline(log)
+        low = lowercase(line)
+        if occursin("fatal error", low) || occursin("runtime error", low)
+            error(
+                "bil reported an error on $relative/$deck but exited 0 — " *
+                    "its output is absent or incomplete.\n$(log_tail(log))"
+            )
         end
     end
     return dest
+end
+
+"""
+    log_tail(path, n = 20) -> String
+
+The last `n` lines of a Bil log, labelled, for an error message.
+"""
+function log_tail(path, n = 20)
+    lines = collect(eachline(path))
+    tail = join(lines[max(1, end - n + 1):end], "\n")
+    return "last lines of $path:\n$tail"
 end
 
 # ── Reading Bil output ────────────────────────────────────────────────────────
@@ -313,10 +349,24 @@ function parse_data_block(lines, path)
     end
     isempty(rows) && error("empty data block in $path")
 
-    width = length(first(rows))
-    all(r -> length(r) == width, rows) || error(
-        "ragged data block in $path: row widths $(unique(length.(rows)))"
-    )
+    widths = unique(length.(rows))
+    if length(widths) > 1
+        ## Not corruption: a deck with several `Material` blocks of *different models* writes
+        ## each element with its own view set into one file, and the header describes only
+        ## the first. `base/Plast/Plast0` declares `Model = Plast` and `Model = Elast`, and
+        ## its rows are 29 and 18 columns wide accordingly. There is no honest way to read
+        ## such a file against a single header, so refuse it by name rather than let a
+        ## comparison silently align the wrong columns.
+        listed = join(sort(widths), " and ")
+        error(
+            "$path mixes rows of $listed columns.\n" *
+                "That is what Bil writes when a deck declares several Material blocks with " *
+                "different models: each element carries its own views, and the header " *
+                "describes only the first. Compare such a case per material, from a deck " *
+                "with one model in it."
+        )
+    end
+    width = first(widths)
     return reduce(vcat, (permutedims(r) for r in rows))
 end
 
