@@ -151,3 +151,72 @@ function dsaturation_dpc(r::Gardner, pc)
     pc <= 0 && return zero(T)
     return -r.α * exp(-r.α * pc)
 end
+
+# ── Tabulated ─────────────────────────────────────────────────────────────────
+
+"""
+    Tabulated(pc, sl)
+
+A retention curve given as a table rather than a formula: `sl[k]` is the saturation at
+capillary pressure `pc[k]`, with linear interpolation between the points and clamping to the
+end values outside the range.
+
+Measured curves arrive this way, and so do the curves another code has already discretised —
+Bil writes the table it interpolated next to its deck, and reading that table back is what
+lets a comparison separate a disagreement about the physics from a disagreement about how a
+curve was sampled.
+
+`pc` must be sorted and strictly increasing; the constructor checks it, because a table that
+is merely *nearly* sorted produces a plausible curve with a wrong branch in it.
+
+Both vectors are type parameters, so a table of `Dual`s differentiates like any other
+coefficient — the values of a measured curve are material parameters too.
+
+```julia
+pc, sl, krl = eachcol(readdlm("billes"))
+model = RichardsModel(; retention = Tabulated(pc, sl), rel_perm = TabulatedKrl(pc, krl))
+```
+"""
+struct Tabulated{V <: AbstractVector, W <: AbstractVector} <: AbstractRetention
+    pc::V
+    sl::W
+
+    function Tabulated(pc::V, sl::W) where {V <: AbstractVector, W <: AbstractVector}
+        length(pc) == length(sl) || throw(
+            ArgumentError("Tabulated: $(length(pc)) pressures but $(length(sl)) saturations")
+        )
+        length(pc) >= 2 || throw(ArgumentError("Tabulated: need at least two points"))
+        issorted(pc) && allunique(pc) || throw(
+            ArgumentError("Tabulated: `pc` must be sorted and strictly increasing")
+        )
+        return new{V, W}(pc, sl)
+    end
+end
+
+"""
+    interpolate_table(x, y, q)
+
+Linear interpolation of the table `(x, y)` at `q`, clamped to the end values outside the
+range.
+
+The `+ zero(q)` on the clamped branches is not decoration: without it a `Dual` argument
+falls back to a `Float64` return and the derivative is silently lost — the same trap as
+returning the literal `1.0` from a saturated branch.
+"""
+function interpolate_table(x, y, q)
+    q <= first(x) && return first(y) + zero(q)
+    q >= last(x) && return last(y) + zero(q)
+    j = searchsortedlast(x, q)
+    t = (q - x[j]) / (x[j + 1] - x[j])
+    return y[j] + t * (y[j + 1] - y[j])
+end
+
+saturation(r::Tabulated, pc) = interpolate_table(r.pc, r.sl, pc)
+
+function dsaturation_dpc(r::Tabulated, pc)
+    ## The slope of the segment containing `pc`; zero outside the table, where the curve is
+    ## clamped and therefore flat.
+    (pc <= first(r.pc) || pc >= last(r.pc)) && return zero(pc) / oneunit(eltype(r.pc))
+    j = searchsortedlast(r.pc, pc)
+    return (r.sl[j + 1] - r.sl[j]) / (r.pc[j + 1] - r.pc[j])
+end

@@ -45,9 +45,10 @@ export storage!, flux!, bcondition!, reaction!, assemble_element!
 export element_matrices!, facet_load!
 
 # Constitutive layer
-export AbstractRetention, VanGenuchten, ExponentialCutoff, Gardner
+export AbstractRetention, VanGenuchten, ExponentialCutoff, Gardner, Tabulated
+export interpolate_table
 export saturation, dsaturation_dpc
-export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl
+export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl, TabulatedKrl
 export relative_permeability, gas_relative_permeability
 export AbstractTortuosity, OhJang, tortuosity
 export AbstractPoroelastic, BiotPoroelastic
@@ -68,7 +69,7 @@ export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_m
 # Backends
 export fvm_system
 export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
-export RichardsModel, liquid_saturation, liquid_conductivity
+export RichardsModel, liquid_saturation, liquid_conductivity, intrinsic_permeability
 export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, newton_solve!
 
 # ── Core abstractions ──────────────────────────────────────────────────────────
