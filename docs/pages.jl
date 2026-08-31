@@ -17,6 +17,7 @@ pages = [
         "Transient drainage"     => "validation/gardner_transient.md",
         "BBM — Bil reference cases" => "validation/bbm_bil.md",
         "Richards — Bil reference case" => "validation/bil_richards.md",
+        "Poroplasticity — Bil reference case" => "validation/bil_poroplast.md",
     ],
     "Writing a model" => "demos/writing_a_model.md",
     "Differentiability" => [
