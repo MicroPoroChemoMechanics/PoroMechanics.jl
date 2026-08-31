@@ -524,6 +524,7 @@ function run_chloride_ingress3(;
     N=100,
     t_end=3.1536e7,   # 1 year [s]
     n_save=12,
+    n_couple=n_save,
     verbose=false,
 )
     # ── ChemistryLab (once) — before the model, for the ICs ───────────────────
@@ -572,10 +573,17 @@ function run_chloride_ingress3(;
     inival[IK, 1] = m.c_k_BC
     inival[ICA, 1] = m.c_ca_BC
 
+    # ── Coupling schedule, independent of the output schedule ─────────────────
+    #
+    # As in `run_2b.jl`: `n_save` is how often a profile is archived, `n_couple` how
+    # often transport hands over to chemistry. Conflating them makes the physical
+    # coupling step a consequence of how often somebody wanted a plot.
+    sub = max(1, cld(n_couple, n_save))
+
     # ── Time step controller ──────────────────────────────────────────────────
     ctrl = VoronoiFVM.SolverControl(;
         Δt=1.0,
-        Δt_max=t_end / (4 * n_save),
+        Δt_max=t_end / (4 * n_save * sub),
         Δu_opt=0.5 * m.c_cl_BC,
         handle_exceptions=true,
         verbose=verbose,
@@ -583,16 +591,18 @@ function run_chloride_ingress3(;
 
     # ── SNIA loop ─────────────────────────────────────────────────────────────
     tsave = range(0.0, t_end; length=n_save + 1)
+    tcouple = range(0.0, t_end; length=n_save * sub + 1)
     # Tuple : (t, u, phi, n_ch, n_ett, n_ms, n_fs, c_oh_frozen)
     results = Tuple{Float64,Matrix{Float64},Vector{Float64},Vector{Float64},
         Vector{Float64},Vector{Float64},Vector{Float64},Vector{Float64}}[]
     u_cur = copy(inival)
 
-    for k in 2:lastindex(tsave)
-        t0 = tsave[k-1]
-        t1 = tsave[k]
+    for k in 2:lastindex(tcouple)
+        t0 = tcouple[k-1]
+        t1 = tcouple[k]
+        is_save = (k - 1) % sub == 0
 
-        @info "Transport seg $k" t_yr = round(t1 / 3.1536e7; digits=2)
+        is_save && @info "Transport seg $k" t_yr = round(t1 / 3.1536e7; digits=2)
 
         # Step 1: Fick transport (VoronoiFVM)
         seg = solve(sys; inival=u_cur, times=[t0, t1], control=ctrl)
@@ -613,18 +623,23 @@ function run_chloride_ingress3(;
             @warn "NaN after chemistry, seg $k" first = idx[1:min(5, end)]
         end
 
-        push!(results, (
-            t1,
-            copy(u_cur),
-            copy(m.phi),
-            copy(m.n_ch),
-            copy(m.n_ett),
-            copy(m.n_ms),
-            copy(m.n_fs),
-            copy(m.c_oh_frozen),   # OH⁻ from the last chemical step
-        ))
+        if is_save
+            push!(results, (
+                t1,
+                copy(u_cur),
+                copy(m.phi),
+                copy(m.n_ch),
+                copy(m.n_ett),
+                copy(m.n_ms),
+                copy(m.n_fs),
+                copy(m.c_oh_frozen),   # OH⁻ from the last chemical step
+            ))
 
-        @info "SNIA" seg = k - 1 φ_mean = round(mean(m.phi); sigdigits=4) n_CH0 = round(m.n_ch[2]; sigdigits=4) n_FS0 = round(m.n_fs[2]; sigdigits=4)
+            ## Reported over the domain rather than at one node: a single node cannot show
+            ## whether the chemistry produced a coherent front or a scatter of states, and
+            ## that is the question this stage has to answer.
+            @info "SNIA" seg = k - 1 φ_range = round.(extrema(m.phi); sigdigits=4) n_CH_min = round(minimum(m.n_ch); sigdigits=5) n_FS_max = round(maximum(m.n_fs); sigdigits=4)
+        end
     end
 
     return results, m
