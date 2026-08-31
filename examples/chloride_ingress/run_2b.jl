@@ -415,10 +415,11 @@ Simulates chloride penetration with portlandite dissolution.
 - `model`   : `ChlorideModel2b` with the final values (φ, n_CH)
 """
 function run_chloride_ingress2b(;
-    N       = 100,
-    t_end   = 3.1536e7,
-    n_save  = 12,
-    verbose = false,
+    N        = 100,
+    t_end    = 3.1536e7,
+    n_save   = 12,
+    n_couple = n_save,
+    verbose  = false,
 )
     m = ChlorideModel2b(N + 1)
 
@@ -460,29 +461,46 @@ function run_chloride_ingress2b(;
     inival[IOH, 1] = m.c_na_BC + m.c_k_BC - m.c_cl_BC   # = 1 mol/m³ (EN with c_Ca=0)
     inival[ICA, 1] = 0.0    # no portlandite in the external solution
 
+    # ── Coupling schedule, independent of the output schedule ─────────────────
+    #
+    # These are two different things and conflating them is a physics error, not a
+    # convenience. `n_save` says how often a profile is archived; `n_couple` says how
+    # often transport hands over to chemistry. They used to be the same number, which
+    # made the coupling step a consequence of how often someone wanted a plot.
+    #
+    # It matters here more than in most splittings. Each equilibration dissolves only
+    # enough portlandite to saturate the pore water of its own cell — that is what an
+    # equilibrium calculation does — and the dissolved calcium is then carried away by
+    # the next transport segment. Total dissolution is therefore proportional to the
+    # number of handovers until the schedule is fine enough to resolve the front:
+    # measured 18.4, 67.3 and 178.4 mol/m³ at 12, 48 and 144 segments.
+    sub     = max(1, cld(n_couple, n_save))
+    tsave   = range(0.0, t_end; length = n_save + 1)
+    tcouple = range(0.0, t_end; length = n_save * sub + 1)
+
     # ── Time step controller ──────────────────────────────────────────────────
-    # Δt_max = t_end/(4*n_save): transport segments are subdivided to stay away
-    # from Δt_min. A larger Δu_opt (50 % of the BC) allows wider steps without
-    # triggering excessive subdivision.
+    # Δt_max follows the *coupling* step, so that a transport segment is subdivided
+    # rather than run in one leap. Counted in segments, not in points, so that
+    # `n_couple = n_save` reproduces the original schedule exactly.
     ctrl = VoronoiFVM.SolverControl(;
         Δt               = 1.0,
-        Δt_max           = t_end / (4 * n_save),
+        Δt_max           = t_end / (4 * n_save * sub),
         Δu_opt           = 0.5 * m.c_cl_BC,
         handle_exceptions = true,
         verbose          = verbose,
     )
 
     # ── Operator splitting loop ───────────────────────────────────────────────
-    tsave   = range(0.0, t_end; length = n_save + 1)
     results = Tuple{Float64, Matrix{Float64}, Vector{Float64}, Vector{Float64}}[]
     u_cur   = copy(inival)
 
-    for k in 2:lastindex(tsave)
-        t0 = tsave[k-1]
-        t1 = tsave[k]
+    for k in 2:lastindex(tcouple)
+        t0 = tcouple[k-1]
+        t1 = tcouple[k]
+        is_save = (k - 1) % sub == 0
 
         # Diagnostic before transport
-        @info "pre-transport seg $k" cl_min=minimum(u_cur[ICL,:]) cl_max=maximum(u_cur[ICL,:]) na_min=minimum(u_cur[INA,:]) oh_min=minimum(u_cur[IOH,:]) ca_min=minimum(u_cur[ICA,:]) psi_min=minimum(u_cur[IPS,:]) psi_max=maximum(u_cur[IPS,:])
+        is_save && @info "pre-transport seg $k" cl_min=minimum(u_cur[ICL,:]) cl_max=maximum(u_cur[ICL,:]) na_min=minimum(u_cur[INA,:]) oh_min=minimum(u_cur[IOH,:]) ca_min=minimum(u_cur[ICA,:]) psi_min=minimum(u_cur[IPS,:]) psi_max=maximum(u_cur[IPS,:])
 
         # 1. Transport step (VoronoiFVM)
         seg   = solve(sys; inival = u_cur, times = [t0, t1], control = ctrl)
@@ -509,10 +527,13 @@ function run_chloride_ingress2b(;
             @warn "NaN in phi after chemistry, seg $k"
         end
 
-        push!(results, (t1, copy(u_cur), copy(m.phi), copy(m.n_ch)))
+        is_save && push!(results, (t1, copy(u_cur), copy(m.phi), copy(m.n_ch)))
 
-        φ_mean = mean(m.phi)
-        @info "SNIA" seg=k-1 t=round(t1/3.1536e7; digits=2) φ_mean=round(φ_mean; sigdigits=4) n_CH0=round(m.n_ch[1]; sigdigits=4)
+        ## `m.n_ch[1]` is deliberately *not* reported: node 1 is the Dirichlet node that
+        ## `chemistry_step!` skips, so it can never move and says nothing about the run.
+        if is_save
+            @info "SNIA" seg=k-1 t=round(t1/3.1536e7; digits=2) φ_max=round(maximum(m.phi); sigdigits=4) n_CH_min=round(minimum(m.n_ch); sigdigits=5)
+        end
     end
 
     return results, m
