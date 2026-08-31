@@ -76,3 +76,73 @@ Base.@kwdef struct MolarVolumes
     Vm_CASH_T5C::Float64  = 62.0e-6    # CSH3T-T5C   Ca₁.₂₅Al₀.₂₅Si₀.₇₅H…
     Vm_CASH_T2C::Float64  = 68.4e-6    # CSH3T-T2C   Ca₁.₁₇Al₀.₃₃Si₀.₆₇H…
 end
+
+# ── Mineral dissolution/precipitation kinetics ────────────────────────────────
+
+"""
+Kinetic parameters for dissolution/precipitation of the mineral phases.
+
+!!! note
+    This belongs in ChemistryLab.jl and can now be moved there. The reason once given for
+    keeping a local copy — that this package was pinned to an earlier ChemistryLab — no
+    longer holds: the resolved version is **0.3.1**, it exports `KineticReaction`,
+    `KineticsProblem`, `KineticsSolver`, `build_kinetics_ode`, `first_order_rate` and
+    `arrhenius_rate_constant`, and that sits inside the `[compat]` entry `0.1, 0.2, 0.3`
+    already declared. Replacing this rate law with the upstream one therefore needs no
+    version bump, and none of the re-validation `CLAUDE.md` requires before going past 0.3.
+
+    Checked on 2026-08-31; the rate law below is still the one in use.
+Source: toughreact.py → _MINERAL_KINETICS (Soive, Ravi thesis).
+
+Neutral rate law, no pH dependence and no activation energy (Ea=0):
+  r [mol/m³_concrete/s] = k [mol/m²/s] × A_s [m²/g] × M [g/mol] × n [mol/m³_concrete]
+
+For a time step Δt the largest kinetically reachable change is:
+  |Δn_max| = r × Δt
+
+The effective change is capped at min(|Δn_eq|, |Δn_max|) and the aqueous
+concentration is corrected by mass balance (dissolution stoichiometry).
+"""
+Base.@kwdef struct KineticParams
+    # Portlandite Ca(OH)₂ — very fast, rarely the limiting kinetics
+    k_CH::Float64 = 2.24e-8    # mol/m²/s
+    A_CH::Float64 = 16.5       # m²/g  (16.5e4 cm²/g in chemical.inp)
+    M_CH::Float64 = 74.09      # g/mol
+
+    # Ettringite Ca₆Al₂(SO₄)₃(OH)₁₂·26H₂O
+    k_Ett::Float64 = 7.08e-13
+    A_Ett::Float64 = 9.8
+    M_Ett::Float64 = 1255.0
+
+    # Monosulphate12 Ca₄Al₂(SO₄)(OH)₁₂·6H₂O
+    k_MS::Float64 = 6.76e-12
+    A_MS::Float64 = 5.7
+    M_MS::Float64 = 480.0      # approximatif
+
+    # Friedel's salt C₃A·CaCl₂·10H₂O
+    k_FS::Float64 = 6.76e-12
+    A_FS::Float64 = 5.7
+    M_FS::Float64 = 465.0      # approximatif
+
+    # Brucite Mg(OH)₂
+    k_Brc::Float64 = 5.7544e-9
+    A_Brc::Float64 = 9.8
+    M_Brc::Float64 = 58.32
+
+    # C-S-H CSHQ (all end-members, A_s = 41 m²/g from chemical.inp)
+    # Molar masses approximated from Ca/Si and the molar volume (ρ ≈ 2.0 g/cm³)
+    k_CSH::Float64 = 2.75e-12
+    A_CSH::Float64 = 41.0
+    M_TobH::Float64 = 118.0     # Ca₀.₈₃SiO₂H₁.₃  (Vm = 59 cm³/mol × ρ)
+    M_TobD::Float64 = 80.0      # Ca₀.₈₃SiO₂H₀.₅  (Vm = 27.7 cm³/mol × ρ × ~1.5)
+    M_JenH::Float64 = 200.0     # Ca₁.₅SiO₂H₂.₅   (Vm = 107.7 cm³/mol × ρ × ~0.9)
+    M_JenD::Float64 = 140.0     # Ca₁.₆₇SiO₂H₀.₅  (Vm = 57.6 cm³/mol × ρ)
+
+    # C-A-S-H CSH3T (CNASH_ss, Myers et al. 2014 / cemdata18) — same rate law as CSHQ
+    # TODO: check the molar masses against the cemdata18 formulas on the first run
+    k_CASH::Float64  = 2.75e-12
+    A_CASH::Float64  = 41.0
+    M_CASH_TobH::Float64 = 130.0   # Ca₀.₈₃Al₀.₁Si₀.₉H… (Vm ≈ 59.4 cm³/mol × ρ)
+    M_CASH_T5C::Float64  = 155.0   # Ca₁.₂₅Al₀.₂₅Si₀.₇₅H…
+    M_CASH_T2C::Float64  = 148.0   # Ca₁.₁₇Al₀.₃₃Si₀.₆₇H…
+end
