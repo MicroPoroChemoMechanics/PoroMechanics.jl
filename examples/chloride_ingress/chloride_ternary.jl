@@ -140,9 +140,15 @@ end
 Kinetic parameters for dissolution/precipitation of the mineral phases.
 
 !!! note
-    This belongs in ChemistryLab.jl, which has carried a kinetics module since its v0.3.0.
-    The rate law is reimplemented here because this package is pinned to an earlier
-    ChemistryLab; it should be dropped in favour of the upstream one.
+    This belongs in ChemistryLab.jl and can now be moved there. The reason once given for
+    keeping a local copy — that this package was pinned to an earlier ChemistryLab — no
+    longer holds: the resolved version is **0.3.1**, it exports `KineticReaction`,
+    `KineticsProblem`, `KineticsSolver`, `build_kinetics_ode`, `first_order_rate` and
+    `arrhenius_rate_constant`, and that sits inside the `[compat]` entry `0.1, 0.2, 0.3`
+    already declared. Replacing this rate law with the upstream one therefore needs no
+    version bump, and none of the re-validation `CLAUDE.md` requires before going past 0.3.
+
+    Checked on 2026-08-31; the rate law below is still the one in use.
 Source: toughreact.py → _MINERAL_KINETICS (Soive, Ravi thesis).
 
 Neutral rate law, no pH dependence and no activation energy (Ea=0):
