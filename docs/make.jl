@@ -25,7 +25,7 @@ const LITERATE_DEMOS = ["writing_a_model", "parameter_identification", "solver_s
 const BENCHMARKS_DIR = joinpath(@__DIR__, "..", "benchmarks")
 const VALIDATION_DIR = joinpath(@__DIR__, "src", "validation")
 
-const LITERATE_BENCHMARKS = ["terzaghi", "mandel", "cryer", "deleeuw", "gardner_infiltration", "gardner_transient", "bbm_bil", "bil_richards", "bil_poroplast", "bil_mechamic"]
+const LITERATE_BENCHMARKS = ["terzaghi", "mandel", "cryer", "deleeuw", "gardner_infiltration", "gardner_transient", "bbm_bil", "bil_richards", "bil_poroplast", "bil_mechamic", "mfh_poroelastic"]
 
 # `bil_richards` reruns Bil to refine its time step, which no documentation runner has
 # installed, so its page is emitted as plain `julia` fences. The measured tables are written
