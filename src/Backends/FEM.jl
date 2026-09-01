@@ -315,7 +315,7 @@ function assemble_axisymmetric!(K, f, dh, cv, mat, states, states_old, u, Δt)
 end
 
 """
-    newton_solve!(u, K, f, dh, cv, mat, states, states_old, ch, Δt; tol, maxiter, maxhalve, linsolve)
+    newton_solve!(u, K, f, dh, cv, mat, states, states_old, ch, Δt; tol, maxiter, maxhalve, linsolve, fext)
 
 Newton–Raphson on the equilibrium residual, with backtracking, returning the residual norm
 of every iteration.
@@ -337,7 +337,7 @@ descent direction, which is a modeling problem rather than one a line search can
 """
 function newton_solve!(
         u, K, f, dh, cv, mat, states, states_old, ch, Δt;
-        tol = 1.0e-8, maxiter = 25, maxhalve = 12, linsolve = \
+        tol = 1.0e-8, maxiter = 25, maxhalve = 12, linsolve = \, fext = nothing
     )
     norms = Vector{eltype(f)}()
     Ferrite.apply!(u, ch)
@@ -348,6 +348,9 @@ function newton_solve!(
     ## reported are still norms.
     residual_sq!(uu) = begin
         assemble_axisymmetric!(K, f, dh, cv, mat, states, states_old, uu, Δt)
+        ## The residual is the *out-of-balance* force. Without `fext` this is a problem
+        ## driven entirely through its constraints; with it, a traction can drive it.
+        fext === nothing || (f .-= fext)
         Ferrite.apply_zero!(K, f, ch)
         f ⋅ f
     end

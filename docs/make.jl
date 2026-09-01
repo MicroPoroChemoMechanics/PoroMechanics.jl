@@ -25,7 +25,7 @@ const LITERATE_DEMOS = ["writing_a_model", "parameter_identification", "solver_s
 const BENCHMARKS_DIR = joinpath(@__DIR__, "..", "benchmarks")
 const VALIDATION_DIR = joinpath(@__DIR__, "src", "validation")
 
-const LITERATE_BENCHMARKS = ["terzaghi", "mandel", "cryer", "deleeuw", "gardner_infiltration", "gardner_transient", "bbm_bil", "bil_richards", "bil_poroplast", "bil_mechamic", "mfh_poroelastic"]
+const LITERATE_BENCHMARKS = ["terzaghi", "mandel", "cryer", "deleeuw", "gardner_infiltration", "gardner_transient", "bbm_bil", "bil_richards", "bil_poroplast", "bil_mechamic", "mfh_poroelastic", "mfh_thick_cylinder"]
 
 # `bil_richards` reruns Bil to refine its time step, which no documentation runner has
 # installed, so its page is emitted as plain `julia` fences. The measured tables are written
@@ -47,7 +47,7 @@ mkpath(VALIDATION_DIR)
 # block with the working directory set to the built page's folder, so those files have to
 # sit next to the generated markdown; Documenter copies non-markdown files from src to build.
 
-const BENCHMARK_SHARED = ["laplace.jl", "biot_common.jl", "richards_common.jl", "bil_common.jl"]
+const BENCHMARK_SHARED = ["laplace.jl", "biot_common.jl", "richards_common.jl", "bil_common.jl", "cylinder_common.jl"]
 
 for f in BENCHMARK_SHARED
     cp(joinpath(BENCHMARKS_DIR, f), joinpath(VALIDATION_DIR, f); force = true)
