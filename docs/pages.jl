@@ -18,6 +18,7 @@ pages = [
         "BBM — Bil reference cases" => "validation/bbm_bil.md",
         "Richards — Bil reference case" => "validation/bil_richards.md",
         "Poroplasticity — Bil reference case" => "validation/bil_poroplast.md",
+        "Homogenisation — mean field vs FE²" => "validation/bil_mechamic.md",
     ],
     "Writing a model" => "demos/writing_a_model.md",
     "Differentiability" => [
