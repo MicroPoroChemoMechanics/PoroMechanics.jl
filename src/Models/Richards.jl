@@ -60,7 +60,7 @@ RichardsModel(; k_int = [8.9e-12, 8.9e-13], gravity = -9.81, gravity_axis = 2, â
 ```
 """
 Base.@kwdef struct RichardsModel{T, P, R, K, B} <: AbstractPoroModel
-    phi::T = 0.30
+    phi::T = 0.3
     rho_l::T = 1.0e3
     k_int::P = 1.0e-20
     mu_l::T = 1.0e-3

@@ -170,8 +170,10 @@ end
         M = zeros(6, 6)
         for (col, (k, l)) in enumerate(idx)
             d = SymmetricTensor{2, 3}((i, j) -> ((i, j) == (k, l) || (i, j) == (l, k)) ? h : 0.0)
-            Δ = (material_response(m, ε0 + d, state, 1.0)[1] -
-                material_response(m, ε0 - d, state, 1.0)[1]) / 2h * (k == l ? 1.0 : 0.5)
+            Δ = (
+                material_response(m, ε0 + d, state, 1.0)[1] -
+                    material_response(m, ε0 - d, state, 1.0)[1]
+            ) / 2h * (k == l ? 1.0 : 0.5)
             for (row, (i, j)) in enumerate(idx)
                 M[row, col] = Δ[i, j]
             end
