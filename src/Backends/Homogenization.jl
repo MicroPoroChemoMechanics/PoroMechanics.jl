@@ -131,90 +131,208 @@ function plane_strain(ε2::Tensors.SymmetricTensor{2, 2, T}) where {T}
 end
 
 """
-    homogenize_stress(cell::PeriodicCell, ε_macro; states = nothing) -> (σ_macro, u)
+    cell_states(cell) -> Matrix
 
-Solve the cell under the imposed mean strain and return the volume-averaged stress, with
-the fluctuation field that produced it.
+Fresh material states, one per quadrature point of every element: `states[q, e]`.
 
-`ε_macro` is a 2×2 plane strain tensor. Each cell region uses its own material through
-[`material_response`](@ref), so the same routine covers an elastic cell and a plastic one —
-the difference lives entirely in the materials handed to [`periodic_cell`](@ref).
+A path-dependent cell needs them; an elastic one is handed `NoState()` and never looks.
 """
-function homogenize_stress(cell::PeriodicCell, ε_macro::Tensors.SymmetricTensor{2, 2}; states = nothing)
+function cell_states(cell::PeriodicCell)
+    nq = Ferrite.getnquadpoints(cell.cv)
+    ne = Ferrite.getncells(cell.grid)
+    return [
+        initial_state(cell.materials[cell.region[e]])
+            for q in 1:nq, e in 1:ne
+    ]
+end
+
+initial_state(m::LinearElastic) = NoState()
+
+"""
+    homogenize_stress(cell, ε_macro, states_n = nothing; maxiter = 30, rtol = 1e-10)
+        -> (σ_macro, u, states)
+
+Solve the cell under the imposed mean strain and return the volume-averaged stress, the
+fluctuation field, and the quadrature states it leaves behind.
+
+Newton on the fluctuation, so a path-dependent phase is handled by the same routine as a
+linear one — an elastic cell simply converges on the first correction. `states_n` are the
+states the cell converged at previously; `nothing` starts from fresh ones, which is only
+right for a first step or a rate-independent elastic cell.
+
+Convergence is measured on the residual **relative to the force the macroscopic strain
+alone would generate**, not absolutely. The residual of a cell is an integrated stress and
+its magnitude follows the loading; an absolute tolerance would be a statement about the
+units of the moduli.
+"""
+function homogenize_stress(
+        cell::PeriodicCell, ε_macro::Tensors.SymmetricTensor{2, 2}, states_n = nothing;
+        maxiter = 30, rtol = 1.0e-10
+    )
     dh, cv, ch = cell.dh, cell.cv, cell.ch
     n_basefuncs = Ferrite.getnbasefunctions(cv)
-    ndofs = Ferrite.ndofs(dh)
-
-    ## A sparse matrix allocated *through* the constraint handler: that is what lets
-    ## `apply!` condense the periodic affine constraints, and a dense matrix cannot.
-    K = Ferrite.allocate_matrix(dh, ch)
-    f = zeros(ndofs)
-    assembler = Ferrite.start_assemble(K, f)
-    ke = zeros(n_basefuncs, n_basefuncs)
-    fe = zeros(n_basefuncs)
     ε_M = plane_strain(ε_macro)
 
-    for cc in Ferrite.CellIterator(dh)
-        Ferrite.reinit!(cv, cc)
-        fill!(ke, 0); fill!(fe, 0)
-        mat = cell.materials[cell.region[Ferrite.cellid(cc)]]
-        state = states === nothing ? NoState() : states[Ferrite.cellid(cc)]
+    states_prev = states_n === nothing ? cell_states(cell) : states_n
+    states = copy(states_prev)
 
-        for q in 1:Ferrite.getnquadpoints(cv)
-            dΩ = Ferrite.getdetJdV(cv, q)
-            ## Tangent and the stress the macroscopic strain alone would produce.
-            σ0, C, _ = material_response(mat, ε_M, state, 1.0)
-            for i in 1:n_basefuncs
-                δε = plane_strain(Ferrite.shape_symmetric_gradient(cv, q, i))
-                ## Residual of the imposed part: the fluctuation must cancel it.
-                fe[i] -= (δε ⊡ σ0) * dΩ
-                for j in 1:n_basefuncs
-                    δεj = plane_strain(Ferrite.shape_symmetric_gradient(cv, q, j))
-                    ke[i, j] += (δε ⊡ C ⊡ δεj) * dΩ
+    u = zeros(Ferrite.ndofs(dh))
+    ke = zeros(n_basefuncs, n_basefuncs)
+    re = zeros(n_basefuncs)
+    local scale, residual
+
+    for iter in 1:maxiter
+        K = Ferrite.allocate_matrix(dh, ch)
+        r = zeros(Ferrite.ndofs(dh))
+        assembler = Ferrite.start_assemble(K, r)
+
+        for cc in Ferrite.CellIterator(dh)
+            Ferrite.reinit!(cv, cc)
+            fill!(ke, 0); fill!(re, 0)
+            e = Ferrite.cellid(cc)
+            mat = cell.materials[cell.region[e]]
+            ue = u[Ferrite.celldofs(cc)]
+
+            for q in 1:Ferrite.getnquadpoints(cv)
+                dΩ = Ferrite.getdetJdV(cv, q)
+                ε_f = plane_strain(Ferrite.function_symmetric_gradient(cv, q, ue))
+                σ, C, st = material_response(mat, ε_M + ε_f, states_prev[q, e], 1.0)
+                states[q, e] = st
+                for i in 1:n_basefuncs
+                    δε = plane_strain(Ferrite.shape_symmetric_gradient(cv, q, i))
+                    re[i] += (δε ⊡ σ) * dΩ
+                    for j in 1:n_basefuncs
+                        δεj = plane_strain(Ferrite.shape_symmetric_gradient(cv, q, j))
+                        ke[i, j] += (δε ⊡ C ⊡ δεj) * dΩ
+                    end
                 end
             end
+            Ferrite.assemble!(assembler, Ferrite.celldofs(cc), ke, re)
         end
-        Ferrite.assemble!(assembler, Ferrite.celldofs(cc), ke, fe)
+
+        ## The scale is the residual *before* condensation, at the first iteration: the
+        ## force the imposed macroscopic strain generates. Measuring against the condensed
+        ## residual instead would divide by whatever survives the constraints, which for a
+        ## cell already in equilibrium is roundoff — and no tolerance is then reachable.
+        iter == 1 && (scale = max(norm(r), eps()))
+
+        ## Condense before measuring. On the slave degrees of freedom of a periodic
+        ## constraint the raw residual carries a reaction, not an error: it does not vanish
+        ## at the solution, and a norm taken over it never converges.
+        Ferrite.apply_zero!(K, r, ch)
+
+        residual = norm(r)
+        residual <= rtol * scale && break
+
+        ## `apply_zero!` on the correction too — that is what distributes the periodic
+        ## coupling onto the increment. `apply!(u, ch)` would set prescribed values, which
+        ## is right for a solution and wrong for a Newton correction.
+        Δu = K \ r
+        Ferrite.apply_zero!(Δu, ch)
+        u -= Δu
+
+        iter == maxiter && error(
+            "homogenize_stress: the cell did not converge — ‖R‖/‖R₀‖ = $(residual / scale)"
+        )
     end
 
-    Ferrite.apply!(K, f, ch)
-    u = K \ f
-    Ferrite.apply!(u, ch)
-
-    ## Macroscopic stress: the volume average of the microscopic one, on the *total* strain.
+    ## Macroscopic stress: the volume average of the microscopic one.
     σ_sum = zero(Tensors.SymmetricTensor{2, 3, Float64})
     for cc in Ferrite.CellIterator(dh)
         Ferrite.reinit!(cv, cc)
+        e = Ferrite.cellid(cc)
         ue = u[Ferrite.celldofs(cc)]
-        mat = cell.materials[cell.region[Ferrite.cellid(cc)]]
-        state = states === nothing ? NoState() : states[Ferrite.cellid(cc)]
         for q in 1:Ferrite.getnquadpoints(cv)
-            dΩ = Ferrite.getdetJdV(cv, q)
-            ε_fluct = plane_strain(Ferrite.function_symmetric_gradient(cv, q, ue))
-            σ, _, _ = material_response(mat, ε_M + ε_fluct, state, 1.0)
-            σ_sum += σ * dΩ
+            σ_sum += states[q, e] isa NoState ?
+                begin
+                    ε_f = plane_strain(Ferrite.function_symmetric_gradient(cv, q, ue))
+                    first(material_response(cell.materials[cell.region[e]], ε_M + ε_f, NoState(), 1.0))
+                end * Ferrite.getdetJdV(cv, q) :
+                states[q, e].σ * Ferrite.getdetJdV(cv, q)
         end
     end
-    return σ_sum / cell.volume, u
+    return σ_sum / cell.volume, u, states
 end
 
-"""
-    homogenized_stiffness(cell::PeriodicCell) -> SymmetricTensor{4,3}
+## In-plane components of a symmetric tensor, and back. Deliberately *not* Voigt: the
+## macroscopic Newton below perturbs a tensor component and reads a tensor component, so
+## the engineering factor of two on the shear term would have to be undone on both sides.
+_inplane(σ) = (σ[1, 1], σ[1, 2], σ[2, 2])
+_intensor(v) = Tensors.SymmetricTensor{2, 2}((v[1], v[2], v[3]))
 
-Effective stiffness, obtained by solving the cell once per independent macroscopic strain.
-
-Three solves in plane strain — ``\\varepsilon_{11}``, ``\\varepsilon_{22}``,
-``\\varepsilon_{12}`` — and the columns of the tangent read off the resulting stresses.
-Valid while the cell is linear; a plastic cell has no such tensor and must be probed along
-the path it actually follows.
 """
-function homogenized_stiffness(cell::PeriodicCell)
-    δ = 1.0e-6
-    probes = (
-        Tensors.SymmetricTensor{2, 2}((δ, 0.0, 0.0)),
-        Tensors.SymmetricTensor{2, 2}((0.0, 0.0, δ)),
-        Tensors.SymmetricTensor{2, 2}((0.0, δ / 2, 0.0)),
+    homogenize_to_stress(cell, σ_target, states_n; ε_guess, maxiter = 25, rtol = 1e-8)
+        -> (; ε, σ, states, iterations)
+
+Find the macroscopic strain that puts the cell under a prescribed **in-plane stress**, in
+plane strain — the control a single-element two-scale problem reduces to.
+
+The three in-plane components are stress-controlled and ``\\varepsilon_{33} = 0``, so
+``\\sigma_{33}`` comes out as a result. Newton on the three unknowns, with the homogenised
+tangent obtained by perturbing the cell — three extra cell solves per iteration. That is
+not a shortcut: once a phase yields, the tangent of the cell is not the volume average of
+anything, and Bil homogenises its own by finite differences for the same reason.
+
+`states_n` are the states at the last converged macroscopic step; every trial re-solves the
+cell from *those*, never from the previous trial, so the path stays single-valued.
+"""
+function homogenize_to_stress(
+        cell::PeriodicCell, σ_target::Tensors.SymmetricTensor{2, 2}, states_n = nothing;
+        ε_guess = zero(Tensors.SymmetricTensor{2, 2}), maxiter = 25, rtol = 1.0e-8,
+        perturbation = 1.0e-8
     )
-    responses = [first(homogenize_stress(cell, ε)) / δ for ε in probes]
-    return responses
+    states = states_n === nothing ? cell_states(cell) : states_n
+    target = _inplane(σ_target)
+    scale = max(maximum(abs, target), one(eltype(target)))
+    ε = ε_guess
+    σ, st = zero(Tensors.SymmetricTensor{2, 3}), states
+
+    for iter in 1:maxiter
+        σ, _, st = homogenize_stress(cell, ε, states)
+        R = _inplane(σ) .- target
+        maximum(abs, R) <= rtol * scale && return (; ε, σ, states = st, iterations = iter)
+
+        C = homogenized_tangent(cell, ε, states; perturbation)
+        ε -= _intensor(C \ collect(R))
+    end
+    error("homogenize_to_stress: no macroscopic equilibrium after $maxiter iterations")
 end
+
+"""
+    homogenized_tangent(cell, ε_macro, states = nothing; perturbation = 1e-8) -> Matrix
+
+The 3×3 in-plane macroscopic tangent at a given macroscopic strain, by forward differences
+on the cell — one column per component of `(ε₁₁, ε₁₂, ε₂₂)`, and the same convention on the
+rows, so no engineering factor of two enters anywhere.
+
+Finite differences and not an assembled quantity, deliberately. While the cell is elastic
+the tangent could be condensed out of the microscopic stiffness, but the moment a phase
+yields there is nothing to condense: the macroscopic tangent depends on which quadrature
+points are on their yield surface, and only a perturbation sees that. Bil homogenises its
+own the same way.
+"""
+function homogenized_tangent(
+        cell::PeriodicCell, ε_macro::Tensors.SymmetricTensor{2, 2}, states = nothing;
+        perturbation = 1.0e-8
+    )
+    st = states === nothing ? cell_states(cell) : states
+    σ0, _, _ = homogenize_stress(cell, ε_macro, st)
+    C = zeros(3, 3)
+    for k in 1:3
+        dv = ntuple(i -> i == k ? perturbation : 0.0, 3)
+        σk, _, _ = homogenize_stress(cell, ε_macro + _intensor(dv), st)
+        C[:, k] .= (_inplane(σk) .- _inplane(σ0)) ./ perturbation
+    end
+    return C
+end
+
+"""
+    homogenized_stiffness(cell::PeriodicCell) -> Matrix
+
+The effective in-plane stiffness of a linear cell: [`homogenized_tangent`](@ref) evaluated
+at zero strain, in the `(11, 12, 22)` convention.
+
+Valid only while every phase is linear. A cell with a plastic phase has no such matrix —
+its tangent depends on where it is on its path, and it has to be asked for there.
+"""
+homogenized_stiffness(cell::PeriodicCell) = homogenized_tangent(cell, zero(Tensors.SymmetricTensor{2, 2}))

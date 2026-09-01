@@ -76,6 +76,7 @@ export PoroplastModel, PoroplastState, poroplast_element_residual, poroplast_ste
 export poroplast_initial_states, axisymmetric_strain_1d, fluid_density, mobility, liquid_mass
 export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, newton_solve!
 export PeriodicCell, periodic_cell, homogenize_stress, homogenized_stiffness, plane_strain
+export homogenize_to_stress, homogenized_tangent, cell_states
 
 # ── Core abstractions ──────────────────────────────────────────────────────────
 

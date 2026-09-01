@@ -92,13 +92,51 @@
 # constraint is refused. And the node pinned to remove the rigid translation has to be an
 # **interior** one, since every boundary node already carries a periodic constraint.
 #
+# ## Past yield — where the estimate stops and the cell keeps going
+#
+# The elastic comparison above spends the whole of its credibility below 4.7 MPa. The deck's
+# own loading is 16 MPa, more than three times the yield of the matrix, and Bil's
+# `MechaMic` case is exactly that: a **single** Q4 macroscopic element on the unit square,
+# pressure-loaded on one face. A single element under a uniform load has a uniform
+# macroscopic field, so the two-scale problem collapses to one cell driven in stress —
+# ``\sigma_{11} = \sigma_{12} = 0``, ``\sigma_{22}`` ramped to −16 MPa, plane strain.
+#
+# That is what `homogenize_to_stress` does: Newton on the three in-plane components of the
+# macroscopic strain, with the homogenised tangent obtained by perturbing the cell — three
+# extra cell solves per iteration. Bil homogenises its own tangent by finite differences
+# too (`FEM2_HomogenizeTangentStiffnessTensor`), for the same reason: once a phase yields,
+# the tangent of the cell is not the volume average of anything.
+#
+# The matrix becomes the deck's `Plast` material — Drucker-Prager, cohesion 1.5 MPa,
+# friction and dilatancy both 25° — and the inclusion stays elastic. At −16 MPa:
+#
+# | steps | ``\varepsilon_{11}`` | ``\varepsilon_{22}`` | ``\sigma_{33}`` [MPa] | ``-\varepsilon_{11}/\varepsilon_{22}`` |
+# |---:|---:|---:|---:|---:|
+# | 64 | 3.005576e-2 | −1.151298e-2 | −10.56519 | 2.6106 |
+# | 128 | 2.999363e-2 | −1.150011e-2 | −10.57170 | 2.6081 |
+# | 256 | 2.996236e-2 | −1.149360e-2 | −10.57485 | 2.6069 |
+# | **Bil, FE²** | **2.994007e-2** | **−1.148933e-2** | **−10.57698** | **2.6059** |
+#
+# Under 0.1 % on every component at 256 steps, and the error halves each time the step
+# does — first-order convergence, from a path integration that is first-order on both
+# sides. Extrapolating gives 2.9931e-2 against Bil's 2.9940e-2.
+#
+# The number that matters is the last column. An apparent Poisson ratio of 2.6 is not a
+# Poisson ratio at all: the cell expands sideways two and a half times as fast as it
+# shortens, which no elastic medium can do and which is the dilatancy angle showing through
+# the homogenisation. Below yield the same cell sits at 0.5697, the elastic value the first
+# table agrees on. Between those two numbers lies everything a mean-field estimate cannot
+# reach — Mori-Tanaka and the self-consistent scheme have no equivalent of a return mapping
+# happening element by element inside the cell, and they stop being applicable at 4.7 MPa.
+#
 # ## What this does not say
 #
-# Nothing about plasticity. The whole comparison lives below 4.7 MPa, and the cell exists to
-# be driven past that: the deck's own loading is more than three times the yield. A
-# mean-field scheme has no equivalent of the return mapping happening in each element of the
-# cell, and the 16 MPa point — where Bil reports an apparent Poisson ratio of 2.6 — is
-# outside anything this page can reach.
+# The cell is one microstructure, and the agreement is on one loading path. Nothing here
+# tests unloading — Bil's own case ramps back to zero between t = 5 and t = 10, and that
+# leg has not been compared. Nothing tests a macroscopic field that actually varies, since
+# the deck's single element makes the macroscopic problem trivial; the driver that calls a
+# cell per quadrature point of a real macroscopic mesh is still to be written, and the cost
+# of it is the reason it is worth knowing that the cell itself is right first.
 
 using MeanFieldHomogenization
 using Printf
