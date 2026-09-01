@@ -54,14 +54,14 @@ implementation, in ChemistryLab.jl, is where it should live.
 
 ## Installation
 
-PoroMechanics.jl and two of its dependencies are distributed through the
-MicroPoroChemoMechanics registry:
-
 ```julia
 using Pkg
-Pkg.Registry.add(RegistrySpec(url = "https://github.com/MicroPoroChemoMechanics/MPCM-Registry"))
 Pkg.add("PoroMechanics")
 ```
+
+The examples additionally need `ExtendableGrids` for their grids, and the reactive ones
+need `ChemistryLab.jl` and `OptimaSolver.jl`; none of the three is a dependency of the
+package itself.
 
 ## Where to go next
 
