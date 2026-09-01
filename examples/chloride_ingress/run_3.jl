@@ -32,6 +32,7 @@ using LinearSolve
 using Printf
 using Statistics
 using ChemistryLab
+include("element_balance.jl")
 using DynamicQuantities
 using OptimaSolver
 
@@ -456,6 +457,13 @@ function chemistry_step3!(m::ChlorideModel3, u::Matrix, cs, has_friedels::Bool)
             @warn "equilibrate failed at node $i — node left unchanged" exception = e
             continue
         end
+
+        ## An equilibration redistributes matter between species; it must not create or
+        ## destroy elements. Nothing was checking that. On ChemistryLab 0.13.0 the same
+        ## call silently loses half the calcium of this very assemblage, and OptimaSolver
+        ## 0.2.7 does not expose a return code to catch it by — so the balance is computed
+        ## from the states themselves.
+        check_element_balance(state, state_eq, cs; label = "node $i")
 
         # ── Volume of the liquid phase ────────────────────────────────────────
         V_liq = ustrip(uconvert(us"m^3", state_eq.V_phases[].liquid))
