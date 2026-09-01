@@ -35,6 +35,7 @@ using Statistics
 using ChemistryLab
 using DynamicQuantities
 using OptimaSolver
+using ForwardDiff
 
 ## `unique_species` and the element balance — the guards on the dialogue with
 ## ChemistryLab. See `element_balance.jl` for why the two questions are kept apart.
@@ -116,10 +117,10 @@ The S_i values can come out negative (which has no physical meaning); they are
 guarded by `max(., 0)` upstream when the model is updated.
 """
 function solve_dlm(
-    c_Cl::Float64, c_Na::Float64, c_K::Float64, c_Ca::Float64, c_OH::Float64,
-    n_csh::Float64;
+    c_Cl::Real, c_Na::Real, c_K::Real, c_Ca::Real, c_OH::Real,
+    n_csh::Real;
     dlm::DLMParams,
-    T_K::Float64=293.15,
+    T_K::Real=293.15,
 )
     c_H = dlm.Kw_SI / max(c_OH, 1.0e-20)
     # Ionic strength [mol/m³]
@@ -131,35 +132,51 @@ function solve_dlm(
     KNa = k_na_dlm(dlm, dlm.x_cas)
     KK = KNa    # K⁺: same constant as Na⁺ (Tran 2018)
 
-    # Helpers (all surface concentrations normalised by [≡SiOH])
-    @inline A(β) = (1.0 +
-                    Ka1 * exp(β) / c_H +            # ≡SiO⁻
-                    KCa * Ka1 * c_Ca * exp(-β) / c_H +  # ≡SiOCa⁺
-                    KCl * c_Cl * exp(β) +           # ≡SiOHCl⁻
-                    (KNa * c_Na + KK * c_K) * Ka1 / c_H)  # ≡SiONa + ≡SiOK (no β)
-
-    @inline B(β) = (KCa * Ka1 * c_Ca * exp(-β) / c_H -   # +1
-                    Ka1 * exp(β) / c_H -                   # −1
-                    KCl * c_Cl * exp(β))                   # −1
-
     # DL capacitance coefficient [C/m²] = √(8·ε₀·ε_r·R·T·I)
     F_val = 96485.0
     R_val = 8.314
     σ_cap = sqrt(8.0 * 8.854e-12 * dlm.eps_r * R_val * T_K * I)
 
+    # Surface speciation, normalised by [≡SiOH]. Written as functions of the
+    # concentrations rather than closing over them, so that the same expressions serve
+    # both the live (possibly dual) arguments and the stripped values the bracket needs.
+    A(β, cCl, cNa, cK, cCa, cH) = (1.0 +
+                                   Ka1 * exp(β) / cH +                # ≡SiO⁻
+                                   KCa * Ka1 * cCa * exp(-β) / cH +   # ≡SiOCa⁺
+                                   KCl * cCl * exp(β) +               # ≡SiOHCl⁻
+                                   (KNa * cNa + KK * cK) * Ka1 / cH)  # ≡SiONa + ≡SiOK (no β)
+
+    B(β, cCa, cCl, cH) = (KCa * Ka1 * cCa * exp(-β) / cH -   # +1
+                          Ka1 * exp(β) / cH -                 # −1
+                          KCl * cCl * exp(β))                 # −1
+
     # f(β) = σ₀(β) − σ_DL(β)  (residual of the DLM balance equation)
-    f(β) = F_val * dlm.Gamma_max * B(β) / A(β) - σ_cap * sinh(β / 2.0)
+    residual(β, cCl, cNa, cK, cCa, cH, σ) =
+        F_val * dlm.Gamma_max * B(β, cCa, cCl, cH) / A(β, cCl, cNa, cK, cCa, cH) -
+        σ * sinh(β / 2.0)
 
-    # Bisection on [-10, 10]
+    f(β) = residual(β, c_Cl, c_Na, c_K, c_Ca, c_H, σ_cap)
+
+    # Bisection is a sequence of comparisons on floating-point values: differentiating
+    # through it would return dβ/dc = 0, because the bracket endpoints are constants
+    # rather than functions of the concentrations. So the bracket is closed on the
+    # stripped values, and the derivative is restored afterwards by a single Newton step
+    # at the converged root. `f(β★)` is zero to the bisection tolerance, so the step does
+    # not move β; its dual part is exactly −(∂f/∂c)/(∂f/∂β), the implicit-function
+    # derivative of the root.
+    v(x) = ForwardDiff.value(x)
+    fv(β) = residual(β, v(c_Cl), v(c_Na), v(c_K), v(c_Ca), v(c_H), v(σ_cap))
+
     β_lo, β_hi = -10.0, 10.0
-    f_lo = f(β_lo)
-    f_hi = f(β_hi)
+    f_lo = fv(β_lo)
+    f_hi = fv(β_hi)
+    bracketed = f_lo * f_hi < 0.0
 
-    β_sol = 0.0   # fallback: no surface potential
-    if f_lo * f_hi < 0.0
+    β_star = 0.0   # fallback: no surface potential
+    if bracketed
         for _ in 1:64
             β_mid = 0.5 * (β_lo + β_hi)
-            f_mid = f(β_mid)
+            f_mid = fv(β_mid)
             if f_mid * f_lo < 0.0
                 β_hi = β_mid
             else
@@ -168,15 +185,17 @@ function solve_dlm(
             end
             abs(β_hi - β_lo) < 1.0e-9 && break
         end
-        β_sol = 0.5 * (β_lo + β_hi)
+        β_star = 0.5 * (β_lo + β_hi)
     else
         # No sign change: f stays positive or negative across [-10, 10].
-        # Pick the β where |f| is smallest (closest to balance).
-        β_sol = abs(f_lo) < abs(f_hi) ? β_lo : β_hi
+        # Pick the β where |f| is smallest (closest to balance). There is no root here,
+        # so β is a constant and carries no derivative — which is the honest answer.
+        β_star = abs(f_lo) < abs(f_hi) ? β_lo : β_hi
     end
 
-    β = β_sol
-    X = dlm.Gamma_max / A(β)   # [≡SiOH] in mol/m²_CSH
+    β = bracketed ? β_star - f(β_star) / ForwardDiff.derivative(fv, β_star) : β_star
+
+    X = dlm.Gamma_max / A(β, c_Cl, c_Na, c_K, c_Ca, c_H)   # [≡SiOH] in mol/m²_CSH
 
     # Surface species [mol/m²_CSH]
     theta_OCa = KCa * Ka1 * X * c_Ca * exp(-β) / c_H
@@ -494,6 +513,14 @@ function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
     Vm_fs = 271.0e-6
     ε = 1.0e-15
 
+    ## Species positions, resolved once: the tangent below seeds the composition vector
+    ## by index rather than by name, because `set_quantity!` writes into a Float64 array
+    ## and a dual seed has to be laid out at construction time.
+    sp_names = String.(symbol.(cs.species))
+    i_cl = findfirst(==("Cl-"), sp_names)
+    i_oh = findfirst(==("OH-"), sp_names)
+    i_fs = has_friedels ? findfirst(==("C4AClH10"), sp_names) : nothing
+
     for i in 2:N
         phi_i = m.phi[i]
         C_Cl = max(u[ICL4, i], 0.0)
@@ -558,66 +585,82 @@ function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
         m.c_so4_local[i] = max(c_so4_new, 0.0)
         m.c_oh_frozen[i] = max(c_oh_new, 1e-12)
 
-        # ── Tangente dN_fs/dc_Cl via second appel Gibbs perturbe ─────────────
+        # ── Tangent dN_fs/dc_Cl, differentiated through the Gibbs solve ──────
         # The secant N_fs/c_Cl is 0 at the monosulphate→Friedel conversion front
         # (N_fs=0, c_Cl>0). The tangent dn_fs/dc is >> 0 there, because as soon as
-        # c_Cl crosses the [SO4]/K_exch threshold all the monosulphate converts.
-        δ_cl = max(1.0, c_cl_new * 1e-2)   # [mol/m³_eau]
+        # c_Cl crosses the [SO4]/K_exch threshold all the monosulphate converts — which
+        # is exactly where a difference quotient is least trustworthy and a step size
+        # least defensible. So the tangent comes from the solve itself: a `ChemicalState`
+        # carrying `ForwardDiff.Dual` amounts takes the implicit-function route through
+        # the optimality conditions (one primal solve, then a saddle-point system for the
+        # sensitivities), and the answer is exact with no δ to choose.
         phi_new = m.phi[i]
-        n_cl_p = max(c_cl_new + δ_cl, 0.0) * phi_new * V_REV_4
-        n_na_p = c_na_new * phi_new * V_REV_4
-        n_k_p = c_k_new * phi_new * V_REV_4
-        n_ca_p = c_ca_new * phi_new * V_REV_4
-        n_oh_p = max(n_na_p + n_k_p + 2.0 * n_ca_p - n_cl_p, 1.0e-20)
-        n_w_p = phi_new * V_REV_4 * 55_500.0
+        n_cl_t = max(c_cl_new, 0.0) * phi_new * V_REV_4
+        n_na_t = c_na_new * phi_new * V_REV_4
+        n_k_t = c_k_new * phi_new * V_REV_4
+        n_ca_t = c_ca_new * phi_new * V_REV_4
+        n_oh_t = max(n_na_t + n_k_t + 2.0 * n_ca_t - n_cl_t, 1.0e-20)
+        n_w_t = phi_new * V_REV_4 * 55_500.0
 
-        state_p = ChemicalState(cs; T=T_q)
-        set_quantity!(state_p, "H2O@", n_w_p * us"mol")
-        set_quantity!(state_p, "OH-", n_oh_p * us"mol")
-        set_quantity!(state_p, "Cl-", n_cl_p * us"mol")
-        set_quantity!(state_p, "Na+", n_na_p * us"mol")
-        set_quantity!(state_p, "K+", n_k_p * us"mol")
-        set_quantity!(state_p, "Ca+2", n_ca_p * us"mol")
-        set_quantity!(state_p, "Portlandite", n_ch_new * V_REV_4 * us"mol")
-        set_quantity!(state_p, "ettringite", n_ett_new * V_REV_4 * us"mol")
-        set_quantity!(state_p, "monosulphate12", n_ms_new * V_REV_4 * us"mol")
-        set_quantity!(state_p, "SO4-2", c_so4_new * phi_new * V_REV_4 * us"mol")
-        has_friedels && set_quantity!(state_p, "C4AClH10", n_fs_new * V_REV_4 * us"mol")
+        state_t = ChemicalState(cs; T=T_q)
+        set_quantity!(state_t, "H2O@", n_w_t * us"mol")
+        set_quantity!(state_t, "OH-", n_oh_t * us"mol")
+        set_quantity!(state_t, "Cl-", n_cl_t * us"mol")
+        set_quantity!(state_t, "Na+", n_na_t * us"mol")
+        set_quantity!(state_t, "K+", n_k_t * us"mol")
+        set_quantity!(state_t, "Ca+2", n_ca_t * us"mol")
+        set_quantity!(state_t, "Portlandite", n_ch_new * V_REV_4 * us"mol")
+        set_quantity!(state_t, "ettringite", n_ett_new * V_REV_4 * us"mol")
+        set_quantity!(state_t, "monosulphate12", n_ms_new * V_REV_4 * us"mol")
+        set_quantity!(state_t, "SO4-2", c_so4_new * phi_new * V_REV_4 * us"mol")
+        has_friedels && set_quantity!(state_t, "C4AClH10", n_fs_new * V_REV_4 * us"mol")
 
-        # Secant fallback if equilibrate_p fails: dn/dc ← n_fs/c_Cl
-        n_fs_p = n_fs_new + δ_cl * n_fs_new / max(c_cl_new, ε)
-        local state_eq_p
-        try
-            state_eq_p = equilibrate(state_p, OptimaOptimizer(tol=1e-10, verbose=false))
-            V_liq_p = ustrip(uconvert(us"m^3", state_eq_p.V_phases[].liquid))
-            if V_liq_p > 1e-15 && has_friedels
-                n_fs_p = max(ustrip(moles(state_eq_p, "C4AClH10")) / V_REV_4, 0.0)
+        # The seed direction is ∂/∂c_Cl in [mol/m³_water]. It is not chloride alone:
+        # the same charge balance that sets OH⁻ above ties it to c_Cl, so OH⁻ carries the
+        # opposite partial. This is what the perturbed state used to encode by rebuilding
+        # `n_oh_p` from `n_cl_p`.
+        dn_dc = phi_new * V_REV_4
+        n_seed = [ForwardDiff.Dual{Nothing}(ustrip(us"mol", nᵢ), 0.0) for nᵢ in state_t.n]
+        n_seed[i_cl] = ForwardDiff.Dual{Nothing}(ustrip(us"mol", state_t.n[i_cl]), dn_dc)
+        n_seed[i_oh] = ForwardDiff.Dual{Nothing}(ustrip(us"mol", state_t.n[i_oh]), -dn_dc)
+
+        # Secant fallback if the sensitivity solve fails: dn/dc ← n_fs/c_Cl
+        dn_fs_dc = n_fs_new / max(c_cl_new, ε)
+        if has_friedels
+            try
+                state_eq_t = equilibrate(
+                    ChemicalState(cs, n_seed .* us"mol"; T=T_q),
+                    OptimaOptimizer(tol=1e-10, verbose=false),
+                )
+                dn_fs_dc = max(
+                    ForwardDiff.partials(ustrip(us"mol", state_eq_t.n[i_fs]), 1), 0.0
+                ) / V_REV_4   # [mol/m³_concrete / (mol/m³_water)]
+            catch e
+                @warn "Friedel tangent fell back to the secant at node $i" exception = e maxlog = 1
             end
-        catch
-            # keep n_fs_p = the secant value above
+        else
+            dn_fs_dc = 0.0
         end
-        dn_fs_dc = max(n_fs_p - n_fs_new, 0.0) / δ_cl   # [mol/m³_concrete / (mol/m³_water)]
 
-        # ── DLM surface complexation ──────────────────────────────────────────
+        # ── DLM surface complexation, and its tangent, in one call ────────────
+        # `solve_dlm` is differentiable in its arguments: the surface potential β is a
+        # root, so bisection brackets it on the values and one Newton step restores the
+        # derivative. Seeding c_Cl with a dual therefore returns S_Cl and dS_Cl/dc from a
+        # single evaluation, where the difference quotient needed two and a step size.
         n_csh_i = m.dlm.n_csh0   # C-S-H held fixed for now
-        _, S_Cl, S_Na, S_K, S_Ca = solve_dlm(
-            max(c_cl_new, 0.0), max(c_na_new, 0.0), max(c_k_new, 0.0),
+        c_cl_seed = ForwardDiff.Dual{Nothing}(max(c_cl_new, 0.0), 1.0)
+        _, S_Cl_d, S_Na, S_K, S_Ca = solve_dlm(
+            c_cl_seed, max(c_na_new, 0.0), max(c_k_new, 0.0),
             max(c_ca_new, 0.0), max(c_oh_new, ε),
             n_csh_i; dlm=m.dlm, T_K=m.T_K,
         )
-        m.S_Cl[i] = max(S_Cl, 0.0)
-        m.S_Na[i] = max(S_Na, 0.0)
-        m.S_K[i] = max(S_K, 0.0)
-        m.S_Ca[i] = max(S_Ca, 0.0)
+        m.S_Cl[i] = max(ForwardDiff.value(S_Cl_d), 0.0)
+        m.S_Na[i] = max(ForwardDiff.value(S_Na), 0.0)
+        m.S_K[i] = max(ForwardDiff.value(S_K), 0.0)
+        m.S_Ca[i] = max(ForwardDiff.value(S_Ca), 0.0)
 
         # ── Effective K_d (DLM tangent + Friedel's salt tangent) ──────────────
-        δ = max(1.0e-3, c_cl_new * 1e-3)
-        _, S_Cl_p, _, _, _ = solve_dlm(
-            max(c_cl_new + δ, 0.0), max(c_na_new, 0.0), max(c_k_new, 0.0),
-            max(c_ca_new, 0.0), max(c_oh_new, ε),
-            n_csh_i; dlm=m.dlm, T_K=m.T_K,
-        )
-        dS_Cl_dc = (max(S_Cl_p, 0.0) - m.S_Cl[i]) / δ
+        dS_Cl_dc = ForwardDiff.partials(S_Cl_d, 1)
         m.Kd_Cl[i] = dS_Cl_dc + 2.0 * dn_fs_dc
         m.Kd_Na[i] = m.S_Na[i] / max(c_na_new, ε)
         m.Kd_K[i] = m.S_K[i] / max(c_k_new, ε)
