@@ -75,6 +75,7 @@ export RichardsModel, liquid_saturation, liquid_conductivity, intrinsic_permeabi
 export PoroplastModel, PoroplastState, poroplast_element_residual, poroplast_step!
 export poroplast_initial_states, axisymmetric_strain_1d, fluid_density, mobility, liquid_mass
 export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, newton_solve!
+export PeriodicCell, periodic_cell, homogenize_stress, homogenized_stiffness, plane_strain
 
 # ── Core abstractions ──────────────────────────────────────────────────────────
 
@@ -240,5 +241,6 @@ include("Models/Richards.jl")
 include("Models/Poroplast.jl")
 include("Backends/FVM.jl")
 include("Backends/FEM.jl")
+include("Backends/Homogenization.jl")
 
 end # module PoroMechanics

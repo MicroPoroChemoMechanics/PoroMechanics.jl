@@ -71,6 +71,27 @@
 #   nested solve per quadrature point — would otherwise have had nothing to be checked
 #   against but Bil itself.
 #
+# ## Step 9b: the cell solved here
+#
+# With the bound in hand, the full-field computation was written — `PeriodicCell` in
+# `src/Backends/Homogenization.jl`, an `AbstractMaterial` whose response is a finite element
+# solve on a periodic cell. Run on Bil's own `composite0.msh` with the deck's phases:
+#
+# | | ``E`` [GPa] | ``\nu`` | ``\sigma_{22}/\varepsilon_{22}`` | ``-\varepsilon_{11}/\varepsilon_{22}`` |
+# |---|---:|---:|---:|---:|
+# | this package | **3.0230** | **0.3630** | 3.4816e9 | 0.5697 |
+# | Bil, FE² | **3.0230** | **0.3630** | 3.4816e9 | 0.5697 |
+#
+# Identical to five figures, down to the intermediate quantities. The effective stiffness
+# comes out symmetric — ``C_{12} = C_{21} = 2.9369`` GPa — with ``C_{11} = C_{22}``, which
+# the cell's four-fold symmetry requires and nothing in the assembly enforces.
+#
+# Two details of the periodic constraints cost more time than the physics. Both directions
+# must go into a **single** `PeriodicDirichlet`: adding one per direction looks equivalent
+# and is not, because a corner node belongs to both mappings and the resulting nested affine
+# constraint is refused. And the node pinned to remove the rigid translation has to be an
+# **interior** one, since every boundary node already carries a periodic constraint.
+#
 # ## What this does not say
 #
 # Nothing about plasticity. The whole comparison lives below 4.7 MPa, and the cell exists to

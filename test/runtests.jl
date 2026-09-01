@@ -36,6 +36,9 @@ using PoroMechanics
     # ── Drucker-Prager ─────────────────────────────────────────────────────────
     include("druckerprager.jl")
 
+    # ── Computational homogenisation on a periodic cell ────────────────────────
+    include("homogenization.jl")
+
     # ── Validation against closed-form solutions ──────────────────────────────
     include("benchmarks.jl")
     include("differentiability.jl")
