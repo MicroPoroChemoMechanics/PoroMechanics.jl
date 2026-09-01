@@ -76,6 +76,10 @@ const EXCLUDE_NONCSHQ = [
 
 include("physdata.jl")
 
+## `unique_species` and the element balance — the guards on the dialogue with
+## ChemistryLab. See `element_balance.jl` for why the two questions are kept apart.
+include("element_balance.jl")
+
 # ════════════════════════════════════════════════════════════════════════════════
 # Material data
 # ════════════════════════════════════════════════════════════════════════════════
@@ -385,7 +389,7 @@ function _init_chemistry_marks2015()
     missing_hyd = filter(n -> !haskey(dict_sp, n), solid_names_hyd)
     isempty(missing_hyd) || @warn "Hydratation — phases absentes : $(join(missing_hyd, ", "))"
     cs_hyd = ChemicalSystem(
-        vcat(collect(aq_species), solid_hyd), CEMDATA_PRIMARIES;
+        unique_species(vcat(collect(aq_species), solid_hyd)), CEMDATA_PRIMARIES;
         solid_solutions=[ss_cshq],
     )
 
@@ -410,7 +414,7 @@ function _init_chemistry_marks2015()
     has_ldh && push!(ss_tr, ss_ldh)
 
     cs_tr = ChemicalSystem(
-        vcat(collect(aq_species), solid_tr), CEMDATA_PRIMARIES;
+        unique_species(vcat(collect(aq_species), solid_tr)), CEMDATA_PRIMARIES;
         solid_solutions=ss_tr,
     )
 

@@ -22,6 +22,10 @@ using Plots
 
 include("physdata.jl")
 
+## `unique_species` and the element balance — the guards on the dialogue with
+## ChemistryLab. See `element_balance.jl` for why the two questions are kept apart.
+include("element_balance.jl")
+
 # ── Transport species indices ─────────────────────────────────────────────────
 const ICL_T = 1
 const INA_T = 2
@@ -373,7 +377,7 @@ function _init_chemistry_ternary()
     solid_hyd = [dict_sp[n] for n in solid_names_hyd if haskey(dict_sp, n)]
     ss_hyd = SolidSolutionPhase[ss_cshq]
     has_cash && push!(ss_hyd, ss_cash)
-    cs_hyd = ChemicalSystem(vcat(collect(aq_species), solid_hyd), CEMDATA_PRIMARIES; solid_solutions=ss_hyd)
+    cs_hyd = ChemicalSystem(unique_species(vcat(collect(aq_species), solid_hyd)), CEMDATA_PRIMARIES; solid_solutions=ss_hyd)
 
     has_friedels = haskey(dict_sp, "C4AClH10")
     has_brucite = haskey(dict_sp, "Brc")       # cemdata18 name: "Brc" (not "Brucite")
@@ -398,7 +402,7 @@ function _init_chemistry_ternary()
     has_msh && push!(ss_tr, ss_msh)
     has_ldh && push!(ss_tr, ss_ldh)
     has_afm_ss && push!(ss_tr, ss_afm)
-    cs_tr = ChemicalSystem(vcat(collect(aq_species), solid_tr), CEMDATA_PRIMARIES; solid_solutions=ss_tr)
+    cs_tr = ChemicalSystem(unique_species(vcat(collect(aq_species), solid_tr)), CEMDATA_PRIMARIES; solid_solutions=ss_tr)
 
     return cs_hyd, cs_tr, has_afm_ss, has_friedels, has_brucite, has_msh, has_ldh, has_gyp, has_cash
 end

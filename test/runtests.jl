@@ -46,6 +46,9 @@ using PoroMechanics
     # ── Examples still produce the profiles they used to ───────────────────────
     include("regression.jl")
 
+    # ── The dialogue with ChemistryLab ─────────────────────────────────────────
+    include("chemistry_interface.jl")
+
     # ── Agreement with Bil, an independently written code ─────────────────────
     include("bil.jl")
 

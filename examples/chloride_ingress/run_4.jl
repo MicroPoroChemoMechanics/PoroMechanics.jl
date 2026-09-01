@@ -36,6 +36,10 @@ using ChemistryLab
 using DynamicQuantities
 using OptimaSolver
 
+## `unique_species` and the element balance — the guards on the dialogue with
+## ChemistryLab. See `element_balance.jl` for why the two questions are kept apart.
+include("element_balance.jl")
+
 # ── Transport species indices ─────────────────────────────────────────────────
 const ICL4 = 1   # c_Cl   z = -1
 const INA4 = 2   # c_Na   z = +1
@@ -461,7 +465,7 @@ function _init_chemistry4()
     has_friedels || @warn "C4AClH10 missing — thermodynamic Cl⁻ binding disabled"
     species = vcat(collect(aq_species), solid_species)
     @info "Selected species" n_aq = length(aq_species) n_solid = length(solid_species)
-    cs = ChemicalSystem(collect(species), CEMDATA_PRIMARIES)
+    cs = ChemicalSystem(unique_species(species), CEMDATA_PRIMARIES)
     return cs, has_friedels
 end
 

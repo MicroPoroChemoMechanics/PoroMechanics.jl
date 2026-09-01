@@ -374,7 +374,7 @@ function init_chemistry3()
     species = vcat(collect(aq_species), solid_species)
     @info "Selected species" n_aq = length(aq_species) n_solid = length(solid_species)
 
-    cs = ChemicalSystem(collect(species), CEMDATA_PRIMARIES)
+    cs = ChemicalSystem(unique_species(species), CEMDATA_PRIMARIES)
     return cs, has_friedels
 end
 
