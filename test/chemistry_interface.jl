@@ -73,8 +73,12 @@ function worst_mass_action_residual(state; presence = 1.0e-10)
         participants = vcat(collect(keys(r.reactants)), collect(keys(r.products)))
         all(sp -> n[index[symbol(sp)]] > floor_n, participants) || continue
         Δ = 0.0
-        for (sp, ν) in r.products;  Δ += ν * μ[index[symbol(sp)]]; end
-        for (sp, ν) in r.reactants; Δ -= ν * μ[index[symbol(sp)]]; end
+        for (sp, ν) in r.products
+            Δ += ν * μ[index[symbol(sp)]]
+        end
+        for (sp, ν) in r.reactants
+            Δ -= ν * μ[index[symbol(sp)]]
+        end
         checked += 1
         abs(Δ) > worst && ((worst, culprit) = (abs(Δ), r.symbol))
     end
@@ -124,7 +128,7 @@ end
     V_rev, φ = 1.0e-3, 0.121
     m_clinker = 350.0 * V_rev
     n_Na2O = 0.0016 * m_clinker / 61.98e-3
-    n_K2O = 0.0049 * m_clinker / 94.20e-3
+    n_K2O = 0.0049 * m_clinker / 94.2e-3
 
     state = ChemicalState(system; T = 293.15 * us"K")
     set_quantity!(state, "H2O@", (φ * V_rev * 55_500.0 - n_Na2O - n_K2O) * us"mol")
@@ -133,8 +137,8 @@ end
     set_quantity!(state, "OH-", (2n_Na2O + 2n_K2O) * us"mol")
     set_quantity!(state, "Cl-", 1.0e-16 * us"mol")
     set_quantity!(state, "SO4-2", 1.0e-16 * us"mol")
-    set_quantity!(state, "Portlandite", 1.640 * us"mol")
-    set_quantity!(state, "monosulphate12", 0.100 * us"mol")
+    set_quantity!(state, "Portlandite", 1.64 * us"mol")
+    set_quantity!(state, "monosulphate12", 0.1 * us"mol")
 
     equilibrated = equilibrate(state, OptimaOptimizer(tol = 1.0e-10, verbose = false))
 

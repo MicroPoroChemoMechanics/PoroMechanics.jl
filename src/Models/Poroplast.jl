@@ -183,9 +183,9 @@ function poroplast_initial_states(m::PoroplastModel, nodes, σ0_total)
     σ0_eff = σ0_total + m.material.beta * m.p_l0 * one(σ0_total)
     return [
         [
-            PoroplastState(initial_state(m.material, σ0_eff), m.p_l0)
+                PoroplastState(initial_state(m.material, σ0_eff), m.p_l0)
                 for _ in 1:2
-        ] for _ in 1:(length(nodes) - 1)
+            ] for _ in 1:(length(nodes) - 1)
     ]
 end
 

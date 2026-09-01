@@ -177,7 +177,7 @@ function richards_2d_ours(; verbose = false)
         storage = (f, u, node, data) -> PoroMechanics.storage!(f, u, node, model, data),
         flux = (f, u, edge, data) -> PoroMechanics.flux!(f, u, edge, model, data),
         bcondition = function (f, u, bnode, data)
-            VoronoiFVM.boundary_dirichlet!(
+            return VoronoiFVM.boundary_dirichlet!(
                 f, u, bnode;
                 species = 1, region = bottom, value = base_pressure * ramp(bnode.time),
             )

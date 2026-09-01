@@ -136,7 +136,7 @@ using Tensors: Tensors, SymmetricTensor
             E = 2713.0e6, nu = 0.339, cohesion = 1.5e6,
             friction = deg2rad(25), dilatancy = deg2rad(25)
         )
-        inclusion = LinearElastic(; E = 5000.0e6, nu = 0.490)
+        inclusion = LinearElastic(; E = 5000.0e6, nu = 0.49)
         nodes, cells, regions = square_cell(4)
 
         "Ramp to −16 MPa in eight steps, and return the final macroscopic state."

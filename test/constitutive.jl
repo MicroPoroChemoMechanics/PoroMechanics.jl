@@ -208,7 +208,7 @@ end
     ##
     ## Microstructure: spherical pores at φ = 0.2 in a solid with E = 60 GPa, ν = 0.25,
     ## homogenised by Mori-Tanaka.
-    φ, k_s = 0.20, 60.0e9 / (3 * (1 - 2 * 0.25))
+    φ, k_s = 0.2, 60.0e9 / (3 * (1 - 2 * 0.25))
     E_hom, ν_hom = 39.963800904977366e9, 0.23981900452488688
     b_mfh, N_mfh = 0.359999999995, 4.0e-12                    # MeanFieldHomogenization 0.7.0
 
