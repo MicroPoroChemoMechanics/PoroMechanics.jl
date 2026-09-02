@@ -71,9 +71,11 @@ export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_m
 # Backends
 export fvm_system
 export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
+export FickModel, diffusivity
+export DarcyModel, storativity, mobility
 export RichardsModel, liquid_saturation, liquid_conductivity, intrinsic_permeability
 export PoroplastModel, PoroplastState, poroplast_element_residual, poroplast_step!
-export poroplast_initial_states, axisymmetric_strain_1d, fluid_density, mobility, liquid_mass
+export poroplast_initial_states, axisymmetric_strain_1d, fluid_density, liquid_mass
 export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, newton_solve!
 export PeriodicCell, periodic_cell, homogenize_stress, homogenized_stiffness, plane_strain
 export homogenize_to_stress, homogenized_tangent, cell_states
@@ -172,6 +174,55 @@ function bcondition!(f, u, node, model::AbstractPoroModel, data)
 end
 
 """
+    dirichlet_value(value, t) -> Real
+
+Resolve one entry of a model's `dirichlet` data at time `t`. A number is imposed as it
+stands; anything else is called, so a boundary that ramps or cycles is written
+`(region, t -> p_top * min(1, t / t_c))` and needs no method of its own.
+
+The distinction is deliberate — a number cannot be called and a schedule cannot be added,
+so dispatch separates them with no run-time test and no allocation. The value is returned
+as given, which keeps a `ForwardDiff.Dual` boundary value dual and lets a result be
+differentiated with respect to what is imposed on the boundary.
+"""
+dirichlet_value(value::Number, t) = value
+dirichlet_value(value, t) = value(t)
+
+"""
+    apply_dirichlet!(f, u, bnode, dirichlet; species = 1)
+
+Impose every entry of a model's `dirichlet` data at boundary node `bnode`, each value
+resolved at the current time by [`PoroMechanics.dirichlet_value`](@ref).
+
+A tuple is consumed head-and-tail rather than in a loop, which is not a stylistic choice:
+`((1, 0.0), (2, t -> ramp(t)))` is a *heterogeneous* tuple, a plain `for` over it has no
+single element type, and the boxing that follows shows up as allocations inside the
+assembly loop — the one place in a finite volume code where they are paid per facet and per
+Newton iteration. Recursing on `Base.tail` is unrolled at compile time, so each entry is
+specialized on its own type. Anything that is not a tuple falls back to the loop.
+"""
+apply_dirichlet!(f, u, bnode, ::Tuple{}; species = 1) = nothing
+
+function apply_dirichlet!(f, u, bnode, dirichlet::Tuple; species = 1)
+    region, value = dirichlet[1]
+    VoronoiFVM.boundary_dirichlet!(
+        f, u, bnode;
+        species = species, region = region, value = dirichlet_value(value, bnode.time)
+    )
+    return apply_dirichlet!(f, u, bnode, Base.tail(dirichlet); species = species)
+end
+
+function apply_dirichlet!(f, u, bnode, dirichlet; species = 1)
+    for (region, value) in dirichlet
+        VoronoiFVM.boundary_dirichlet!(
+            f, u, bnode;
+            species = species, region = region, value = dirichlet_value(value, bnode.time)
+        )
+    end
+    return nothing
+end
+
+"""
     reaction!(f, u, node, model::AbstractPoroModel, data)
 
 Fill `f` with volumetric reaction (source/sink) terms and algebraic constraints
@@ -238,6 +289,8 @@ include("Materials/DruckerPrager.jl")
 # ── Backends ───────────────────────────────────────────────────────────────────
 # Glue to the solver packages. The physics lives above; these only wire it up.
 
+include("Models/Fickian.jl")
+include("Models/Darcy.jl")
 include("Models/Richards.jl")
 include("Models/Poroplast.jl")
 include("Backends/FVM.jl")
