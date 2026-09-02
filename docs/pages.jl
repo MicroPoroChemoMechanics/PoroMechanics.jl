@@ -16,6 +16,11 @@ pages = [
         "Gardner infiltration"   => "validation/gardner_infiltration.md",
         "Transient drainage"     => "validation/gardner_transient.md",
         "BBM — Bil reference cases" => "validation/bbm_bil.md",
+        "Richards — Bil reference case" => "validation/bil_richards.md",
+        "Poroplasticity — Bil reference case" => "validation/bil_poroplast.md",
+        "Homogenisation — mean field vs FE²" => "validation/bil_mechamic.md",
+        "Poroelastic coefficients from a microstructure" => "validation/mfh_poroelastic.md",
+        "Thick-walled cylinder — homogenised moduli" => "validation/mfh_thick_cylinder.md",
     ],
     "Writing a model" => "demos/writing_a_model.md",
     "Differentiability" => [

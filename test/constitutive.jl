@@ -197,6 +197,37 @@ end
 
 # ── Poroelasticity ────────────────────────────────────────────────────────────
 
+@testset "Poroelasticity — coefficients from a microstructure" begin
+    ## The interface with MeanFieldHomogenization.jl, guarded from this side.
+    ##
+    ## That package computes the Biot tensor and modulus from a microstructure; this one
+    ## consumes a scalar `b` and a storage modulus `N` and asks no questions. The live
+    ## comparison is `benchmarks/mfh_poroelastic.jl`, which the documentation build runs.
+    ## What is frozen here are the numbers it produced, so that a change on either side of
+    ## the bridge is caught by a suite that does not depend on the other package.
+    ##
+    ## Microstructure: spherical pores at φ = 0.2 in a solid with E = 60 GPa, ν = 0.25,
+    ## homogenized by Mori-Tanaka.
+    φ, k_s = 0.2, 60.0e9 / (3 * (1 - 2 * 0.25))
+    E_hom, ν_hom = 39.963800904977366e9, 0.23981900452488688
+    b_mfh, N_mfh = 0.359999999995, 4.0e-12                    # MeanFieldHomogenization 0.7.0
+
+    ## `par.B[1,1]` is this package's `b` and `par.inverse_modulus` is its `N` — no
+    ## conversion in between, which is the whole content of the bridge.
+    m = BiotPoroelastic(; E = E_hom, nu = ν_hom, k = 1.0e-16, mu_l = 1.0e-3, b = b_mfh, N = N_mfh)
+
+    ## The classical relations, computed here, must reproduce what the tensorial route gave.
+    @test b_mfh ≈ 1 - bulk_modulus(m) / k_s rtol = 1.0e-9
+    @test N_mfh ≈ (b_mfh - φ) / k_s rtol = 1.0e-9
+
+    ## And the consequence both packages agree on: with an incompressible fluid and
+    ## compressible grains the Skempton coefficient exceeds one, because the pore volume is
+    ## held fixed while the grains themselves compress. Written from Biot's relations here,
+    ## warned about from the homogenization there.
+    @test skempton(m) > 1
+    @test skempton(m) ≈ 1.5517241379310347 rtol = 1.0e-10
+end
+
 @testset "Poroelasticity — constants" begin
     m = BiotPoroelastic()
     λ, μ = lame(m)

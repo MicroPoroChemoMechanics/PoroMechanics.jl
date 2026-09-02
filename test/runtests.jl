@@ -33,11 +33,23 @@ using PoroMechanics
     # ── The Barcelona Basic Model ──────────────────────────────────────────────
     include("bbm.jl")
 
+    # ── Drucker-Prager ─────────────────────────────────────────────────────────
+    include("druckerprager.jl")
+
+    # ── Computational homogenization on a periodic cell ────────────────────────
+    include("homogenization.jl")
+
     # ── Validation against closed-form solutions ──────────────────────────────
     include("benchmarks.jl")
     include("differentiability.jl")
 
     # ── Examples still produce the profiles they used to ───────────────────────
     include("regression.jl")
+
+    # ── The dialog with ChemistryLab ─────────────────────────────────────────
+    include("chemistry_interface.jl")
+
+    # ── Agreement with Bil, an independently written code ─────────────────────
+    include("bil.jl")
 
 end

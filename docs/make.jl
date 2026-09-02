@@ -25,7 +25,12 @@ const LITERATE_DEMOS = ["writing_a_model", "parameter_identification", "solver_s
 const BENCHMARKS_DIR = joinpath(@__DIR__, "..", "benchmarks")
 const VALIDATION_DIR = joinpath(@__DIR__, "src", "validation")
 
-const LITERATE_BENCHMARKS = ["terzaghi", "mandel", "cryer", "deleeuw", "gardner_infiltration", "gardner_transient", "bbm_bil"]
+const LITERATE_BENCHMARKS = ["terzaghi", "mandel", "cryer", "deleeuw", "gardner_infiltration", "gardner_transient", "bbm_bil", "bil_richards", "bil_poroplast", "bil_mechamic", "mfh_poroelastic", "mfh_thick_cylinder"]
+
+# `bil_richards` reruns Bil to refine its time step, which no documentation runner has
+# installed, so its page is emitted as plain `julia` fences. The measured tables are written
+# into the prose rather than produced at build time, for exactly that reason.
+const NONEXECUTED_BENCHMARKS = ["bil_richards", "bil_poroplast", "bil_mechamic"]
 
 const LITERATE_EXAMPLES = [
     "fickian_diffusion",
@@ -42,11 +47,19 @@ mkpath(VALIDATION_DIR)
 # block with the working directory set to the built page's folder, so those files have to
 # sit next to the generated markdown; Documenter copies non-markdown files from src to build.
 
-const BENCHMARK_SHARED = ["laplace.jl", "biot_common.jl", "richards_common.jl"]
+const BENCHMARK_SHARED = ["laplace.jl", "biot_common.jl", "richards_common.jl", "bil_common.jl", "cylinder_common.jl"]
 
 for f in BENCHMARK_SHARED
     cp(joinpath(BENCHMARKS_DIR, f), joinpath(VALIDATION_DIR, f); force = true)
 end
+
+# `bil_common.jl` includes the Bil output reader, which lives with the tests rather than the
+# benchmarks; it has to travel with it. On a runner without Bil the reader is loaded and
+# never used — `bil_bbm_reference` falls back to its cached table.
+cp(
+    joinpath(@__DIR__, "..", "test", "bil", "harness.jl"),
+    joinpath(VALIDATION_DIR, "harness.jl"); force = true,
+)
 
 for name in LITERATE_BENCHMARKS
     Literate.markdown(
@@ -55,7 +68,8 @@ for name in LITERATE_BENCHMARKS
         name = name,
         documenter = true,
         credit = false,
-        codefence = ("```@example $name" => "```"),
+        codefence = name in NONEXECUTED_BENCHMARKS ?
+            ("```julia" => "```") : ("```@example $name" => "```"),
     )
 end
 

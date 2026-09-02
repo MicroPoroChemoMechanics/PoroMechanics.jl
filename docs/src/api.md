@@ -227,3 +227,77 @@ algorithmic_tangent
 ContinuumTangent
 ExplicitPredictor
 ```
+
+### Drucker-Prager
+
+Perfect plasticity with a non-associated flow rule: friction sets the yield cone, dilatancy
+sets the plastic flow direction, and keeping the two apart is what lets the model shear
+without inventing volume.
+
+```@docs
+DruckerPrager
+DruckerPragerState
+drucker_prager_return
+friction_coefficient
+cohesion_intercept
+dilatancy_coefficient
+apex_pressure
+```
+
+### A Biot medium with an arbitrary skeleton
+
+```@docs
+BiotPlastic
+porosity
+```
+
+## Poroplasticity
+
+One-dimensional axisymmetric poroplasticity: a Richards-like liquid balance coupled to a
+skeleton that may yield. The state carried between steps is the material's own, so any
+`AbstractMaterial` can be the skeleton.
+
+```@docs
+PoroplastModel
+PoroplastState
+poroplast_initial_states
+poroplast_element_residual
+poroplast_step!
+mobility
+fluid_density
+liquid_mass
+intrinsic_permeability
+axisymmetric_strain_1d
+```
+
+## Computational homogenization
+
+A periodic cell solved under an imposed macroscopic strain, or under an imposed macroscopic
+stress by an outer Newton loop on the strain that produces it. The cells may be plastic, in
+which case the tangent is the algorithmic one and the state is carried between macroscopic
+steps.
+
+```@docs
+PeriodicCell
+periodic_cell
+cell_states
+homogenize_stress
+homogenize_to_stress
+homogenized_stiffness
+homogenized_tangent
+plane_strain
+```
+
+## Tabulated material curves
+
+A retention or relative-permeability curve given as data rather than as a formula —
+measured points, or a curve digitized from a reference. Interpolation is linear in the
+tabulated variable and the coefficients are parameterized by their own type, so a table can
+carry `ForwardDiff.Dual` values like any closed-form law.
+
+```@docs
+Tabulated
+TabulatedKrl
+interpolate_table
+```
+

@@ -1,6 +1,7 @@
 # PoroMechanics.jl regression reference — M1_Richards
 # Regenerate with: julia --project test/regression/generate.jl
 # 505 values, printed with %.17g
+# generated on arm64-apple-darwin25.5.0
 -76119300
 -76119300
 -76119300

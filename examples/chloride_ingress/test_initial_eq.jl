@@ -34,6 +34,10 @@ const CEMDATA18 = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.js
 # Uncomment the line matching the solver available in your environment.
 using OptimaSolver
 const OPTIMIZER = OptimaOptimizer(tol = 1.0e-10, verbose = false)
+
+## `unique_species` and the element balance — the guards on the dialogue with
+## ChemistryLab. See `element_balance.jl` for why the two questions are kept apart.
+include("element_balance.jl")
 # using Optimization, OptimizationIpopt
 # const OPTIMIZER = IpoptOptimizer(tol = 1.0e-10, print_level = 0)
 
@@ -160,7 +164,7 @@ end
 # 3. Chemical system
 # =============================================================================
 
-cs = ChemicalSystem(collect(species), CEMDATA_PRIMARIES; solid_solutions = solid_solutions)
+cs = ChemicalSystem(unique_species(species), CEMDATA_PRIMARIES; solid_solutions = solid_solutions)
 println("── Chemical system ──────────────────────────────────────────────────")
 println("  $(length(cs)) species, $(length(solutes(cs))) solutes, $(length(crystal(cs))) solid phases")
 println("  $(length(solid_solutions)) solutions solides")

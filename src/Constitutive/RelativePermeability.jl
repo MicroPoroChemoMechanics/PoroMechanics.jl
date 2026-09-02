@@ -139,3 +139,30 @@ function relative_permeability(k::GardnerKrl, pc)
     pc <= 0 && return one(T)
     return exp(-k.α * pc)
 end
+
+# ── Tabulated ─────────────────────────────────────────────────────────────────
+
+"""
+    TabulatedKrl(pc, krl)
+
+Relative permeability given as a table, `krl[k]` at capillary pressure `pc[k]`, linearly
+interpolated and clamped outside the range. The counterpart of [`Tabulated`](@ref) for
+retention; see there for why a table is worth having as a first-class law.
+"""
+struct TabulatedKrl{V <: AbstractVector, W <: AbstractVector} <: AbstractRelativePermeability
+    pc::V
+    krl::W
+
+    function TabulatedKrl(pc::V, krl::W) where {V <: AbstractVector, W <: AbstractVector}
+        length(pc) == length(krl) || throw(
+            ArgumentError("TabulatedKrl: $(length(pc)) pressures but $(length(krl)) values")
+        )
+        length(pc) >= 2 || throw(ArgumentError("TabulatedKrl: need at least two points"))
+        issorted(pc) && allunique(pc) || throw(
+            ArgumentError("TabulatedKrl: `pc` must be sorted and strictly increasing")
+        )
+        return new{V, W}(pc, krl)
+    end
+end
+
+relative_permeability(k::TabulatedKrl, pc) = interpolate_table(k.pc, k.krl, pc)

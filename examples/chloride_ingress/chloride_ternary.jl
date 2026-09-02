@@ -18,9 +18,14 @@ using Statistics
 using ChemistryLab
 using DynamicQuantities
 using OptimaSolver
+using ForwardDiff
 using Plots
 
 include("physdata.jl")
+
+## `unique_species` and the element balance — the guards on the dialogue with
+## ChemistryLab. See `element_balance.jl` for why the two questions are kept apart.
+include("element_balance.jl")
 
 # ── Transport species indices ─────────────────────────────────────────────────
 const ICL_T = 1
@@ -136,67 +141,11 @@ Base.@kwdef struct DLMTernaryParams
     Kw_SI::Float64 = 6.76e-9     # [mol²/m⁶] produit ionique eau 20 °C
 end
 
-"""
-Kinetic parameters for dissolution/precipitation of the mineral phases.
+## `KineticParams` now lives in `physdata.jl`, included above. It is database-derived data
+## like the equilibrium constants and molar volumes already there, `m100_ternary.jl` reads
+## it too, and keeping the definition here made this file the de facto home of a shared
+## table.
 
-!!! note
-    This belongs in ChemistryLab.jl, which has carried a kinetics module since its v0.3.0.
-    The rate law is reimplemented here because this package is pinned to an earlier
-    ChemistryLab; it should be dropped in favour of the upstream one.
-Source: toughreact.py → _MINERAL_KINETICS (Soive, Ravi thesis).
-
-Neutral rate law, no pH dependence and no activation energy (Ea=0):
-  r [mol/m³_concrete/s] = k [mol/m²/s] × A_s [m²/g] × M [g/mol] × n [mol/m³_concrete]
-
-For a time step Δt the largest kinetically reachable change is:
-  |Δn_max| = r × Δt
-
-The effective change is capped at min(|Δn_eq|, |Δn_max|) and the aqueous
-concentration is corrected by mass balance (dissolution stoichiometry).
-"""
-Base.@kwdef struct KineticParams
-    # Portlandite Ca(OH)₂ — very fast, rarely the limiting kinetics
-    k_CH::Float64 = 2.24e-8    # mol/m²/s
-    A_CH::Float64 = 16.5       # m²/g  (16.5e4 cm²/g in chemical.inp)
-    M_CH::Float64 = 74.09      # g/mol
-
-    # Ettringite Ca₆Al₂(SO₄)₃(OH)₁₂·26H₂O
-    k_Ett::Float64 = 7.08e-13
-    A_Ett::Float64 = 9.8
-    M_Ett::Float64 = 1255.0
-
-    # Monosulphate12 Ca₄Al₂(SO₄)(OH)₁₂·6H₂O
-    k_MS::Float64 = 6.76e-12
-    A_MS::Float64 = 5.7
-    M_MS::Float64 = 480.0      # approximatif
-
-    # Friedel's salt C₃A·CaCl₂·10H₂O
-    k_FS::Float64 = 6.76e-12
-    A_FS::Float64 = 5.7
-    M_FS::Float64 = 465.0      # approximatif
-
-    # Brucite Mg(OH)₂
-    k_Brc::Float64 = 5.7544e-9
-    A_Brc::Float64 = 9.8
-    M_Brc::Float64 = 58.32
-
-    # C-S-H CSHQ (all end-members, A_s = 41 m²/g from chemical.inp)
-    # Molar masses approximated from Ca/Si and the molar volume (ρ ≈ 2.0 g/cm³)
-    k_CSH::Float64 = 2.75e-12
-    A_CSH::Float64 = 41.0
-    M_TobH::Float64 = 118.0     # Ca₀.₈₃SiO₂H₁.₃  (Vm = 59 cm³/mol × ρ)
-    M_TobD::Float64 = 80.0      # Ca₀.₈₃SiO₂H₀.₅  (Vm = 27.7 cm³/mol × ρ × ~1.5)
-    M_JenH::Float64 = 200.0     # Ca₁.₅SiO₂H₂.₅   (Vm = 107.7 cm³/mol × ρ × ~0.9)
-    M_JenD::Float64 = 140.0     # Ca₁.₆₇SiO₂H₀.₅  (Vm = 57.6 cm³/mol × ρ)
-
-    # C-A-S-H CSH3T (CNASH_ss, Myers et al. 2014 / cemdata18) — same rate law as CSHQ
-    # TODO: check the molar masses against the cemdata18 formulas on the first run
-    k_CASH::Float64  = 2.75e-12
-    A_CASH::Float64  = 41.0
-    M_CASH_TobH::Float64 = 130.0   # Ca₀.₈₃Al₀.₁Si₀.₉H… (Vm ≈ 59.4 cm³/mol × ρ)
-    M_CASH_T5C::Float64  = 155.0   # Ca₁.₂₅Al₀.₂₅Si₀.₇₅H…
-    M_CASH_T2C::Float64  = 148.0   # Ca₁.₁₇Al₀.₃₃Si₀.₆₇H…
-end
 
 # Linear interpolation of Gamma_max between Tob (x_CaS=0.83) and Jen (x_CaS=1.67)
 function _gamma_max_dlm(dlm::DLMTernaryParams, x_cas::Float64)
@@ -223,12 +172,16 @@ the surface charge.
 Returns `(β, S_Cl, S_Na, S_K, S_Ca, S_Mg)` in mol/m³_concrete.
 """
 function solve_dlm_ternary(
-    c_Cl::Float64, c_Na::Float64, c_K::Float64, c_Ca::Float64,
-    c_Mg::Float64, c_OH::Float64, n_csh::Float64, x_cas::Float64;
+    c_Cl::Real, c_Na::Real, c_K::Real, c_Ca::Real,
+    c_Mg::Real, c_OH::Real, n_csh::Real, x_cas::Real;
     dlm::DLMTernaryParams,
-    T_K::Float64=293.15,
+    T_K::Real=293.15,
 )
-    n_csh ≤ 0.0 && return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    ## `zero(...)` rather than `0.0`: this branch must not drop the dual type when the
+    ## caller is differentiating with respect to a concentration.
+    T_out = promote_type(typeof(c_Cl), typeof(c_Na), typeof(c_K), typeof(c_Ca),
+                         typeof(c_Mg), typeof(c_OH), typeof(n_csh))
+    n_csh ≤ 0.0 && return ntuple(_ -> zero(T_out), 6)
 
     c_H = dlm.Kw_SI / max(c_OH, 1.0e-20)
     I = max(0.5 * (c_Cl + c_Na + c_K + 4.0 * c_Ca + 4.0 * c_Mg + c_OH + c_H), 1.0)
@@ -249,34 +202,50 @@ function solve_dlm_ternary(
     # ≡SiOCaCl  (charge  0) : no electrostatic correction
     # ≡SiONa/K  (neutral)   : no correction
 
-    @inline A(β) = (1.0
-                    + Ka1 * exp(β) / c_H                          # ≡SiO⁻
-                    + KCa * Ka1 * c_Ca * exp(-β) / c_H           # ≡SiOCa⁺
-                    + KMg * Ka1 * c_Mg * exp(-β) / c_H           # ≡SiOMg⁺
-                    + KCaCl * c_Ca * c_Cl / c_H                   # ≡SiOCaCl (ternaire, neutre)
-                    + (KNa * c_Na + KK * c_K) * Ka1 / c_H)       # ≡SiONa, ≡SiOK
+    ## Written as functions of the concentrations rather than closing over them, so the
+    ## same expressions serve both the live (possibly dual) arguments and the stripped
+    ## values the bracket below needs.
+    A(β, cCl, cNa, cK, cCa, cMg, cH) = (1.0
+                    + Ka1 * exp(β) / cH                          # ≡SiO⁻
+                    + KCa * Ka1 * cCa * exp(-β) / cH             # ≡SiOCa⁺
+                    + KMg * Ka1 * cMg * exp(-β) / cH             # ≡SiOMg⁺
+                    + KCaCl * cCa * cCl / cH                     # ≡SiOCaCl (ternaire, neutre)
+                    + (KNa * cNa + KK * cK) * Ka1 / cH)          # ≡SiONa, ≡SiOK
 
     # Surface charge σ₀ = F·Γ_max·B/A  (≡SiOCaCl neutral → absent from B)
-    @inline B(β) = (KCa * Ka1 * c_Ca * exp(-β) / c_H
+    B(β, cCa, cMg, cH) = (KCa * Ka1 * cCa * exp(-β) / cH
                     +
-                    KMg * Ka1 * c_Mg * exp(-β) / c_H
+                    KMg * Ka1 * cMg * exp(-β) / cH
                     -
-                    Ka1 * exp(β) / c_H)
+                    Ka1 * exp(β) / cH)
 
     F_val = 96485.0
     R_val = 8.314
     σ_cap = sqrt(8.0 * 8.854e-12 * dlm.eps_r * R_val * T_K * I)
 
-    f(β) = F_val * Gamma_max * B(β) / A(β) - σ_cap * sinh(β / 2.0)
+    residual(β, cCl, cNa, cK, cCa, cMg, cH, σ) =
+        F_val * Gamma_max * B(β, cCa, cMg, cH) /
+        A(β, cCl, cNa, cK, cCa, cMg, cH) - σ * sinh(β / 2.0)
+
+    f(β) = residual(β, c_Cl, c_Na, c_K, c_Ca, c_Mg, c_H, σ_cap)
+
+    ## Bisection is a sequence of comparisons: differentiating through it returns
+    ## dβ/dc = 0, because the bracket endpoints are constants. The bracket is therefore
+    ## closed on the stripped values, and one Newton step at the converged root restores
+    ## the derivative — `f(β★)` is zero to the bisection tolerance, so the step leaves β
+    ## where it is while its dual part is −(∂f/∂c)/(∂f/∂β).
+    v(x) = ForwardDiff.value(x)
+    fv(β) = residual(β, v(c_Cl), v(c_Na), v(c_K), v(c_Ca), v(c_Mg), v(c_H), v(σ_cap))
 
     β_lo, β_hi = -10.0, 10.0
-    f_lo = f(β_lo)
-    f_hi = f(β_hi)
-    β_sol = 0.0
-    if f_lo * f_hi < 0.0
+    f_lo = fv(β_lo)
+    f_hi = fv(β_hi)
+    bracketed = f_lo * f_hi < 0.0
+    β_star = 0.0
+    if bracketed
         for _ in 1:64
             β_mid = 0.5 * (β_lo + β_hi)
-            f_mid = f(β_mid)
+            f_mid = fv(β_mid)
             if f_mid * f_lo < 0.0
                 β_hi = β_mid
             else
@@ -285,13 +254,16 @@ function solve_dlm_ternary(
             end
             abs(β_hi - β_lo) < 1.0e-9 && break
         end
-        β_sol = 0.5 * (β_lo + β_hi)
+        β_star = 0.5 * (β_lo + β_hi)
     else
-        β_sol = abs(f_lo) < abs(f_hi) ? β_lo : β_hi
+        ## No sign change on [-10, 10]: there is no root to differentiate, so β is a
+        ## constant and carries no derivative.
+        β_star = abs(f_lo) < abs(f_hi) ? β_lo : β_hi
     end
 
-    β = β_sol
-    X = Gamma_max / A(β)   # θ_SiOH × Γ_max [mol/m²]
+    β = bracketed ? β_star - f(β_star) / ForwardDiff.derivative(fv, β_star) : β_star
+
+    X = Gamma_max / A(β, c_Cl, c_Na, c_K, c_Ca, c_Mg, c_H)   # θ_SiOH × Γ_max [mol/m²]
 
     theta_OCaCl = KCaCl * X * c_Ca * c_Cl / c_H          # ≡SiOCaCl
     theta_OCa = KCa * Ka1 * X * c_Ca * exp(-β) / c_H  # ≡SiOCa⁺
@@ -429,7 +401,7 @@ function _init_chemistry_ternary()
     solid_hyd = [dict_sp[n] for n in solid_names_hyd if haskey(dict_sp, n)]
     ss_hyd = SolidSolutionPhase[ss_cshq]
     has_cash && push!(ss_hyd, ss_cash)
-    cs_hyd = ChemicalSystem(vcat(collect(aq_species), solid_hyd), CEMDATA_PRIMARIES; solid_solutions=ss_hyd)
+    cs_hyd = ChemicalSystem(unique_species(vcat(collect(aq_species), solid_hyd)), CEMDATA_PRIMARIES; solid_solutions=ss_hyd)
 
     has_friedels = haskey(dict_sp, "C4AClH10")
     has_brucite = haskey(dict_sp, "Brc")       # cemdata18 name: "Brc" (not "Brucite")
@@ -454,7 +426,7 @@ function _init_chemistry_ternary()
     has_msh && push!(ss_tr, ss_msh)
     has_ldh && push!(ss_tr, ss_ldh)
     has_afm_ss && push!(ss_tr, ss_afm)
-    cs_tr = ChemicalSystem(vcat(collect(aq_species), solid_tr), CEMDATA_PRIMARIES; solid_solutions=ss_tr)
+    cs_tr = ChemicalSystem(unique_species(vcat(collect(aq_species), solid_tr)), CEMDATA_PRIMARIES; solid_solutions=ss_tr)
 
     return cs_hyd, cs_tr, has_afm_ss, has_friedels, has_brucite, has_msh, has_ldh, has_gyp, has_cash
 end
@@ -539,6 +511,14 @@ function chemistry_step_ternary!(
     skip_cl  = 1e-3 * m.env.c_Cl
     skip_mg  = 1e-3 * m.env.c_Mg
     skip_so4 = 1e-3 * m.env.c_SO4
+
+    ## Species positions, resolved once: the Friedel tangent seeds the composition vector
+    ## by index, because `set_quantity!` writes into a Float64 array and a dual seed has
+    ## to be laid out at construction time.
+    sp_names = String.(symbol.(cs.species))
+    i_cl = findfirst(==("Cl-"), sp_names)
+    i_oh = findfirst(==("OH-"), sp_names)
+    i_fs = findfirst(==("C4AClH10"), sp_names)
 
     Threads.@threads for i in 2:N
         phi_i = m.phi[i]
@@ -783,14 +763,16 @@ function chemistry_step_ternary!(
         m.n_gyp[i]    = n_gyp_new
         m.c_oh_frozen[i] = max(c_oh_new, 1e-12)
 
-        # ── Friedel Kd (numerical secant) ─────────────────────────────────────
+        # ── Friedel Kd, differentiated through the Gibbs solve ────────────────
         # With AFm-SS: computed as soon as total AFm is present (even at n_fs ≈ 0),
-        # because the SO₄²⁻/Cl⁻ interlayer substitution happens continuously.
+        # because the SO₄²⁻/Cl⁻ interlayer substitution happens continuously — which is
+        # precisely where a difference quotient is least trustworthy. A `ChemicalState`
+        # carrying `ForwardDiff.Dual` amounts takes the implicit-function route through
+        # the optimality conditions instead: exact, and with no δ to choose.
         dn_fs_dc = 0.0
         if (has_afm_ss && n_ms_new + n_fs_new > 1e-10) || (!has_afm_ss && has_friedels && n_fs_new > 1e-10)
-            δ_cl = max(1.0, c_cl_new * 1e-2)
             phi_p = m.phi[i]
-            n_cl_p = max(c_cl_new + δ_cl, 0.0) * phi_p * V_REV_T
+            n_cl_p = max(c_cl_new, 0.0) * phi_p * V_REV_T
             n_oh_p = max(c_na_new * phi_p * V_REV_T + c_k_new * phi_p * V_REV_T
                          + 2.0 * c_ca_new * phi_p * V_REV_T + 2.0 * c_mg_new * phi_p * V_REV_T
                          -
@@ -830,12 +812,21 @@ function chemistry_step_ternary!(
                     length(LDH_EM_T) > 1 && set_quantity!(state_p, LDH_EM_T[2], n_ldh_m6_new * V_REV_T * us"mol")
                     length(LDH_EM_T) > 2 && set_quantity!(state_p, LDH_EM_T[3], n_ldh_m8_new * V_REV_T * us"mol")
                 end
-                state_p_eq = equilibrate(state_p, OptimaOptimizer(tol=1e-7, verbose=false))
-                V_liq_p = ustrip(uconvert(us"m^3", state_p_eq.V_phases[].liquid))
-                if V_liq_p > 1e-15
-                    n_fs_p = max(ustrip(moles(state_p_eq, "C4AClH10")) / V_REV_T, 0.0)
-                    dn_fs_dc = max(n_fs_p - n_fs_new, 0.0) / δ_cl
-                end
+                # ∂/∂c_Cl in [mol/m³_water]. Not chloride alone: the same charge
+                # balance that sets OH⁻ above ties it to c_Cl, so OH⁻ carries the
+                # opposite partial — which is what rebuilding `n_oh_p` from `n_cl_p`
+                # used to encode.
+                dn_dc = phi_p * V_REV_T
+                n_seed = [ForwardDiff.Dual{Nothing}(ustrip(us"mol", nᵢ), 0.0) for nᵢ in state_p.n]
+                n_seed[i_cl] = ForwardDiff.Dual{Nothing}(ustrip(us"mol", state_p.n[i_cl]),  dn_dc)
+                n_seed[i_oh] = ForwardDiff.Dual{Nothing}(ustrip(us"mol", state_p.n[i_oh]), -dn_dc)
+                state_p_eq = equilibrate(
+                    ChemicalState(cs, n_seed .* us"mol"; T=T_q),
+                    OptimaOptimizer(tol=1e-7, verbose=false),
+                )
+                dn_fs_dc = max(
+                    ForwardDiff.partials(ustrip(us"mol", state_p_eq.n[i_fs]), 1), 0.0
+                ) / V_REV_T
             catch
             end
         end
@@ -855,24 +846,22 @@ function chemistry_step_ternary!(
         n_csh_dlm = dlm_i.n_csh0 > 0.0 ? dlm_i.n_csh0 : n_csh_i
         dS_Cl_dc = 0.0
         if n_csh_dlm > 0.0
+            ## Seeding c_Cl with a dual returns S_Cl and dS_Cl/dc from one evaluation:
+            ## `solve_dlm_ternary` brackets its root on the values and restores the
+            ## derivative with a Newton step, so no δ has to be chosen.
+            c_cl_seed = ForwardDiff.Dual{Nothing}(max(c_cl_new, 0.0), 1.0)
             _, S_Cl_i, S_Na_i, S_K_i, S_Ca_i, S_Mg_i = solve_dlm_ternary(
-                max(c_cl_new, 0.0), max(c_na_new, 0.0), max(c_k_new, 0.0),
+                c_cl_seed, max(c_na_new, 0.0), max(c_k_new, 0.0),
                 max(c_ca_new, 0.0), max(c_mg_new, 0.0), max(c_oh_new, ε),
                 n_csh_dlm, x_cas_i; dlm=dlm_i, T_K=m.env.T_K,
             )
-            m.S_Cl_dlm[i] = max(S_Cl_i, 0.0)
-            m.S_Na_dlm[i] = max(S_Na_i, 0.0)
-            m.S_K_dlm[i] = max(S_K_i, 0.0)
-            m.S_Ca_dlm[i] = max(S_Ca_i, 0.0)
-            m.S_Mg_dlm[i] = max(S_Mg_i, 0.0)
-            # ∂S_Cl/∂c_Cl (c_Ca held fixed) for the DLM Kd
-            δ_dlm = max(1.0e-3, c_cl_new * 1e-3)
-            _, S_Cl_p, _, _, _, _ = solve_dlm_ternary(
-                max(c_cl_new + δ_dlm, 0.0), max(c_na_new, 0.0), max(c_k_new, 0.0),
-                max(c_ca_new, 0.0), max(c_mg_new, 0.0), max(c_oh_new, ε),
-                n_csh_dlm, x_cas_i; dlm=dlm_i, T_K=m.env.T_K,
-            )
-            dS_Cl_dc = (max(S_Cl_p, 0.0) - m.S_Cl_dlm[i]) / δ_dlm
+            m.S_Cl_dlm[i] = max(ForwardDiff.value(S_Cl_i), 0.0)
+            m.S_Na_dlm[i] = max(ForwardDiff.value(S_Na_i), 0.0)
+            m.S_K_dlm[i] = max(ForwardDiff.value(S_K_i), 0.0)
+            m.S_Ca_dlm[i] = max(ForwardDiff.value(S_Ca_i), 0.0)
+            m.S_Mg_dlm[i] = max(ForwardDiff.value(S_Mg_i), 0.0)
+            # ∂S_Cl/∂c_Cl (c_Ca held fixed) for the DLM Kd, read off the same evaluation
+            dS_Cl_dc = ForwardDiff.partials(S_Cl_i, 1)
         else
             m.S_Cl_dlm[i] = 0.0
             m.S_Na_dlm[i] = 0.0

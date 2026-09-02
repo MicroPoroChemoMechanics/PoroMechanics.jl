@@ -49,6 +49,19 @@ written by hand: the finite volume callbacks are differentiated automatically wi
 | Transport, diffusion, flow | [VoronoiFVM.jl](https://github.com/j-fu/VoronoiFVM.jl) |
 | Coupled mechanics | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
 
+Not all of that is installable yet, and the distinction is worth stating plainly. Richards'
+equation, the retention and relative-permeability laws, the Oh-Jang tortuosity, Biot
+poroelasticity, Drucker-Prager and Barcelona Basic plasticity, and the homogenization
+backend live in `src/` and come with the package. Fick and Nernst-Planck transport,
+non-isothermal drying and the whole reactive-transport chain are **worked examples** under
+`examples/`: complete, validated against their reference solutions, and read back by the
+regression suite — but not part of what `Pkg.add` installs. They move into `src/Models/` as
+they mature.
+
+That is also why the chemistry stack is not a dependency of this package: nothing in `src/`
+calls it. `ChemistryLab.jl` and `OptimaSolver.jl` are dependencies of `examples/` and of the
+test suite, where they are actually used.
+
 ### Scope, and where the chemistry belongs
 
 PoroMechanics.jl is today a *chemo*-poro-mechanics code: next to transport and mechanics it
@@ -68,17 +81,21 @@ implementation, in ChemistryLab.jl, is where it should live.
 
 ## Installation
 
-PoroMechanics.jl and two of its dependencies (`ChemistryLab.jl`, `OptimaSolver.jl`) are
-distributed through the MicroPoroChemoMechanics registry:
-
 ```julia
 using Pkg
-Pkg.Registry.add(RegistrySpec(url = "https://github.com/MicroPoroChemoMechanics/MPCM-Registry"))
 Pkg.add("PoroMechanics")
 ```
 
-Julia 1.12 or later is required, a floor inherited from `ChemistryLab.jl` and
-`OptimaSolver.jl`.
+The example below also builds its grid with `ExtendableGrids`, which the package does not
+depend on — a model is handed a grid, it does not construct one:
+
+```julia
+Pkg.add("ExtendableGrids")
+```
+
+Julia 1.12 or later. The package's own dependencies do not force that floor any more, but
+it is the only version the project is tested on: `examples/` and the test suite pull
+`ChemistryLab.jl` and `OptimaSolver.jl`, which require it, and CI runs nothing below it.
 
 For local development:
 
@@ -119,11 +136,15 @@ sys  = VoronoiFVM.System(
 
 inival = unknowns(sys; inival = 0.0)
 inival[1, 1] = m.c_in
-tsol = solve(sys; inival, times = (0.0, 1.0e8))
+control = VoronoiFVM.SolverControl(; Δt = 1.0e4, Δt_max = 1.0e7, Δu_opt = 0.1)
+tsol = solve(sys; inival, times = (0.0, 1.0e8), control)
 ```
 
 No Jacobian appears anywhere: `VoronoiFVM.solve` differentiates the callbacks and owns the
-Newton loop and the adaptive time stepping.
+Newton loop and the adaptive time stepping. The `control` is not decoration — left at its
+defaults, `Δu_opt` sizes the steps for a problem whose time scale is not 10⁸ s. The
+[quickstart](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/dev/quickstart/)
+says why, and runs the same code.
 
 ## Documentation
 

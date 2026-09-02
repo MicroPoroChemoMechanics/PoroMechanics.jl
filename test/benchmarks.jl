@@ -24,6 +24,10 @@ module _DeLeeuw
     include("../benchmarks/deleeuw.jl")
 end
 
+module _Cylinder
+    include("../benchmarks/cylinder_common.jl")
+end
+
 module _Gardner
     include("../benchmarks/gardner_infiltration.jl")
 end
@@ -381,4 +385,35 @@ end
     end
     @test abs(elastic_cycle(BBM())) < 1.0e-14
     @test abs(elastic_cycle(ExplicitPredictor(BBM()))) > 1.0e-3
+end
+
+
+@testset "Thick-walled cylinder — homogenised moduli against Lamé" begin
+    ## The field-problem half of the interface with MeanFieldHomogenization.jl. The live
+    ## comparison is `benchmarks/mfh_thick_cylinder.jl`, which the documentation build runs;
+    ## the moduli are frozen here so the suite needs neither that package nor a network.
+    ##
+    ## Matrix k = 30 GPa, μ = 18 GPa with 25 % spherical inclusions at k = 120 GPa,
+    ## μ = 80 GPa, Mori-Tanaka — MeanFieldHomogenization 0.7.0.
+    E_hom, ν_hom = 61.75926239788482e9, 0.24266974000881328
+
+    coarse = _Cylinder.solve_cylinder(E_hom, ν_hom, 24)
+    fine = _Cylinder.solve_cylinder(E_hom, ν_hom, 48)
+
+    ## The numbers the page displays, and the ones that package publishes for the same
+    ## radial resolution (1.6e-2 and 4.3e-3).
+    @test coarse.err_u ≈ 1.6083e-2 rtol = 1.0e-3
+    @test fine.err_u ≈ 4.2464e-3 rtol = 1.0e-3
+
+    ## Second order in the displacement — the rate Q1 elements owe, and the thing a defect
+    ## in the axisymmetric assembly would break while still leaving the errors small.
+    @test 1.85 < log2(coarse.err_u / fine.err_u) < 2.05
+
+    ## And first order in the stress, one derivative down. Asserting it separately matters:
+    ## a stress that converged at the displacement's rate would mean it was not being read
+    ## where it lives.
+    @test 0.75 < log2(coarse.err_σ / fine.err_σ) < 1.0
+
+    ## Newton on a linear problem converges at once; the residual is machine-level.
+    @test coarse.residual < 1.0e-6
 end

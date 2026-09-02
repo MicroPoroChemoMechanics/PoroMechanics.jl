@@ -45,9 +45,10 @@ export storage!, flux!, bcondition!, reaction!, assemble_element!
 export element_matrices!, facet_load!
 
 # Constitutive layer
-export AbstractRetention, VanGenuchten, ExponentialCutoff, Gardner
+export AbstractRetention, VanGenuchten, ExponentialCutoff, Gardner, Tabulated
+export interpolate_table
 export saturation, dsaturation_dpc
-export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl
+export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl, TabulatedKrl
 export relative_permeability, gas_relative_permeability
 export AbstractTortuosity, OhJang, tortuosity
 export AbstractPoroelastic, BiotPoroelastic
@@ -63,13 +64,19 @@ export equivalent_pore_pressure, unsaturated_total_stress, suction_stress
 
 # Materials
 export BBM, BBMState, compression_index, preconsolidation, yield_function
+export DruckerPrager, DruckerPragerState, drucker_prager_return, BiotPlastic, porosity
+export friction_coefficient, dilatancy_coefficient, cohesion_intercept, apex_pressure
 export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_mean, step_shear_modulus, trial_stress, suction_stress_increment, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent, ExplicitPredictor
 
 # Backends
 export fvm_system
 export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
-export RichardsModel, liquid_saturation, liquid_conductivity
+export RichardsModel, liquid_saturation, liquid_conductivity, intrinsic_permeability
+export PoroplastModel, PoroplastState, poroplast_element_residual, poroplast_step!
+export poroplast_initial_states, axisymmetric_strain_1d, fluid_density, mobility, liquid_mass
 export axisymmetric_strain, axisymmetric_shape_strain, assemble_axisymmetric!, newton_solve!
+export PeriodicCell, periodic_cell, homogenize_stress, homogenized_stiffness, plane_strain
+export homogenize_to_stress, homogenized_tangent, cell_states
 
 # ── Core abstractions ──────────────────────────────────────────────────────────
 
@@ -226,12 +233,15 @@ include("Constitutive/EffectiveStress.jl")
 # ── Materials ──────────────────────────────────────────────────────────────────
 
 include("Materials/BBM.jl")
+include("Materials/DruckerPrager.jl")
 
 # ── Backends ───────────────────────────────────────────────────────────────────
 # Glue to the solver packages. The physics lives above; these only wire it up.
 
 include("Models/Richards.jl")
+include("Models/Poroplast.jl")
 include("Backends/FVM.jl")
 include("Backends/FEM.jl")
+include("Backends/Homogenization.jl")
 
 end # module PoroMechanics

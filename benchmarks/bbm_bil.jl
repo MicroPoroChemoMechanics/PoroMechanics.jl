@@ -121,18 +121,21 @@ bbm_dates = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
 bbm = run_case(ExplicitPredictor(material), p_bbm, t -> 0.0, s_bbm, 6.0, bbm_dates)
 bbm_exact = run_case(material, p_bbm, t -> 0.0, s_bbm, 6.0, bbm_dates)
 
-# Bil's own results at the same dates, read from `base/BBM/BBM.p1`. The volumetric strain
-# is recovered from the void-ratio change it reports, ``\Delta e = (1+e_0)\,\mathrm{tr}\,
-# \varepsilon``, and the hardening variable it stores is ``\ln p_c^*``.
+# Bil's own results at the same dates, now *read* from `base/BBM/BBM.p1` rather than copied
+# into this page by hand. Three conversions are needed and none is guessable from the column
+# names: the volumetric strain comes from the void-ratio change Bil reports,
+# ``\Delta e = (1+e_0)\,\mathrm{tr}\,\varepsilon`` with ``e_0 = 1/3``; the hardening variable
+# it stores is ``\ln p_c^*``; and the plastic volumetric strain needs its sign flipped,
+# because Bil counts a compaction negative and this package counts it positive.
+#
+# The literal table remains in `bil_common.jl` as a cache, so this page still runs on a
+# machine without Bil — the documentation runner, for one. When Bil is present the two are
+# compared and a stale cache is an error, which is what a hand-copied table could never
+# offer.
 
-bbm_ref = Dict(                          # (tr ε, εv_p, pc* [Pa])
-    1.0 => (-3.058474e-2, 0.0, 39999.8),
-    2.0 => (-1.550205e-3, 0.0, 39999.8),
-    3.0 => (-5.207435e-2, 1.411818e-2, 56683.0),
-    4.0 => (-1.711651e-2, 1.411818e-2, 56683.0),
-    5.0 => (-7.440369e-2, 2.917845e-2, 82214.7),
-    6.0 => (-3.426270e-2, 2.917845e-2, 82214.7),
-)
+include("bil_common.jl")
+
+bbm_ref = bil_bbm_reference()            # (tr ε, εv_p, pc* [Pa]) at t = 1 … 6
 
 rel(a, b) = abs(b) < 1.0e-12 ? abs(a - b) : abs(a - b) / abs(b)
 

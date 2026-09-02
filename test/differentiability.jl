@@ -57,12 +57,16 @@ end
 
     ## Structural zeros: under stress control the plastic strain is set by the yield surface
     ## and the hardening law, so the elastic constants cannot enter it. Automatic
-    ## differentiation returns that exactly; finite differences return their own noise,
-    ## which is why they are not the reference here.
+    ## differentiation returns that exactly, which is the claim worth asserting.
     @test abs(g[7]) < 1.0e-15           # κ_s
     @test abs(g[8]) < 1.0e-10           # ν
-    @test abs(D.gradient_fd[7]) > 1.0e-11
-    @test abs(D.gradient_fd[8]) > 1.0e-11
+    ## Finite differences cannot settle these two — they return whatever their own
+    ## truncation and cancellation happen to produce — which is why the comparison loop
+    ## above stops at 6. That was once asserted as `abs(gradient_fd[i]) > 1e-11`, and it
+    ## is not an assertion: it demands that a numerical artifact be *large enough*, and
+    ## nothing guarantees that from one platform to the next. On x86-64 Linux
+    ## `gradient_fd[8]` comes back as exactly `0.0` and the check failed, while nothing
+    ## about the package had changed. The claim belongs in this comment, not in a test.
 
     ## Experiment design: a plausible protocol that cannot determine β, and one that can.
     @test D.svd_plausible.S[end] / D.svd_plausible.S[1] < 1.0e-15
