@@ -50,7 +50,9 @@ into the model would make the model unusable for the next problem, which is exac
 happens when a physics model is written inside a script.
 
 Boundaries not named are no-flow, which is `VoronoiFVM`'s default and the usual meaning of
-an unlisted boundary in a flow problem.
+an unlisted boundary in a flow problem. A value may be a number or a function of time —
+[`PoroMechanics.dirichlet_value`](@ref) resolves it — so a pressure that ramps or cycles is
+data like any other.
 
 A layered or composite medium is likewise a *case*, not a second model: pass a collection
 for `k_int`, indexed by the cell region, and the same struct covers it.
@@ -147,8 +149,6 @@ end
 
 """Imposed pressures, from the model's `dirichlet` field."""
 function bcondition!(f, u, bnode, m::RichardsModel, data)
-    for (region, value) in m.dirichlet
-        VoronoiFVM.boundary_dirichlet!(f, u, bnode; species = 1, region = region, value = value)
-    end
+    apply_dirichlet!(f, u, bnode, m.dirichlet)
     return nothing
 end

@@ -49,14 +49,14 @@ written by hand: the finite volume callbacks are differentiated automatically wi
 | Transport, diffusion, flow | [VoronoiFVM.jl](https://github.com/j-fu/VoronoiFVM.jl) |
 | Coupled mechanics | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
 
-Not all of that is installable yet, and the distinction is worth stating plainly. Richards'
-equation, the retention and relative-permeability laws, the Oh-Jang tortuosity, Biot
-poroelasticity, Drucker-Prager and Barcelona Basic plasticity, and the homogenization
-backend live in `src/` and come with the package. Fick and Nernst-Planck transport,
-non-isothermal drying and the whole reactive-transport chain are **worked examples** under
-`examples/`: complete, validated against their reference solutions, and read back by the
-regression suite — but not part of what `Pkg.add` installs. They move into `src/Models/` as
-they mature.
+Not all of that is installable yet, and the distinction is worth stating plainly. Fick
+diffusion, transient Darcy flow, Richards' equation, the retention and
+relative-permeability laws, the Oh-Jang tortuosity, Biot poroelasticity, Drucker-Prager and
+Barcelona Basic plasticity, and the homogenization backend live in `src/` and come with the
+package. Nernst-Planck transport, non-isothermal drying and the whole reactive-transport
+chain are **worked examples** under `examples/`: complete, validated against their reference
+solutions, and read back by the regression suite — but not part of what `Pkg.add` installs.
+They move into `src/Models/` as they mature.
 
 That is also why the chemistry stack is not a dependency of this package: nothing in `src/`
 calls it. `ChemistryLab.jl` and `OptimaSolver.jl` are dependencies of `examples/` and of the
@@ -105,46 +105,34 @@ Pkg.develop(path = "path/to/PoroMechanics.jl")
 
 ## Example
 
-A physics model is a struct plus the callbacks its physics needs — here Fick diffusion of a
-solute through a saturated porous medium:
+Fick diffusion of a solute through a saturated porous medium. The model ships with the
+package, so the script is the *case* — a grid, an imposed concentration, a time window:
 
 ```julia
 using PoroMechanics, VoronoiFVM, ExtendableGrids
 
-Base.@kwdef struct FickModel <: AbstractPoroModel
-    φ::Float64    = 0.30     # porosity [-]
-    D::Float64    = 1e-10    # effective diffusion coefficient [m²/s]
-    c_in::Float64 = 1.0      # concentration imposed at x = 0 [mol/m³]
-end
-
-PoroMechanics.storage!(f, u, node, m::FickModel, _) = (f[1] = m.φ * u[1])
-PoroMechanics.flux!(f, u, edge, m::FickModel, _)    = (f[1] = m.D * m.φ * (u[1, 1] - u[1, 2]))
-
-function PoroMechanics.bcondition!(f, u, bnode, m::FickModel, _)
-    boundary_dirichlet!(f, u, bnode; species = 1, region = 1, value = m.c_in)
-end
-
-m    = FickModel()
+m    = FickModel(; phi = 0.30, D = 1.0e-10, dirichlet = ((1, 1.0),))
 grid = simplexgrid(range(0, 1.0; length = 101))
-sys  = VoronoiFVM.System(
-    grid;
-    storage    = (f, u, node, d)  -> PoroMechanics.storage!(f, u, node, m, d),
-    flux       = (f, u, edge, d)  -> PoroMechanics.flux!(f, u, edge, m, d),
-    bcondition = (f, u, bnode, d) -> PoroMechanics.bcondition!(f, u, bnode, m, d),
-    species    = [1],
-)
+sys  = fvm_system(m, grid)
 
 inival = unknowns(sys; inival = 0.0)
-inival[1, 1] = m.c_in
+inival[1, 1] = 1.0        # keep the initial state consistent with the boundary value
 control = VoronoiFVM.SolverControl(; Δt = 1.0e4, Δt_max = 1.0e7, Δu_opt = 0.1)
 tsol = solve(sys; inival, times = (0.0, 1.0e8), control)
 ```
 
-No Jacobian appears anywhere: `VoronoiFVM.solve` differentiates the callbacks and owns the
-Newton loop and the adaptive time stepping. The `control` is not decoration — left at its
-defaults, `Δu_opt` sizes the steps for a problem whose time scale is not 10⁸ s. The
+`dirichlet` is data, not a method: the concentration imposed on boundary region 1 is what
+distinguishes this case from the next one, and the sealed face needs no code at all — zero
+flux is what `VoronoiFVM` does with a boundary nobody claims.
+
+No Jacobian appears anywhere: `VoronoiFVM.solve` differentiates the model's callbacks and
+owns the Newton loop and the adaptive time stepping. The `control` is not decoration —
+left at its defaults, `Δu_opt` sizes the steps for a problem whose time scale is not 10⁸ s.
+
+A model the package does not ship is a struct plus the three callbacks its physics needs,
+and nothing else is registered or declared; the
 [quickstart](https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl/dev/quickstart/)
-says why, and runs the same code.
+writes one from scratch.
 
 ## Documentation
 

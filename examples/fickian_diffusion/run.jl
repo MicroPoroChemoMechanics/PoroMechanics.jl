@@ -56,50 +56,29 @@ using PoroMechanics
 using VoronoiFVM
 using ExtendableGrids
 
-# ## Model definition
+# ## The model
 #
-# The model is a plain struct holding its material parameters. Multiple dispatch on that
-# struct is what selects the constitutive behaviour below.
-
-"""Parameters of the Fickian diffusion model (saturated porous medium)."""
-Base.@kwdef struct FickModel{T} <: AbstractPoroModel
-    φ::T = 0.30     # porosity [-]
-    D::T = 1e-10    # effective diffusion coefficient [m²/s]
-    c_in::T = 1.0   # concentration imposed at x=0 [mol/m³]
-end
-
-PoroMechanics.nspecies(::FickModel) = 1
-
-## Differentiating with respect to one parameter turns that field into a `Dual` while the
-## others stay `Float64`, so the constructor promotes rather than demanding they match.
-FickModel(φ, D, c_in) = FickModel(promote(φ, D, c_in)...)
-PoroMechanics.species_names(::FickModel) = [:c]
-
-# ## Constitutive behaviour
+# [`FickModel`](@ref) lives in the package, not in this script. Diffusion through a
+# saturated medium is the same equation whatever column it is solved on; what belongs here
+# is the material data, the geometry, and the concentration imposed at the inlet.
 #
-# Three methods are all this model needs. None of them knows about time stepping or
-# assembly, and none of them computes a Jacobian: `VoronoiFVM.jl` differentiates them with
-# `ForwardDiff.jl`.
+# That imposed concentration is given as data — `dirichlet = ((1, c_in),)`, meaning "impose
+# `c_in` on boundary region 1" — rather than written into a method, so the same model serves
+# a column fed from the other end without editing anything. The sealed face at ``x = L``
+# needs no code at all: zero flux is what `VoronoiFVM` does with a boundary nobody claims.
 
-"""Storage term: φ ∂c/∂t"""
-function PoroMechanics.storage!(f, u, node, m::FickModel, data)
-    f[1] = m.φ * u[1]
-end
+const C_IN = 1.0    # concentration imposed at x = 0 [mol/m³]
 
-"""Fick flux: -D φ ∇c (finite difference between neighbours)"""
-function PoroMechanics.flux!(f, u, edge, m::FickModel, data)
-    f[1] = m.D * m.φ * (u[1, 1] - u[1, 2])
-end
-
-"""Dirichlet boundary condition at x = 0 (region 1)"""
-function PoroMechanics.bcondition!(f, u, bnode, m::FickModel, data)
-    boundary_dirichlet!(f, u, bnode; species = 1, region = 1, value = m.c_in)
-end
+fick_material(; c_in = C_IN) = FickModel(;
+    phi = 0.30,                  # porosity [-]
+    D = 1.0e-10,                 # effective diffusion coefficient [m²/s]
+    dirichlet = ((1, c_in),),    # imposed concentration at x = 0
+)
 
 # ## Solving
 
 function run_fickian_diffusion(; L = 1.0, N = 100, t_end = 1e8, Δt0 = 1e4, n_save = 20)
-    m = FickModel()
+    m = fick_material()
 
     ## Uniform 1D grid
     grid = simplexgrid(range(0, L; length = N + 1))
@@ -110,7 +89,7 @@ function run_fickian_diffusion(; L = 1.0, N = 100, t_end = 1e8, Δt0 = 1e4, n_sa
     ## Without that consistency the time step controller sees Δu=1 at the first
     ## step and shrinks Δt forever (Dirichlet is unconditional, Δu ≠ f(Δt)).
     inival = unknowns(sys; inival = 0.0)
-    inival[1, 1] = m.c_in
+    inival[1, 1] = C_IN
 
     ## Output time steps
     times = range(0, t_end; length = n_save + 1)
@@ -162,21 +141,21 @@ p
 # time.
 
 c_num = tsol[1, :, end]
-c_ref = model.c_in .* erfc.(xcoords ./ (2 * sqrt(model.D * t_end)))
+c_ref = C_IN .* erfc.(xcoords ./ (2 * sqrt(model.D * t_end)))
 
 err_L2 = sqrt(sum((c_num .- c_ref) .^ 2) / length(c_num))
 err_Linf = maximum(abs.(c_num .- c_ref))
 
 @printf("L2 error   : %.2e mol/m³\n", err_L2)
 @printf("L∞ error   : %.2e mol/m³\n", err_Linf)
-err_Linf < 0.01 * model.c_in ? println("✓ err < 1 %") : println("✗ err > 1 %")
+err_Linf < 0.01 * C_IN ? println("✓ err < 1 %") : println("✗ err > 1 %")
 
 # ## Key points
 #
 # - **IC/BC consistency** — the initial condition must satisfy the Dirichlet condition at
-#   node `x=0` from `t=0` (`inival[1,1] = c_in`). Without it the adaptive controller sees
-#   `Δu = c_in` regardless of `Δt`, and shrinks the time step until `Δt_min`.
+#   node `x=0` from `t=0` (`inival[1,1] = C_IN`). Without it the adaptive controller sees
+#   `Δu = C_IN` regardless of `Δt`, and shrinks the time step until `Δt_min`.
 # - **Implicit zero Neumann** — VoronoiFVM applies zero flux by default on any boundary
 #   that `bcondition!` does not handle, so `x = L` needs no `boundary_neumann!` call.
-# - **`Δu_opt`** — set to `0.1` mol/m³, 10 % of `c_in`: VoronoiFVM adapts `Δt` so that the
+# - **`Δu_opt`** — set to `0.1` mol/m³, 10 % of `C_IN`: VoronoiFVM adapts `Δt` so that the
 #   largest concentration change per step stays under that threshold.

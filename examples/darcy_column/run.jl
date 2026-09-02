@@ -46,69 +46,43 @@ using VoronoiFVM
 using ExtendableGrids
 using Printf
 
-# ## Model definition
+# ## The model
 #
-# The parameters are grouped in a `Base.@kwdef` struct with defaults; multiple dispatch
-# on that struct selects the constitutive behaviour.
-
-"""
-    DarcyModel
-
-Linear single-phase Darcy model.
-
-Unknown : pore pressure p [Pa].
-PDE     : S ∂p/∂t = ∇·(K/μ · ∇p)
-"""
-Base.@kwdef struct DarcyModel{T} <: AbstractPoroModel
-    K::T = 1e-12       # intrinsic permeability [m²]
-    mu::T = 1e-3       # dynamic viscosity [Pa·s]
-    S::T = 1e-8        # storage coefficient [-/Pa]
-    L::T = 1.0         # column length [m]
-    p_top::T = 1.0e5   # pressure imposed at the top [Pa]
-end
-
-PoroMechanics.nspecies(::DarcyModel) = 1
-
-## Promote rather than require a single type: a `Dual` in one parameter leaves the rest
-## `Float64`, which is what differentiating with respect to that parameter does.
-DarcyModel(K, mu, S, L, p_top) = DarcyModel(promote(K, mu, S, L, p_top)...)
-PoroMechanics.species_names(::DarcyModel) = [:p]
-
-# ## Constitutive behaviour
+# [`DarcyModel`](@ref) comes from the package. Darcy's law does not change from one column
+# to the next, so what this script owns is the geometry, the material data, and the two
+# pressures imposed at the ends.
 #
-# Unused callback arguments are typed `::Any` rather than given `_`-prefixed names, which
-# keeps the linter quiet.
+# Both are given as data — `dirichlet = ((1, 0.0), (2, ramp))`. The second one is a
+# *function of time*, which is how the ramp is expressed without a method of its own:
+# `PoroMechanics.dirichlet_value` calls anything that is not a number with the current time.
+# The ramp is a property of this case, not of Darcy's law.
 
-"""Darcy flux: f = (K/μ) · (p₁ − p₂)."""
-function PoroMechanics.flux!(f, u, ::Any, m::DarcyModel, ::Any)
-    f[1] = (m.K / m.mu) * (u[1, 1] - u[1, 2])
-end
+const L = 1.0          # column length [m]
+const P_TOP = 1.0e5    # pressure imposed at the top [Pa]
 
-"""Storage term: S · p."""
-function PoroMechanics.storage!(f, u, ::Any, m::DarcyModel, ::Any)
-    f[1] = m.S * u[1]
-end
+"""Characteristic diffusion time ``t_c = S \\mu L^2 / k`` [s]."""
+characteristic_time(m::DarcyModel, L) = m.storativity * m.mu_l * L^2 / m.k_int
 
-"""
-Boundary conditions:
-  Region 1 (x = 0) : Dirichlet p = 0
-  Region 2 (x = L) : Dirichlet p = p_top · ramp(t)
-"""
-function PoroMechanics.bcondition!(f, u, bnode, m::DarcyModel, ::Any)
-    t_c = m.S * m.mu * m.L^2 / m.K          # characteristic time
-    p_bc = m.p_top * min(1.0, bnode.time / t_c)
-    boundary_dirichlet!(f, u, bnode; species = 1, region = 1, value = 0.0)
-    boundary_dirichlet!(f, u, bnode; species = 1, region = 2, value = p_bc)
+function darcy_material(; len = L, p_top = P_TOP)
+    k_int, mu_l, storativity = 1.0e-12, 1.0e-3, 1.0e-8   # [m²], [Pa·s], [Pa⁻¹]
+    t_c = storativity * mu_l * len^2 / k_int
+    return DarcyModel(;
+        k_int, mu_l, storativity,
+        dirichlet = (
+            (1, 0.0),                              # bottom: p = 0
+            (2, t -> p_top * min(1.0, t / t_c)),   # top: ramped to p_top over t_c
+        ),
+    )
 end
 
 # ## Solving
 
 function run_darcy(; N = 100, verbose = false)
-    m = DarcyModel()
-    t_c = m.S * m.mu * m.L^2 / m.K   # = 10 s
+    m = darcy_material()
+    t_c = characteristic_time(m, L)   # = 10 s
 
     ## 1D grid over [0, L]
-    grid = simplexgrid(range(0.0, m.L; length = N + 1))
+    grid = simplexgrid(range(0.0, L; length = N + 1))
 
     sys = fvm_system(m, grid)
 
@@ -122,7 +96,7 @@ function run_darcy(; N = 100, verbose = false)
         Δt_max = t_end / 10,
         ## Δu_opt = p_top/10: VoronoiFVM adapts Δt so that the largest pressure
         ## change per step stays below this threshold.
-        Δu_opt = m.p_top / 10,
+        Δu_opt = P_TOP / 10,
         store_all = true,
         reltol = 1e-6,
         verbose = verbose,
@@ -140,11 +114,11 @@ tsol, grid, model = run_darcy()
 using Plots
 
 xcoords = grid[Coordinates][1, :]
-t_c = model.S * model.mu * model.L^2 / model.K
+t_c = characteristic_time(model, L)
 
 # ### Convergence to the analytical solution
 
-p_ref = model.p_top .* xcoords ./ model.L
+p_ref = P_TOP .* xcoords ./ L
 p_final = tsol[1, :, end]
 
 err_L2 = sqrt(sum((p_final .- p_ref) .^ 2) / length(p_final))
@@ -155,7 +129,7 @@ err_Linf = maximum(abs.(p_final .- p_ref))
 @printf("Time steps  : %d\n", length(tsol.t) - 1)
 @printf("L2 error    : %.2e Pa\n", err_L2)
 @printf("L∞ error    : %.2e Pa\n", err_Linf)
-err_Linf < 0.01 * model.p_top ? println("✓ err < 1 %") : println("✗ err > 1 %")
+err_Linf < 0.01 * P_TOP ? println("✓ err < 1 %") : println("✗ err > 1 %")
 
 # ### Pressure profiles over time
 
@@ -183,7 +157,7 @@ p
 #
 # - **Time ramp** — avoids the IC/BC discontinuity that would otherwise force very small
 #   time steps at startup.
-# - **`::Any` for unused arguments** — preferred over `_`-prefixed names, to avoid linter
-#   warnings.
+# - **A schedule is data** — the ramp is a closure in `dirichlet`, not a branch inside
+#   `bcondition!`, so the model stays the equation and the case stays the case.
 # - **`store_all = true`** — keeps every internal step in `tsol`, so the profiles at
 #   intermediate times can be plotted without re-running.

@@ -3,8 +3,13 @@
 A model is a struct plus the callbacks its physics needs. Nothing else is registered or
 declared: dispatch on the struct is what ties the two together.
 
-This page builds the simplest one — Fick diffusion of a solute through a saturated porous
+This page builds the simplest one — diffusion of a tracer through a saturated porous
 medium — and solves it.
+
+The package already ships this equation as [`FickModel`](@ref), with per-region
+coefficients and its boundary data in a field; it is written out here from nothing because
+the point of the page is the mechanism, not the equation. `TracerModel` is the name used
+below so that the two do not collide.
 
 ## The equation
 
@@ -22,7 +27,7 @@ using PoroMechanics
 using VoronoiFVM
 using ExtendableGrids
 
-Base.@kwdef struct FickModel <: AbstractPoroModel
+Base.@kwdef struct TracerModel <: AbstractPoroModel
     φ::Float64    = 0.30     # porosity [-]
     D::Float64    = 1e-10    # effective diffusion coefficient [m²/s]
     c_in::Float64 = 1.0      # concentration imposed at x = 0 [mol/m³]
@@ -34,15 +39,21 @@ Three callbacks describe it. `storage!` is the accumulation term, `flux!` the fl
 two neighboring control volumes, `bcondition!` the boundary conditions:
 
 ```@example quickstart
-PoroMechanics.storage!(f, u, node, m::FickModel, data) = (f[1] = m.φ * u[1])
+PoroMechanics.storage!(f, u, node, m::TracerModel, data) = (f[1] = m.φ * u[1])
 
-PoroMechanics.flux!(f, u, edge, m::FickModel, data) = (f[1] = m.D * m.φ * (u[1, 1] - u[1, 2]))
+PoroMechanics.flux!(f, u, edge, m::TracerModel, data) = (f[1] = m.D * m.φ * (u[1, 1] - u[1, 2]))
 
-function PoroMechanics.bcondition!(f, u, bnode, m::FickModel, data)
+function PoroMechanics.bcondition!(f, u, bnode, m::TracerModel, data)
     boundary_dirichlet!(f, u, bnode; species = 1, region = 1, value = m.c_in)
 end
+
+PoroMechanics.nspecies(::TracerModel) = 1
+PoroMechanics.species_names(::TracerModel) = [:c]
 nothing # hide
 ```
+
+The last two are how the model says how many unknowns it carries and what they are called;
+[`fvm_system`](@ref) reads the species count off `nspecies` rather than being told again.
 
 `flux!` returns the difference between the two node values, not a gradient: VoronoiFVM
 divides by the edge length itself. The sealed face needs no code — a zero Neumann
@@ -51,16 +62,10 @@ condition is what happens when nothing is imposed.
 ## Solving
 
 ```@example quickstart
-m    = FickModel()
+m    = TracerModel()
 grid = simplexgrid(range(0, 1.0; length = 101))
 
-sys = VoronoiFVM.System(
-    grid;
-    storage    = (f, u, node, data) -> PoroMechanics.storage!(f, u, node, m, data),
-    flux       = (f, u, edge, data) -> PoroMechanics.flux!(f, u, edge, m, data),
-    bcondition = (f, u, bnode, data) -> PoroMechanics.bcondition!(f, u, bnode, m, data),
-    species    = [1],
-)
+sys = fvm_system(m, grid)
 
 inival = unknowns(sys; inival = 0.0)
 inival[1, 1] = m.c_in     # keep the initial state consistent with the boundary value
@@ -79,6 +84,10 @@ over the first step; the step-size controller sees a change it cannot reduce by 
 step, in the units of the unknown — leave it at its default and a problem whose time scale
 is 10⁸ s is integrated in steps sized for something else entirely.
 
+[`fvm_system`](@ref) is what ties the three methods to the solver: it wraps them in the
+closures `VoronoiFVM.System` expects and reads the species count off the model, so the
+three-line adapter never has to be written twice.
+
 ## Where the Jacobian went
 
 Nowhere — there is none to write. `VoronoiFVM.solve` differentiates the callbacks above
@@ -91,3 +100,6 @@ numbers pass through.
 
 The [examples](examples/fickian_diffusion.md) carry one worked problem per physics — each with its
 governing equations, its material data, and the reference solution it is checked against.
+They use the models the package ships rather than defining their own, which is the split
+this page exists to explain: [Writing a model](demos/writing_a_model.md) measures what that
+choice costs and what it buys.

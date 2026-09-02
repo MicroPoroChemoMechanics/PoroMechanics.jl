@@ -180,11 +180,40 @@ newton_solve!
 
 ## Models
 
-Physics models that the package ships, as opposed to those a script defines for itself. A
-model earns its place here when it has constitutive content worth sharing — a model that is
-only a storage term and a flux, like the advection–dispersion example of
-[Writing a model](demos/writing_a_model.md), gains nothing from being here and is better
-written where it is used.
+Physics models that the package ships, as opposed to those a script defines for itself.
+What earns a model its place here is that someone else would write it again: the equation
+is fixed and only the data changes, so shipping it turns the next script into a case rather
+than a re-implementation.
+
+That is not the same as being complicated. Fick diffusion is a storage term and a flux, and
+[Writing a model](demos/writing_a_model.md) measures that writing such a model through the
+package costs three lines more than writing it directly against `VoronoiFVM` — the
+abstraction pays for itself in what it *shares*, not in what it saves per model. A model
+whose equation is particular to one study is still better written where it is used.
+
+Every model carries its boundary data in a `dirichlet` field rather than in a method,
+because an imposed value is what distinguishes one case from another and not one model from
+another. A value may be a number or a function of time.
+
+```@docs
+PoroMechanics.dirichlet_value
+PoroMechanics.apply_dirichlet!
+```
+
+### Fickian diffusion
+
+```@docs
+FickModel
+diffusivity
+```
+
+### Darcy flow
+
+```@docs
+DarcyModel
+storativity
+mobility
+```
 
 ### Richards' equation
 
@@ -263,7 +292,6 @@ PoroplastState
 poroplast_initial_states
 poroplast_element_residual
 poroplast_step!
-mobility
 fluid_density
 liquid_mass
 intrinsic_permeability

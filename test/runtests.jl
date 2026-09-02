@@ -39,6 +39,9 @@ using PoroMechanics
     # ── Computational homogenization on a periodic cell ────────────────────────
     include("homogenization.jl")
 
+    # ── The transport models the package ships ────────────────────────────────
+    include("models.jl")
+
     # ── Validation against closed-form solutions ──────────────────────────────
     include("benchmarks.jl")
     include("differentiability.jl")
