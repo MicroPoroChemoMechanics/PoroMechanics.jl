@@ -2,7 +2,7 @@
 #
 # The second half of the interface with
 # [MeanFieldHomogenization.jl](https://github.com/MicroPoroChemoMechanics/MeanFieldHomogenization.jl).
-# The [previous page](@ref) checked that the two packages agree on a *scalar*; this one
+# The [previous page](mfh_poroelastic.md) checked that the two packages agree on a *scalar*; this one
 # checks that the moduli it produces survive being put into a boundary value problem and
 # solved.
 #

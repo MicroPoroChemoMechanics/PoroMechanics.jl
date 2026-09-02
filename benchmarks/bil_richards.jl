@@ -3,7 +3,7 @@
 # `base/Richards-2d` is the drainage of a composite column of glass beads: 0.02 × 0.20 m,
 # with a ten-times-less-permeable inclusion in the middle, drained from the base over 360 s
 # and then left for another 45 minutes. It is the case
-# [`examples/richards_2d`](../examples/richards_2d.md) already reproduces, and the first one
+# `examples/richards_2d` already reproduces, and the first one
 # the [Bil comparison harness](https://github.com/dangla/bil) was pointed at.
 #
 # Three things are shared with Bil rather than reconstructed, so that a disagreement has
