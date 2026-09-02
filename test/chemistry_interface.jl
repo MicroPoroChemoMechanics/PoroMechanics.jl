@@ -1,4 +1,4 @@
-# The dialogue with ChemistryLab.
+# The dialog with ChemistryLab.
 #
 # Not a test of the chemistry — whether portlandite has the right solubility is that
 # package's business and is validated there. This tests the interface: that this package
@@ -37,7 +37,7 @@ const R_GAS = 8.31446261815324      # J/mol/K
     potential_params(state) -> NamedTuple
 
 The parameter tuple the potential closure expects: standard Gibbs energies of formation
-over RT, plus T, P and the regularisation floor. Rebuilt here from public accessors
+over RT, plus T, P and the regularization floor. Rebuilt here from public accessors
 rather than reaching for `ChemistryLab._build_params`, so a rename inside the dependency
 breaks this at the call site instead of silently.
 """
@@ -110,7 +110,7 @@ end
 
     @testset "duplicates are found, and removed" begin
         ## Appending the solids therefore lists them twice. A duplicated column is a
-        ## perfectly valid optimisation problem whose answer is meaningless, so it has to
+        ## perfectly valid optimization problem whose answer is meaningless, so it has to
         ## be caught here rather than diagnosed later as missing matter.
         @test !isempty(_Balance.duplicate_species(offered))
         @test "Portlandite" in _Balance.duplicate_species(offered)
@@ -143,12 +143,12 @@ end
     equilibrated = equilibrate(state, OptimaOptimizer(tol = 1.0e-10, verbose = false))
 
     @testset "equilibrate conserves the elements it is given" begin
-        ## The contract of the dialogue: what goes into an equilibration comes back out
+        ## The contract of the dialog: what goes into an equilibration comes back out
         ## of it.
 
         ## The threshold is what this test can honestly claim. An interface breaking —
         ## a duplicated column, a unit slip, a species that cannot be read back — loses
-        ## tens of percent of an element. The round trip closes to 4e-8 on sulphur under
+        ## tens of percent of an element. The round trip closes to 4e-8 on sulfur under
         ## ChemistryLab 0.13; it closed to only ~1e-3 under 0.3.1, which is why the bound
         ## sits well above both rather than pretending to measure either.
         element, err = _Balance.element_balance_error(state, equilibrated, system)

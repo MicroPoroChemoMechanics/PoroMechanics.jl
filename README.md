@@ -51,7 +51,7 @@ written by hand: the finite volume callbacks are differentiated automatically wi
 
 Not all of that is installable yet, and the distinction is worth stating plainly. Richards'
 equation, the retention and relative-permeability laws, the Oh-Jang tortuosity, Biot
-poroelasticity, Drucker-Prager and Barcelona Basic plasticity, and the homogenisation
+poroelasticity, Drucker-Prager and Barcelona Basic plasticity, and the homogenization
 backend live in `src/` and come with the package. Fick and Nernst-Planck transport,
 non-isothermal drying and the whole reactive-transport chain are **worked examples** under
 `examples/`: complete, validated against their reference solutions, and read back by the

@@ -183,9 +183,9 @@ function poroplast_initial_states(m::PoroplastModel, nodes, σ0_total)
     σ0_eff = σ0_total + m.material.beta * m.p_l0 * one(σ0_total)
     return [
         [
-                PoroplastState(initial_state(m.material, σ0_eff), m.p_l0)
+            PoroplastState(initial_state(m.material, σ0_eff), m.p_l0)
                 for _ in 1:2
-            ] for _ in 1:(length(nodes) - 1)
+        ] for _ in 1:(length(nodes) - 1)
     ]
 end
 
@@ -197,11 +197,11 @@ One implicit step of the coupled problem, by Newton.
 The element Jacobian is `ForwardDiff.jacobian` of
 [`poroplast_element_residual`](@ref) — four degrees of freedom per element, so
 differentiating it costs almost nothing and it cannot disagree with the residual it
-linearises. The quadrature states are frozen at their converged values during the
+linearizes. The quadrature states are frozen at their converged values during the
 differentiation, which is what makes the tangent consistent rather than continuum.
 
 The global matrix is dense. With two unknowns on a hundred elements that is a 202×202
-factorisation, far cheaper than the sparse bookkeeping it would replace, and this model is
+factorization, far cheaper than the sparse bookkeeping it would replace, and this model is
 one-dimensional by construction.
 
 `σ_inner` and `σ_outer` are the **radial stresses** applied at the two ends, compression

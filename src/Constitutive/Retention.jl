@@ -161,7 +161,7 @@ A retention curve given as a table rather than a formula: `sl[k]` is the saturat
 capillary pressure `pc[k]`, with linear interpolation between the points and clamping to the
 end values outside the range.
 
-Measured curves arrive this way, and so do the curves another code has already discretised —
+Measured curves arrive this way, and so do the curves another code has already discretized —
 Bil writes the table it interpolated next to its deck, and reading that table back is what
 lets a comparison separate a disagreement about the physics from a disagreement about how a
 curve was sampled.

@@ -36,7 +36,7 @@ using PoroMechanics
     # ── Drucker-Prager ─────────────────────────────────────────────────────────
     include("druckerprager.jl")
 
-    # ── Computational homogenisation on a periodic cell ────────────────────────
+    # ── Computational homogenization on a periodic cell ────────────────────────
     include("homogenization.jl")
 
     # ── Validation against closed-form solutions ──────────────────────────────
@@ -46,7 +46,7 @@ using PoroMechanics
     # ── Examples still produce the profiles they used to ───────────────────────
     include("regression.jl")
 
-    # ── The dialogue with ChemistryLab ─────────────────────────────────────────
+    # ── The dialog with ChemistryLab ─────────────────────────────────────────
     include("chemistry_interface.jl")
 
     # ── Agreement with Bil, an independently written code ─────────────────────

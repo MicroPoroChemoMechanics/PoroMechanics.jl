@@ -19,7 +19,7 @@
 #  2. **Read Bil's tabulated curves rather than re-evaluating its expressions.** A deck
 #     writes `Curves = wrc2 pc = Range{...} sl = Expressions(1){...}`, and Bil dumps the
 #     resulting table next to the deck. Feeding that same table to this package separates a
-#     disagreement about the model from a disagreement about how a curve was discretised.
+#     disagreement about the model from a disagreement about how a curve was discretized.
 #  3. **Say which Bil produced a number.** `base/BBM` was written by 3.0.0 and
 #     `base/Chloricem` by 2.9, while the installed binary is 2.11. `drift_report` measures
 #     that gap before anyone blames this package for it.
@@ -209,7 +209,7 @@ end
 """
     log_tail(path, n = 20) -> String
 
-The last `n` lines of a Bil log, labelled, for an error message.
+The last `n` lines of a Bil log, labeled, for an error message.
 """
 function log_tail(path, n = 20)
     lines = collect(eachline(path))
@@ -528,7 +528,7 @@ Base.show(io::IO, out::BilOutput) = print(
 
 A curve file written by Bil — `wrc2`, `krc2`, `lc`, or a hand-supplied one such as
 `billes`. These are the tables the solver actually interpolated, so reading them is how a
-comparison avoids blaming the model for a difference in curve discretisation.
+comparison avoids blaming the model for a difference in curve discretization.
 
 Bil-generated files carry `# Labels: pc(1) sl(2) kl(3)`; hand-written ones have no header
 at all, and then the labels come back as `x1`, `x2`, …
@@ -565,7 +565,7 @@ Build an `ExtendableGrids.simplexgrid` from the Gmsh 2.2 ASCII mesh a Bil deck p
 
 Using Bil's own mesh, rather than remeshing the same geometry, is what makes the comparison
 exact: node `i` here is node `i` there, so fields line up without interpolation and no error
-of ours is hidden behind a difference of discretisation.
+of ours is hidden behind a difference of discretization.
 
 **Regions come from the elementary tag, not the physical one.** That is Bil's convention:
 `columncomposite.geo` puts all four sides in `Physical Line(1)` while numbering them

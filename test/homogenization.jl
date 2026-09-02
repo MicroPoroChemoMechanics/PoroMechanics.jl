@@ -1,4 +1,4 @@
-# Computational homogenisation on a periodic cell.
+# Computational homogenization on a periodic cell.
 #
 # The cells here are synthetic, so the suite needs no Bil: a square split into triangles,
 # with the phases assigned by region. The comparison against Bil's own `composite0.msh`
@@ -39,7 +39,7 @@ using Tensors: Tensors, SymmetricTensor
 
     @testset "a homogeneous cell returns its own material" begin
         ## The sharpest check available without a reference: if both phases are the same
-        ## material, homogenisation has nothing to do and must return exactly that
+        ## material, homogenization has nothing to do and must return exactly that
         ## material's stiffness. Anything wrong with the periodic constraints, the volume
         ## average or the fluctuation solve shows up here as a discrepancy from a number
         ## known in closed form.

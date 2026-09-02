@@ -24,7 +24,7 @@ it shears without dilating as much as an associated rule would predict.
 **The mean stress is tension-positive here**, unlike [`BBM`](@ref), which counts a
 compression positive. Drucker-Prager is universally written this way, and so is the code
 this package is checked against, so the convention follows the criterion rather than its
-neighbour in `src/Materials/`. A compressive state has ``p < 0`` and sits comfortably inside
+neighbor in `src/Materials/`. A compressive state has ``p < 0`` and sits comfortably inside
 the cone; the apex is at ``p = c_c / f_f`` on the tensile side.
 """
 

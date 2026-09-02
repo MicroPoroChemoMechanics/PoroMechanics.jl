@@ -48,7 +48,7 @@ const BIL_REFERENCE_DIR = joinpath(@__DIR__, "references")
   produced it. This runs Bil, so `generate.jl` needs the binary and not only the source
   tree. It used to read the outputs shipped under `base/`, and that turned out to be the
   wrong reference: those were produced with the deck's own coarse time step and carry a
-  visible discretisation error (see `richards_2d` below). Freezing them meant testing that
+  visible discretization error (see `richards_2d` below). Freezing them meant testing that
   we stay a fixed distance from a number known to be wrong.
 * `ours()` — returns the same quantities, computed here.
 * `rtol` — relative L2 tolerance, with `why` recording where the number came from.
@@ -297,7 +297,7 @@ function richards_3d_ours()
     return values
 end
 
-# ── Poroplast — a borehole depressurised in a plastic ground ──────────────────
+# ── Poroplast — a borehole depressurized in a plastic ground ──────────────────
 #
 # `base/Poroplast`: a cavity at r = 3 m in a saturated ground at -11.5 MPa and 4.7 MPa of
 # pore pressure, whose support and internal pressure are released over 1.5e6 s and then left

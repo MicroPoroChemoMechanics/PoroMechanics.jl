@@ -1,5 +1,5 @@
 """
-Computational homogenisation: a material whose response is a finite element solve on a
+Computational homogenization: a material whose response is a finite element solve on a
 periodic unit cell.
 
 This is the brick the two-scale coupling is missing. Rather than a separate FE² driver, the
@@ -31,7 +31,7 @@ reproducing it, which is the classical result and the reason for the extra machi
 """
     PeriodicCell(grid, materials; ip_order = 1, qr_order = 2)
 
-A unit cell with one material per cell region, to be homogenised under periodic boundary
+A unit cell with one material per cell region, to be homogenized under periodic boundary
 conditions.
 
 `materials` maps a cell region index to an `AbstractMaterial`. Regions are the grid's own
@@ -268,10 +268,10 @@ Find the macroscopic strain that puts the cell under a prescribed **in-plane str
 plane strain — the control a single-element two-scale problem reduces to.
 
 The three in-plane components are stress-controlled and ``\\varepsilon_{33} = 0``, so
-``\\sigma_{33}`` comes out as a result. Newton on the three unknowns, with the homogenised
+``\\sigma_{33}`` comes out as a result. Newton on the three unknowns, with the homogenized
 tangent obtained by perturbing the cell — three extra cell solves per iteration. That is
 not a shortcut: once a phase yields, the tangent of the cell is not the volume average of
-anything, and Bil homogenises its own by finite differences for the same reason.
+anything, and Bil homogenizes its own by finite differences for the same reason.
 
 `states_n` are the states at the last converged macroscopic step; every trial re-solves the
 cell from *those*, never from the previous trial, so the path stays single-valued.
@@ -308,7 +308,7 @@ rows, so no engineering factor of two enters anywhere.
 Finite differences and not an assembled quantity, deliberately. While the cell is elastic
 the tangent could be condensed out of the microscopic stiffness, but the moment a phase
 yields there is nothing to condense: the macroscopic tangent depends on which quadrature
-points are on their yield surface, and only a perturbation sees that. Bil homogenises its
+points are on their yield surface, and only a perturbation sees that. Bil homogenizes its
 own the same way.
 """
 function homogenized_tangent(

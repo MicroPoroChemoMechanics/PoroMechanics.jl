@@ -198,7 +198,7 @@ end
 
     @testset "reduces to BiotPoroelastic on an elastic skeleton" begin
         ## Same constants, same coupling: the generic hinge must not change the answer for
-        ## the case the specialised one already covered.
+        ## the case the specialized one already covered.
         elastic = BiotPoroelastic(E, ν, 1.0e-19, 1.0e-3, b, N)
         generic = BiotPlastic(;
             skeleton = skeleton(elastic), b = b, beta = β, N = N, k = 1.0e-19, mu_l = 1.0e-3
