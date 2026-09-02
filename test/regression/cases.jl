@@ -131,11 +131,28 @@ function write_reference(name, values)
         println(io, "# PoroMechanics.jl regression reference — ", name)
         println(io, "# Regenerate with: julia --project test/regression/generate.jl")
         println(io, "# ", length(values), " values, printed with %.17g")
+        println(io, "# generated on ", Sys.MACHINE)
         for v in values
             @printf(io, "%.17g\n", v)
         end
     end
     return reference_path(name)
+end
+
+"""
+    reference_platform(name) -> Union{String, Nothing}
+
+The `Sys.MACHINE` the reference was generated on, or `nothing` for a file written before
+that line was recorded. It selects the comparison tolerance: see `test/regression.jl`.
+"""
+function reference_platform(name)
+    path = reference_path(name)
+    isfile(path) || return nothing
+    for line in eachline(path)
+        startswith(line, "# generated on ") && return strip(line[(length("# generated on ") + 1):end])
+        startswith(line, "#") || break      # the header is over
+    end
+    return nothing
 end
 
 function read_reference(name)
