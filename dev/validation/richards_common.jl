@@ -62,7 +62,10 @@ function PoroMechanics.flux!(f, u, edge, m::GardnerColumn, ::Any)
     pl1, pl2 = u[1, 1], u[1, 2]
     pc_avg = m.p_g - (pl1 + pl2) / 2
     Kl_avg = Kl(m, pc_avg)
-    dx = edge.coord[1, 2] - edge.coord[1, 1]
+    ## `edge.coord` is the whole grid's coordinate matrix, so the endpoints have to be
+    ## reached through `edge.node`. On the uniform 1D grids used here the two forms give the
+    ## same number, which is exactly why the shorter, wrong one survives so long.
+    dx = edge.coord[1, edge.node[2]] - edge.coord[1, edge.node[1]]
     f[1] = Kl_avg * (pl1 - pl2) + Kl_avg * m.rho_l * m.gravite * dx
 end
 
