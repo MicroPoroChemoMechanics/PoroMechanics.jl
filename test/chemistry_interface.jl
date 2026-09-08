@@ -165,6 +165,19 @@ end
         expected_oh = ustrip(us"mol", moles(eq, "OH-")) / volume
         @test _OPC3.compute_opc_ic(system, true).c_oh ≈ expected_oh rtol = 1.0e-8
         @test _OPC4._compute_opc_ic4(system, true).c_oh ≈ expected_oh rtol = 1.0e-8
+
+        # ChemistryLab 0.14 certifies the one-argument API used by example 2b.
+        # Check against the original totals, not totals recomputed from its answer.
+        default_eq = equilibrate(state)
+        des = ChemistryLab.DualEquilibriumSolver(system)
+        b = des.A * [ustrip(us"mol", n) for n in state.n]
+        default_certificate = ChemistryLab.optimality_certificate(des, default_eq; b)
+        @test default_certificate.optimal
+        @test default_certificate.n_interior >= 6
+        _, default_balance = _Balance.element_balance_error(state, default_eq, system)
+        @test default_balance < 1.0e-8
+        default_volume = ustrip(us"m^3", default_eq.V_phases[].liquid)
+        @test ustrip(us"mol", moles(default_eq, "OH-")) / default_volume ≈ expected_oh rtol = 1.0e-8
     end
 
     @testset "equilibrate conserves the elements it is given" begin

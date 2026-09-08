@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Update the examples and test environments to ChemistryLab 0.14.2 and OptimaSolver 0.5
+  (resolved to 0.5.1). ChemistryLab 0.14 makes `equilibrate(state)` certified by default;
+  calls with an explicit optimizer retain the single-backend path. Add an OPC certificate
+  and element-balance check for the default API used by example 2b. Correct the obsolete
+  claim that the package was held at ChemistryLab 0.3.
 - `newton_solve!` now throws when backtracking or the iteration budget is exhausted.
   Rejected trials are not committed; the residual history includes the initial state and
   every accepted correction, including convergence on the last allowed correction.
@@ -16,6 +21,45 @@
   expected failing test; transient chemistry still requires revalidation.
 - Document the actual profile regression coverage, the legacy OPC equilibrium failure
   and the limits of parameter differentiation in the homogenization backend.
+
+### ChemistryLab migration checks
+
+The migration compares ChemistryLab 0.13.0 / OptimaSolver 0.4.3 with
+ChemistryLab 0.14.2 / OptimaSolver 0.5.1, using Julia 1.12.7 and the same example code.
+The latest registered ChemistryLab version was checked in the
+[General registry](https://github.com/JuliaRegistries/General/blob/master/C/ChemistryLab/Versions.toml).
+The [upstream release notes](https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl/blob/v0.14.2/CHANGELOG.md)
+describe the certified default and the required OptimaSolver update.
+
+- The full `Pkg.test()` run under Julia 1.12.7 passes: 620 passed, one expected broken
+  test retained for the legacy OPC interior-point equilibrium. No new failures.
+- OPC certified initialization remains approximately 385.2 mol/m³ of pore water for OH⁻
+  and 1640 mol/m³ of concrete for portlandite. The default `equilibrate(state)` now passes
+  the independent certificate and original element-balance checks as well.
+- Reduced transport checks use `N=2`, `t_end=1.0`, `n_save=1`, with other defaults.
+  Example 2b finishes with a relative L2 signature change of 6.05e-9. Its largest change
+  in dissolved calcium is 7.40e-6 mol/m³ of pore water (about 0.016%).
+- Example 4 also finishes, including its differentiated chemistry callback, but changes
+  more. At its middle node, the final quantities are:
+
+| Quantity | 0.13.0 / 0.4.3 | 0.14.2 / 0.5.1 |
+| :--- | ---: | ---: |
+| Dissolved Ca²⁺ [mol/m³ pore water] | 0.0668051 | 0.0627926 |
+| Free Cl⁻ [mol/m³ pore water] | 7.80909e-6 | 1.70836e-5 |
+| Adsorbed Cl⁻ [mol/m³ concrete] | 3.86286e-8 | 8.46175e-8 |
+| Friedel's salt [mol/m³ concrete] | 1.17517e-6 | 9.15056e-7 |
+
+These are short execution checks, not validated long-term reference profiles. Both
+versions still report `MaxIters` from the legacy interior-point path; the differences
+cannot establish which transient result is physically correct. Existing reference files
+were not regenerated. The two dependencies move together, so these comparisons do not
+isolate ChemistryLab's changes from OptimaSolver's.
+
+The previously reported `ChemicalState` construction failures for the solid-solution
+examples `tran2018.jl` and `m100_ternary.jl` were not reproduced under either version
+with the current code and dependency snapshots. This only checks construction, not
+their complete hydration or transport histories. The reduced-run timings include Julia
+compilation and concurrent work and are not performance benchmarks.
 
 ## v0.1.0 — a physics model is a struct, and nothing else
 
@@ -74,7 +118,9 @@ and mechanics, and to call `ChemistryLab.jl` for everything chemical.
 Julia 1.12 or later. The floor comes from `ChemistryLab.jl` and `OptimaSolver.jl`, whose
 every registered version declares `julia = "1.12.0-1"`.
 
-`ChemistryLab` is held at 0.3 deliberately. On 0.11 the initial OPC equilibrium moves from
-c_OH = 452.2 to 385.2 mol/m³ and n_CH from 1640.2 to 820.0 mol/m³ of concrete — the exact
-factor of two on portlandite points at a normalization change, and every reference profile
-would have to be re-checked before the bound is widened.
+The examples and tests require ChemistryLab 0.14.2 or a compatible 0.14 patch release,
+paired with OptimaSolver 0.5. These are not dependencies of the core library.
+The earlier claim that ChemistryLab was held at 0.3 was stale: the environments already
+used 0.13. The reported factor of two on portlandite came from duplicate species in the
+chemical system, not a demonstrated normalization change in ChemistryLab; species are
+now deduplicated before constructing the system.

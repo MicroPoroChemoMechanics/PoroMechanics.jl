@@ -39,8 +39,10 @@ Reactive transport remains experimental. Examples 3 and 4 use a certified OPC in
 equilibrium, checked against the original element totals. The legacy interior-point
 solver retains an expected failing mass-action test and is still used during transient
 chemistry steps. A certified initial condition does not validate those transient results. The solid-solution examples
-`tran2018.jl` and `m100_ternary.jl` have a reported initialization failure with ChemistryLab
-0.13. Their results need revalidation after these issues are resolved.
+The previously reported solid-solution state-construction failures in `tran2018.jl` and
+`m100_ternary.jl` were not reproduced in the 0.13.0 versus 0.14.2 migration checks with
+the current examples. This checks construction only; their full hydration and transport
+histories still need numerical validation.
 
 Parameter sensitivities are tested for constitutive laws and selected solves. The 2D
 homogenization backend uses Float64 assembly and a finite-difference macroscopic tangent;

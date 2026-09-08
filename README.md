@@ -62,6 +62,19 @@ That is also why the chemistry stack is not a dependency of this package: nothin
 calls it. `ChemistryLab.jl` and `OptimaSolver.jl` are dependencies of `examples/` and of the
 test suite, where they are actually used.
 
+The examples and tests use ChemistryLab **0.14.2** with OptimaSolver **0.5**. Compatible
+patch updates are allowed; a new ChemistryLab minor version needs another compatibility
+review. Update an existing examples environment with:
+
+```sh
+julia +1.12 --project=examples -e 'using Pkg; Pkg.update(["ChemistryLab", "OptimaSolver"])'
+```
+
+Since ChemistryLab 0.14, `equilibrate(state)` uses the certified route by default. This
+affects example 2b and may change compositions and runtime. Calls that explicitly pass an
+optimizer retain the single-backend behavior, including the transient callbacks in
+examples 3 and 4. Updating the dependency alone does not certify those transient results.
+
 ### Validation status
 
 | Model or example | Automated checks | Limits |
@@ -78,10 +91,11 @@ The reactive examples are experimental. Examples 3 and 4 now initialize OPC thro
 ChemistryLab’s certified solver, checked against the original element totals. The legacy
 interior-point solver still fails the OPC mass-action criterion in
 `test/chemistry_interface.jl` and remains in the transient chemistry callbacks. Certifying
-the initial condition does not validate the full transport history. `tran2018.jl` and
-`m100_ternary.jl` also have a reported solid-solution initialization failure with
-ChemistryLab 0.13. Results using these paths
-require revalidation once those failures are resolved.
+the initial condition does not validate the full transport history. The previously reported
+solid-solution `ChemicalState` construction failures in `tran2018.jl` and
+`m100_ternary.jl` were not reproduced in the migration checks under either 0.13.0 or
+0.14.2 with the current example code and saved dependency environments. Their full
+hydration and transport simulations still need numerical validation.
 
 Parameter differentiation is tested for constitutive laws and selected solves, not for
 every backend. In particular, the homogenization backend does not currently preserve
