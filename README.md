@@ -54,13 +54,38 @@ diffusion, transient Darcy flow, Richards' equation, the retention and
 relative-permeability laws, the Oh-Jang tortuosity, Biot poroelasticity, Drucker-Prager and
 Barcelona Basic plasticity, and the homogenization backend live in `src/` and come with the
 package. Nernst-Planck transport, non-isothermal drying and the whole reactive-transport
-chain are **worked examples** under `examples/`: complete, validated against their reference
-solutions, and read back by the regression suite — but not part of what `Pkg.add` installs.
+chain are **worked examples** under `examples/`, with different validation levels listed
+below. They are not part of the exported model API.
 They move into `src/Models/` as they mature.
 
 That is also why the chemistry stack is not a dependency of this package: nothing in `src/`
 calls it. `ChemistryLab.jl` and `OptimaSolver.jl` are dependencies of `examples/` and of the
 test suite, where they are actually used.
+
+### Validation status
+
+| Model or example | Automated checks | Limits |
+| :--- | :--- | :--- |
+| Fick, Darcy | Model tests and profile regression | Tested cases do not cover every boundary condition |
+| Richards | Model tests, 1D regression, Gardner analytical solutions and refinement | The Richards 2D example is outside the regression suite |
+| Biot | Profile regression, Terzaghi, Mandel, Cryer and De Leeuw solutions and refinement | Validation is tied to the discretizations and cases tested |
+| BBM, Drucker–Prager | Material paths, tangents and parameter sensitivities; BBM reference cases | Live Bil comparisons require an external Bil checkout |
+| Homogenization | Cell tests and reference comparisons | 2D plane strain; Float64 assembly and finite-difference macroscopic tangent |
+| Non-isothermal drying | Profile regression | Regression alone does not establish physical accuracy |
+| Chloride and reactive transport | Chemistry interface, element balance and certified OPC initialization for examples 3 and 4 | No full-profile regression; transient chemistry still uses the legacy solver |
+
+The reactive examples are experimental. Examples 3 and 4 now initialize OPC through
+ChemistryLab’s certified solver, checked against the original element totals. The legacy
+interior-point solver still fails the OPC mass-action criterion in
+`test/chemistry_interface.jl` and remains in the transient chemistry callbacks. Certifying
+the initial condition does not validate the full transport history. `tran2018.jl` and
+`m100_ternary.jl` also have a reported solid-solution initialization failure with
+ChemistryLab 0.13. Results using these paths
+require revalidation once those failures are resolved.
+
+Parameter differentiation is tested for constitutive laws and selected solves, not for
+every backend. In particular, the homogenization backend does not currently preserve
+parameter Dual types through its assembly.
 
 ### Scope, and where the chemistry belongs
 
@@ -172,6 +197,21 @@ importing them together leaves the name ambiguous.
 ```julia
 julia --project -e 'using Pkg; Pkg.test()'
 ```
+
+With Juliaup, use `julia +1.12` to select the supported version without changing the
+default used by other projects. Test groups can be run separately:
+
+```sh
+julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["core"])'
+julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["validation", "regression"])'
+julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["chemistry"])'
+```
+
+With no arguments, all groups run, including `bil` when its inputs are available. Group
+selection reduces execution time; `Pkg.test` still resolves the full test environment.
+Regression tolerances are case-specific: `1e-10` except for Richards 1D (`1e-3`, due to
+measured adaptive-step drift across platforms). Set `POROMECHANICS_STRICT_REGRESSION=true`
+for `1e-10` on every case when comparing within a controlled numerical environment.
 
 CI runs Julia 1.12 (minimum supported) and stable on Ubuntu and Windows.
 

@@ -1,6 +1,10 @@
 using Test
 using PoroMechanics
 
+const TEST_GROUPS = isempty(ARGS) ? Set(["core", "validation", "regression", "chemistry", "bil"]) : Set(ARGS)
+issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil"])) ||
+    error("Unknown test group: choose core, validation, regression, chemistry, or bil")
+
 @testset "PoroMechanics.jl" begin
 
     # ── Package loads correctly ────────────────────────────────────────────────
@@ -28,31 +32,36 @@ using PoroMechanics
     end
 
     # ── Constitutive layer: values and differentiability ──────────────────────
-    include("constitutive.jl")
+    if "core" in TEST_GROUPS
+        include("constitutive.jl")
 
-    # ── The Barcelona Basic Model ──────────────────────────────────────────────
-    include("bbm.jl")
+        # ── The Barcelona Basic Model ──────────────────────────────────────────────
+        include("bbm.jl")
+        include("newton.jl")
 
-    # ── Drucker-Prager ─────────────────────────────────────────────────────────
-    include("druckerprager.jl")
+        # ── Drucker-Prager ─────────────────────────────────────────────────────────
+        include("druckerprager.jl")
 
-    # ── Computational homogenization on a periodic cell ────────────────────────
-    include("homogenization.jl")
+        # ── Computational homogenization on a periodic cell ────────────────────────
+        include("homogenization.jl")
 
-    # ── The transport models the package ships ────────────────────────────────
-    include("models.jl")
+        # ── The transport models the package ships ────────────────────────────────
+        include("models.jl")
+    end
 
     # ── Validation against closed-form solutions ──────────────────────────────
-    include("benchmarks.jl")
-    include("differentiability.jl")
+    if "validation" in TEST_GROUPS
+        include("benchmarks.jl")
+        include("differentiability.jl")
+    end
 
     # ── Examples still produce the profiles they used to ───────────────────────
-    include("regression.jl")
+    "regression" in TEST_GROUPS && include("regression.jl")
 
     # ── The dialog with ChemistryLab ─────────────────────────────────────────
-    include("chemistry_interface.jl")
+    "chemistry" in TEST_GROUPS && include("chemistry_interface.jl")
 
     # ── Agreement with Bil, an independently written code ─────────────────────
-    include("bil.jl")
+    "bil" in TEST_GROUPS && include("bil.jl")
 
 end

@@ -33,6 +33,7 @@ using Printf
 using Statistics
 using ChemistryLab
 include("element_balance.jl")
+include("certified_initial_equilibrium.jl")
 using DynamicQuantities
 using OptimaSolver
 
@@ -190,7 +191,7 @@ function compute_opc_ic(
     @info "compute_opc_ic: initial OPC equilibrium computation…"
     local state_eq
     try
-        state_eq = equilibrate(state, OptimaOptimizer(tol=1e-10, verbose=false))
+        state_eq, _ = certified_initial_equilibrium(state)
     catch e
         error("OPC IC equilibrate failed: $e")
     end

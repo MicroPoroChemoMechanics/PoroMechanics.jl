@@ -318,7 +318,9 @@ end
     newton_solve!(u, K, f, dh, cv, mat, states, states_old, ch, Δt; tol, maxiter, maxhalve, linsolve, fext)
 
 Newton–Raphson on the equilibrium residual, with backtracking, returning the residual norm
-of every iteration.
+of the initial state and every accepted correction. Returns only after convergence;
+throws if the iteration budget or the backtracking search is exhausted. On failure,
+`u` and `states` describe the last accepted iterate, not a rejected trial.
 
 **Why the backtracking is not optional.** An exact tangent buys a quadratic rate *near* the
 solution; it says nothing about getting there. The step on which a material first yields is
@@ -332,13 +334,17 @@ globalization, not linearization.
 
 Halving the step until the residual decreases fixes it, and costs nothing where it is not
 needed: away from the transition the full step is accepted at once, so the quadratic rate
-survives intact. `maxhalve` bounds the search; exhausting it means the direction is not a
-descent direction, which is a modeling problem rather than one a line search can repair.
+survives intact. `maxhalve` bounds the number of trial steps; exhausting it raises an error
+without committing a trial. `maxiter` bounds accepted Newton corrections, and convergence
+is checked after the last permitted correction as well as at the initial state.
 """
 function newton_solve!(
         u, K, f, dh, cv, mat, states, states_old, ch, Δt;
         tol = 1.0e-8, maxiter = 25, maxhalve = 12, linsolve = \, fext = nothing
     )
+    tol > 0 || throw(ArgumentError("tol must be positive"))
+    maxiter >= 0 || throw(ArgumentError("maxiter must be nonnegative"))
+    maxhalve > 0 || throw(ArgumentError("maxhalve must be positive"))
     norms = Vector{eltype(f)}()
     Ferrite.apply!(u, ch)
     utrial = similar(u)
@@ -356,24 +362,34 @@ function newton_solve!(
     end
 
     nrm = residual_sq!(u)
+    push!(norms, sqrt(nrm))
+    nrm < tol^2 && return norms
     for _ in 1:maxiter
-        push!(norms, sqrt(nrm))
-        nrm < tol^2 && break
         Δu = linsolve(K, f)
         α = 1.0
+        accepted = false
         for _ in 1:maxhalve
             @. utrial = u - α * Δu
-            trial = residual_sq!(utrial)
+            trial = try
+                residual_sq!(utrial)
+            catch
+                residual_sq!(u)
+                rethrow()
+            end
             if trial < nrm
                 nrm = trial
+                accepted = true
                 break
             end
             α /= 2
         end
+        if !accepted
+            residual_sq!(u)
+            error("newton_solve!: backtracking failed after $maxhalve trials; residual = $(sqrt(nrm))")
+        end
         copyto!(u, utrial)
+        push!(norms, sqrt(nrm))
+        nrm < tol^2 && return norms
     end
-    ## The states left behind must be those of the accepted iterate, not of the last trial
-    ## the line search happened to reject.
-    residual_sq!(u)
-    return norms
+    error("newton_solve!: no convergence after $maxiter corrections; residual = $(sqrt(nrm)), tolerance = $tol")
 end

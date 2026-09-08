@@ -28,6 +28,24 @@ written by hand: the finite volume callbacks are differentiated automatically wi
   [lothenbach2019](@cite) through [ChemistryLab.jl](https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl),
   Friedel's salt binding, and surface complexation on C-S-H [tran2018](@cite).
 
+## Validation limits
+
+The profile regression suite covers Fick, Darcy, Richards 1D, non-isothermal drying and
+Biot consolidation. Analytical benchmarks additionally check poroelasticity and Gardner
+flow, including mesh or time refinement. Richards 2D and the chloride transport profiles
+are not covered by that regression suite.
+
+Reactive transport remains experimental. Examples 3 and 4 use a certified OPC initial
+equilibrium, checked against the original element totals. The legacy interior-point
+solver retains an expected failing mass-action test and is still used during transient
+chemistry steps. A certified initial condition does not validate those transient results. The solid-solution examples
+`tran2018.jl` and `m100_ternary.jl` have a reported initialization failure with ChemistryLab
+0.13. Their results need revalidation after these issues are resolved.
+
+Parameter sensitivities are tested for constitutive laws and selected solves. The 2D
+homogenization backend uses Float64 assembly and a finite-difference macroscopic tangent;
+it is not currently differentiable end to end with respect to material parameters.
+
 ## Scope, and where the chemistry belongs
 
 PoroMechanics.jl is today a *chemo*-poro-mechanics code: next to transport and mechanics it

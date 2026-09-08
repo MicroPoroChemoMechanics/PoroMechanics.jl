@@ -40,6 +40,7 @@ using ForwardDiff
 ## `unique_species` and the element balance — the guards on the dialogue with
 ## ChemistryLab. See `element_balance.jl` for why the two questions are kept apart.
 include("element_balance.jl")
+include("certified_initial_equilibrium.jl")
 
 # ── Transport species indices ─────────────────────────────────────────────────
 const ICL4 = 1   # c_Cl   z = -1
@@ -323,7 +324,7 @@ function _compute_opc_ic4(
     @info "compute_opc_ic4: initial OPC equilibrium computation…"
     local state_eq
     try
-        state_eq = equilibrate(state, OptimaOptimizer(tol=1e-10, verbose=false))
+        state_eq, _ = certified_initial_equilibrium(state)
     catch e
         error("OPC IC equilibrate failed: $e")
     end

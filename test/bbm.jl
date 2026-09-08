@@ -232,7 +232,7 @@ end
     I3 = one(SymmetricTensor{2, 3})
     σ0, pc0, εv_tot, nsteps = -1.0e3 * I3, 4.0e4, 0.08, 16
 
-    function drive(mat)
+    function drive(mat; kwargs...)
         mk() = [[initial_state(mat, σ0, pc0) for _ in 1:nq] for _ in 1:Ferrite.getncells(grid)]
         states, old = mk(), mk()
         K = Ferrite.allocate_matrix(dh)
@@ -251,7 +251,7 @@ end
             end
             Ferrite.close!(ch)
             Ferrite.update!(ch, 0.0)
-            push!(history, newton_solve!(u, K, f, dh, cv, mat, states, old, ch, 1.0))
+            push!(history, newton_solve!(u, K, f, dh, cv, mat, states, old, ch, 1.0; kwargs...))
             for c in eachindex(states)
                 old[c] .= states[c]
             end
@@ -294,9 +294,11 @@ end
         @test e3 < 10 * e2^2 / e1
     end
 
-    ## The continuum tangent reaches the same answer, far more slowly. This is the
-    ## measurement that justifies deriving the algorithmic one.
-    st_c, hist_c = drive(ContinuumTangent(BBM()))
+    ## The continuum tangent needs a larger budget; the default must report failure
+    ## instead of silently advancing a nonconverged material state.
+    @test_throws ErrorException drive(ContinuumTangent(BBM()))
+    st_c, hist_c = drive(ContinuumTangent(BBM()); maxiter = 2000)
     @test mean_pressure(st_c.σ) ≈ mean_pressure(ref.σ) rtol = 1.0e-5
+    @test all(nr -> last(nr) < 1.0e-8, hist_c)
     @test sum(length, hist_c) > 3 * sum(length, hist)
 end

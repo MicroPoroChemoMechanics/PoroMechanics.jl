@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- `newton_solve!` now throws when backtracking or the iteration budget is exhausted.
+  Rejected trials are not committed; the residual history includes the initial state and
+  every accepted correction, including convergence on the last allowed correction.
+  `maxiter` counts corrections. Callers must handle failure before advancing material states.
+- Add Newton failure-path tests and require convergence in the BBM continuum-tangent comparison.
+- Allow separate `core`, `validation`, `regression`, `chemistry` and `bil` test groups;
+  the default still runs all groups.
+- Select regression tolerances per case, with an explicit strict mode, and record Julia,
+  CPU and BLAS information in newly generated references.
+- Initialize OPC in chloride examples 3 and 4 through ChemistryLab’s certified solver,
+  checking optimality against the original element totals. Retain the legacy solver’s
+  expected failing test; transient chemistry still requires revalidation.
+- Document the actual profile regression coverage, the legacy OPC equilibrium failure
+  and the limits of parameter differentiation in the homogenization backend.
+
 ## v0.1.0 — a physics model is a struct, and nothing else
 
 First release.

@@ -6,6 +6,7 @@
 using ForwardDiff
 using LinearAlgebra
 using Random
+using Tensors: SymmetricTensor
 
 module _Identification
     include("../demos/parameter_identification.jl")

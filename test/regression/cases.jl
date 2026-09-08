@@ -21,6 +21,7 @@
 #     and coexist safely.
 
 using Printf: @printf
+using LinearAlgebra: BLAS
 
 const REFERENCE_DIR = joinpath(@__DIR__, "references")
 
@@ -132,6 +133,8 @@ function write_reference(name, values)
         println(io, "# Regenerate with: julia --project test/regression/generate.jl")
         println(io, "# ", length(values), " values, printed with %.17g")
         println(io, "# generated on ", Sys.MACHINE)
+        println(io, "# Julia ", VERSION, "; CPU ", Sys.CPU_NAME)
+        println(io, "# BLAS ", BLAS.get_config(), "; threads ", BLAS.get_num_threads())
         for v in values
             @printf(io, "%.17g\n", v)
         end
@@ -143,7 +146,7 @@ end
     reference_platform(name) -> Union{String, Nothing}
 
 The `Sys.MACHINE` the reference was generated on, or `nothing` for a file written before
-that line was recorded. It selects the comparison tolerance: see `test/regression.jl`.
+that line was recorded. It is diagnostic metadata only; tolerances are selected per case in `test/regression.jl`.
 """
 function reference_platform(name)
     path = reference_path(name)

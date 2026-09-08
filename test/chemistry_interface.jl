@@ -12,6 +12,15 @@ using DynamicQuantities
 module _Balance
     using ChemistryLab, DynamicQuantities
     include("../examples/chloride_ingress/element_balance.jl")
+    include("../examples/chloride_ingress/certified_initial_equilibrium.jl")
+end
+
+module _OPC3
+    include("../examples/chloride_ingress/run_3.jl")
+end
+
+module _OPC4
+    include("../examples/chloride_ingress/run_4.jl")
 end
 
 # ── Is the answer an equilibrium at all? ──────────────────────────────────────
@@ -142,6 +151,22 @@ end
 
     equilibrated = equilibrate(state, OptimaOptimizer(tol = 1.0e-10, verbose = false))
 
+    @testset "certified OPC initialization" begin
+        eq, certificate = _Balance.certified_initial_equilibrium(state; initial_guess = equilibrated)
+        @test certificate.optimal
+        @test certificate.n_interior >= 6
+        @test certificate.stationarity < 1.0e-8
+        @test certificate.balance < 1.0e-8
+        @test certificate.worst_supersaturation <= 1.0e-8
+        _, balance_error = _Balance.element_balance_error(state, eq, system)
+        @test balance_error < 1.0e-8
+        @test ustrip(us"mol", moles(eq, "H2O@")) > 0
+        volume = ustrip(us"m^3", eq.V_phases[].liquid)
+        expected_oh = ustrip(us"mol", moles(eq, "OH-")) / volume
+        @test _OPC3.compute_opc_ic(system, true).c_oh ≈ expected_oh rtol = 1.0e-8
+        @test _OPC4._compute_opc_ic4(system, true).c_oh ≈ expected_oh rtol = 1.0e-8
+    end
+
     @testset "equilibrate conserves the elements it is given" begin
         ## The contract of the dialog: what goes into an equilibration comes back out
         ## of it.
@@ -206,9 +231,9 @@ end
         ## combination of the others and the multipliers are not unique, which is exactly
         ## the conditioning an interior-point method stalls on.
         ##
-        ## Marked broken rather than deleted: this is the acceptance criterion for the
-        ## chloride models, and the day it starts passing, the suite should say so.
-        @testset "the OPC initial state does not" begin
+        ## Retain the legacy solver's failure as an upstream acceptance criterion.
+        ## The examples' initializers now use the separately tested KKT-certified path.
+        @testset "the legacy OPC interior-point state does not" begin
             residual, _, checked = worst_mass_action_residual(equilibrated)
             @test checked >= 1
             @test_broken residual < 1.0e-2
