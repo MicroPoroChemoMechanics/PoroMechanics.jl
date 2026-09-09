@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Bound `MeanFieldHomogenization` to 0.7 in `docs/Project.toml` and `examples/Project.toml`.
+  The documentation build resolves its manifest from scratch — `docs/Manifest.toml` is
+  gitignored — so an unbounded dependency picked up 0.12, where `RVE(::Symbol)` no longer
+  exists, and `benchmarks/mfh_poroelastic.jl` failed with a `MethodError` that does not
+  reproduce locally against the installed 0.7. The bound restores the pairing the pages
+  were measured under. Raising it is an API migration rather than a version bump: 0.12
+  also moves TensND from 0.4 to 0.5, `benchmarks/mfh_thick_cylinder.jl` calls `TensISO`
+  directly, and the printed coefficients are compared against closed forms, so the
+  numbers have to be revalidated and not merely recompiled.
 - Update the examples and test environments to ChemistryLab 0.14.2 and OptimaSolver 0.5
   (resolved to 0.5.1). ChemistryLab 0.14 makes `equilibrate(state)` certified by default;
   calls with an explicit optimizer retain the single-backend path. Add an OPC certificate

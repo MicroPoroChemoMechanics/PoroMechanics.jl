@@ -23,5 +23,10 @@ VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
 
 [compat]
 ChemistryLab = "0.14.2"
+# Declared but unused here — no file under `examples/` loads it; the `mfh_*` pages live
+# in `benchmarks/` and run in the docs environment. Bounded anyway, and to the same 0.7
+# as `docs/Project.toml`, so a re-resolve of this environment cannot pick a version
+# nobody measured. See the note there before raising it.
+MeanFieldHomogenization = "0.7"
 OptimaSolver = "0.5"
 julia = "1.12"

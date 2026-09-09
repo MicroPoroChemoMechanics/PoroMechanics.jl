@@ -22,6 +22,11 @@ DocumenterCitations = "1"
 ExtendableGrids = "1"
 Ferrite = "1"
 Literate = "2"
+# The two `mfh_*` validation pages are written against the 0.7 API: `RVE(::Symbol)` is
+# gone in 0.12, which also moves TensND from 0.4 to 0.5. Their numbers were measured
+# under this pairing against the closed forms they print. Raising the bound is an API
+# migration plus a revalidation, not a version bump — do not let CompatHelper do it.
+MeanFieldHomogenization = "0.7"
 Plots = "1"
 SpecialFunctions = "2"
 VoronoiFVM = "2, 3"
