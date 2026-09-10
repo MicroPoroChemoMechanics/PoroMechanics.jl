@@ -126,160 +126,14 @@ Site densities (Yoshida et al. 2021, Figure 5):
 
 BET specific surface area: 500 m²/g (Soive 2017), unchanged from tran2018.jl.
 """
-Base.@kwdef struct DLMTernaryParams
-    Ka1::Float64 = 2.0e-10     # [mol/m³]  pKa = 12.7
-    K_Ca::Float64 = 2.0          # [m³/mol]  log K_TR = 9.4
-    K_Mg::Float64 = 0.10         # [m³/mol]  seawater extension
-    K_CaCl::Float64 = 1.585e-13   # [m³/mol]  ternaire, log K_TR = 9.8
-    K_Na_Tob::Float64 = 1.106e-3    # [m³/mol]  x_CaS = 0.83
-    K_Na_Jen::Float64 = 9.0e-5      # [m³/mol]  x_CaS = 1.67
-    Gamma_max_Tob::Float64 = 7.14e-6   # [mol/m²]  Yoshida 2021 tobermorite (4.3 nm⁻²)
-    Gamma_max_Jen::Float64 = 1.162e-5  # [mol/m²]  Yoshida 2021 jennite     (7.0 nm⁻²)
-    a_s::Float64 = 85000.0     # [m²/mol]  500 m²/g × ~170 g/mol (Soive 2017)
-    n_csh0::Float64 = 0.0         # [mol/m³]  0 = taken dynamically from CSHQ
-    eps_r::Float64 = 78.5        # [-]
-    Kw_SI::Float64 = 6.76e-9     # [mol²/m⁶] produit ionique eau 20 °C
-end
-
-## `KineticParams` now lives in `physdata.jl`, included above. It is database-derived data
-## like the equilibrium constants and molar volumes already there, `m100_ternary.jl` reads
-## it too, and keeping the definition here made this file the de facto home of a shared
-## table.
-
-
-# Linear interpolation of Gamma_max between Tob (x_CaS=0.83) and Jen (x_CaS=1.67)
-function _gamma_max_dlm(dlm::DLMTernaryParams, x_cas::Float64)
-    xT, xJ = 0.83, 1.67
-    t = clamp((x_cas - xT) / (xJ - xT), 0.0, 1.0)
-    return dlm.Gamma_max_Tob + t * (dlm.Gamma_max_Jen - dlm.Gamma_max_Tob)
-end
-
-function _k_na_dlm_t(dlm::DLMTernaryParams, x_cas::Float64)
-    xT, xJ = 0.83, 1.67
-    x_c = clamp(x_cas, xT, xJ)
-    return dlm.K_Na_Jen + (dlm.K_Na_Tob - dlm.K_Na_Jen) * (xJ - x_c) / (xJ - xT)
-end
-
-"""
-    solve_dlm_ternary(c_Cl, c_Na, c_K, c_Ca, c_Mg, c_OH, n_csh, x_cas; dlm, T_K)
-
-DLM equilibrium with the ternary complex ≡SiOCaCl (Thermoddem 2023) and the
-sites Yoshida 2021.
-
-The ≡SiOCaCl complex is neutral → no Boltzmann correction, no contribution to
-the surface charge.
-
-Returns `(β, S_Cl, S_Na, S_K, S_Ca, S_Mg)` in mol/m³_concrete.
-"""
-function solve_dlm_ternary(
-    c_Cl::Real, c_Na::Real, c_K::Real, c_Ca::Real,
-    c_Mg::Real, c_OH::Real, n_csh::Real, x_cas::Real;
-    dlm::DLMTernaryParams,
-    T_K::Real=293.15,
-)
-    ## `zero(...)` rather than `0.0`: this branch must not drop the dual type when the
-    ## caller is differentiating with respect to a concentration.
-    T_out = promote_type(typeof(c_Cl), typeof(c_Na), typeof(c_K), typeof(c_Ca),
-                         typeof(c_Mg), typeof(c_OH), typeof(n_csh))
-    n_csh ≤ 0.0 && return ntuple(_ -> zero(T_out), 6)
-
-    c_H = dlm.Kw_SI / max(c_OH, 1.0e-20)
-    I = max(0.5 * (c_Cl + c_Na + c_K + 4.0 * c_Ca + 4.0 * c_Mg + c_OH + c_H), 1.0)
-
-    Ka1 = dlm.Ka1
-    KCa = dlm.K_Ca
-    KMg = dlm.K_Mg
-    KCaCl = dlm.K_CaCl
-    KNa = _k_na_dlm_t(dlm, x_cas)
-    KK = KNa
-
-    Gamma_max = _gamma_max_dlm(dlm, x_cas)
-
-    # ── Coverage fractions relative to ≡SiOH ──────────────────────────────────
-    # ≡SiO⁻     (charge −1) : exp(+β)
-    # ≡SiOCa⁺   (charge +1) : exp(−β)
-    # ≡SiOMg⁺   (charge +1) : exp(−β)
-    # ≡SiOCaCl  (charge  0) : no electrostatic correction
-    # ≡SiONa/K  (neutral)   : no correction
-
-    ## Written as functions of the concentrations rather than closing over them, so the
-    ## same expressions serve both the live (possibly dual) arguments and the stripped
-    ## values the bracket below needs.
-    A(β, cCl, cNa, cK, cCa, cMg, cH) = (1.0
-                    + Ka1 * exp(β) / cH                          # ≡SiO⁻
-                    + KCa * Ka1 * cCa * exp(-β) / cH             # ≡SiOCa⁺
-                    + KMg * Ka1 * cMg * exp(-β) / cH             # ≡SiOMg⁺
-                    + KCaCl * cCa * cCl / cH                     # ≡SiOCaCl (ternaire, neutre)
-                    + (KNa * cNa + KK * cK) * Ka1 / cH)          # ≡SiONa, ≡SiOK
-
-    # Surface charge σ₀ = F·Γ_max·B/A  (≡SiOCaCl neutral → absent from B)
-    B(β, cCa, cMg, cH) = (KCa * Ka1 * cCa * exp(-β) / cH
-                    +
-                    KMg * Ka1 * cMg * exp(-β) / cH
-                    -
-                    Ka1 * exp(β) / cH)
-
-    F_val = 96485.0
-    R_val = 8.314
-    σ_cap = sqrt(8.0 * 8.854e-12 * dlm.eps_r * R_val * T_K * I)
-
-    residual(β, cCl, cNa, cK, cCa, cMg, cH, σ) =
-        F_val * Gamma_max * B(β, cCa, cMg, cH) /
-        A(β, cCl, cNa, cK, cCa, cMg, cH) - σ * sinh(β / 2.0)
-
-    f(β) = residual(β, c_Cl, c_Na, c_K, c_Ca, c_Mg, c_H, σ_cap)
-
-    ## Bisection is a sequence of comparisons: differentiating through it returns
-    ## dβ/dc = 0, because the bracket endpoints are constants. The bracket is therefore
-    ## closed on the stripped values, and one Newton step at the converged root restores
-    ## the derivative — `f(β★)` is zero to the bisection tolerance, so the step leaves β
-    ## where it is while its dual part is −(∂f/∂c)/(∂f/∂β).
-    v(x) = ForwardDiff.value(x)
-    fv(β) = residual(β, v(c_Cl), v(c_Na), v(c_K), v(c_Ca), v(c_Mg), v(c_H), v(σ_cap))
-
-    β_lo, β_hi = -10.0, 10.0
-    f_lo = fv(β_lo)
-    f_hi = fv(β_hi)
-    bracketed = f_lo * f_hi < 0.0
-    β_star = 0.0
-    if bracketed
-        for _ in 1:64
-            β_mid = 0.5 * (β_lo + β_hi)
-            f_mid = fv(β_mid)
-            if f_mid * f_lo < 0.0
-                β_hi = β_mid
-            else
-                β_lo = β_mid
-                f_lo = f_mid
-            end
-            abs(β_hi - β_lo) < 1.0e-9 && break
-        end
-        β_star = 0.5 * (β_lo + β_hi)
-    else
-        ## No sign change on [-10, 10]: there is no root to differentiate, so β is a
-        ## constant and carries no derivative.
-        β_star = abs(f_lo) < abs(f_hi) ? β_lo : β_hi
-    end
-
-    β = bracketed ? β_star - f(β_star) / ForwardDiff.derivative(fv, β_star) : β_star
-
-    X = Gamma_max / A(β, c_Cl, c_Na, c_K, c_Ca, c_Mg, c_H)   # θ_SiOH × Γ_max [mol/m²]
-
-    theta_OCaCl = KCaCl * X * c_Ca * c_Cl / c_H          # ≡SiOCaCl
-    theta_OCa = KCa * Ka1 * X * c_Ca * exp(-β) / c_H  # ≡SiOCa⁺
-    theta_OMg = KMg * Ka1 * X * c_Mg * exp(-β) / c_H  # ≡SiOMg⁺
-    theta_ONa = KNa * Ka1 * X * c_Na / c_H             # ≡SiONa
-    theta_OK = KK * Ka1 * X * c_K / c_H             # ≡SiOK
-
-    fac = dlm.a_s * n_csh
-    S_Cl = theta_OCaCl * fac
-    S_Na = theta_ONa * fac
-    S_K = theta_OK * fac
-    S_Ca = theta_OCa * fac
-    S_Mg = theta_OMg * fac
-
-    return β, S_Cl, S_Na, S_K, S_Ca, S_Mg
-end
+# ── DLM surface complexation ──────────────────────────────────────────────────
+#
+# Shared implementation, see `dlm.jl`. This model uses the ternary neutral complex
+# ≡SiOCaCl of Thermoddem 2023 with the Yoshida 2021 site densities — `DLM_TERNARY`.
+#
+# Guarded because `tran2018.jl` includes the same file and `m100_ternary.jl` loads both
+# into one module: a function may be redefined, a struct may not.
+isdefined(@__MODULE__, :DLM) || include("dlm.jl")
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -324,7 +178,7 @@ mutable struct CementTernaryModel <: AbstractPoroModel
     S_K_dlm::Vector{Float64}
     S_Ca_dlm::Vector{Float64}
     S_Mg_dlm::Vector{Float64}
-    dlm::DLMTernaryParams
+    dlm::DLM
     kin::KineticParams
     diff::IonicDiffusivities
     mat::CementMaterial
@@ -847,10 +701,10 @@ function chemistry_step_ternary!(
         dS_Cl_dc = 0.0
         if n_csh_dlm > 0.0
             ## Seeding c_Cl with a dual returns S_Cl and dS_Cl/dc from one evaluation:
-            ## `solve_dlm_ternary` brackets its root on the values and restores the
+            ## `solve_dlm` brackets its root on the values and restores the
             ## derivative with a Newton step, so no δ has to be chosen.
             c_cl_seed = ForwardDiff.Dual{Nothing}(max(c_cl_new, 0.0), 1.0)
-            _, S_Cl_i, S_Na_i, S_K_i, S_Ca_i, S_Mg_i = solve_dlm_ternary(
+            _, S_Cl_i, S_Na_i, S_K_i, S_Ca_i, S_Mg_i = solve_dlm(
                 c_cl_seed, max(c_na_new, 0.0), max(c_k_new, 0.0),
                 max(c_ca_new, 0.0), max(c_mg_new, 0.0), max(c_oh_new, ε),
                 n_csh_dlm, x_cas_i; dlm=dlm_i, T_K=m.env.T_K,

@@ -50,169 +50,16 @@ const ICA4 = 4   # c_Ca   z = +2
 
 const V_REV_4 = 1.0e-3   # [m³] = 1 dm³
 
-# ── DLM parameters ────────────────────────────────────────────────────────────
+# ── DLM surface complexation ──────────────────────────────────────────────────
 #
-# NOTE — this belongs in ChemistryLab.jl.
-# Surface complexation is chemistry, not transport. It lives here only because
-# ChemistryLab.jl does not expose it yet; when it does, delete this and call it.
-# Three near-identical copies of the model currently exist in this directory
-# (run_4.jl, tran2018.jl, chloride_ternary.jl), which is the argument for moving it.
-
-
-"""
-Parameters of the DLM (Double Layer Model) for C-S-H.
-
-All equilibrium constants are in SI units (mol/m³ or m³/mol).
-Ka1 and K_OHCl: converted from the mol/L and L/mol of Tran 2018 (× 10⁻³).
-
-Tran 2018 parameters (Table 1):
-  Ka1 = 2.0e-13 mol/L → 2.0e-10 mol/m³
-  K_Ca = 2000 L/mol → 2.0 m³/mol
-  K_OHCl = 0.447 L/mol → 4.47e-4 m³/mol
-  K_Na (Tobermorite, x=0.83) = 1.106 L/mol → 1.106e-3 m³/mol
-  K_Na (Jennite, x=1.67) = 0.090 L/mol → 9.0e-5 m³/mol
-  Γ_max = 1.3e-6 mol/m²_CSH
-  a_s = 85 000 m²/mol_CSH  (S_BET = 500 m²/g × M_CSH ≈ 170 g/mol)
-"""
-Base.@kwdef struct DLMParams
-    Ka1::Float64 = 2.0e-10   # [mol/m³]  deprotonation ≡SiOH → ≡SiO⁻ + H⁺
-    K_Ca::Float64 = 2.0       # [m³/mol]  ≡SiO⁻ + Ca²⁺ → ≡SiOCa⁺
-    K_OHCl::Float64 = 4.47e-4   # [m³/mol]  ≡SiOH + Cl⁻ → ≡SiOHCl⁻
-    K_Na_Tob::Float64 = 1.106e-3  # [m³/mol]  ≡SiO⁻ + Na⁺ → ≡SiONa (x=0.83)
-    K_Na_Jen::Float64 = 9.0e-5    # [m³/mol]  ≡SiO⁻ + Na⁺ → ≡SiONa (x=1.67)
-    Gamma_max::Float64 = 1.3e-6    # [mol/m²_CSH] site density
-    a_s::Float64 = 85000.0   # [m²_CSH/mol_CSH] BET specific surface area
-    x_cas::Float64 = 1.5       # [-] Ca/Si ratio of the C-S-H (fixed)
-    n_csh0::Float64 = 2000.0    # [mol_CSH/m³_concrete] initial C-S-H content
-    eps_r::Float64 = 78.5      # [-] relative permittivity of water
-    Kw_SI::Float64 = 6.76e-9   # [mol²/m⁶] ionic product of water at 20 °C
-end
-
-"""
-    k_na_dlm(dlm, x_cas) -> Float64
-
-Linear interpolation of K_Na (and K_K) between Tobermorite and Jennite:
-  K_Na(x) = K_Na_Jen + (K_Na_Tob − K_Na_Jen) × (1.67 − x) / (1.67 − 0.83)
-"""
-function k_na_dlm(dlm::DLMParams, x_cas::Float64)
-    xT, xJ = 0.83, 1.67
-    x_c = clamp(x_cas, xT, xJ)
-    return dlm.K_Na_Jen + (dlm.K_Na_Tob - dlm.K_Na_Jen) * (xJ - x_c) / (xJ - xT)
-end
-
-"""
-    solve_dlm(c_Cl, c_Na, c_K, c_Ca, c_OH, n_csh; dlm, T_K)
-
-Solves the DLM equilibrium for the C-S-H and returns the surface potential
-β = F·ψ/(R·T) together with the adsorbed concentrations (mol/m³_concrete).
-
-**Method**: bisection on β over [-10, 10] of the equation:
-    F·Γ_max · B(β)/A(β) = √(8·ε₀·ε_r·R·T·I) · sinh(β/2)
-
-where:
-  A(β) = denominator of the site balance
-  B(β) = (≡SiOCa⁺ − ≡SiO⁻ − ≡SiOHCl⁻) / [≡SiOH]  (normalised net charge)
-
-**Returns** `(β, S_Cl, S_Na, S_K, S_Ca)` in mol/m³_concrete.
-The S_i values can come out negative (which has no physical meaning); they are
-guarded by `max(., 0)` upstream when the model is updated.
-"""
-function solve_dlm(
-    c_Cl::Real, c_Na::Real, c_K::Real, c_Ca::Real, c_OH::Real,
-    n_csh::Real;
-    dlm::DLMParams,
-    T_K::Real=293.15,
-)
-    c_H = dlm.Kw_SI / max(c_OH, 1.0e-20)
-    # Ionic strength [mol/m³]
-    I = max(0.5 * (c_Cl + c_Na + c_K + 4.0 * c_Ca + c_OH + c_H), 1.0)
-
-    Ka1 = dlm.Ka1
-    KCa = dlm.K_Ca
-    KCl = dlm.K_OHCl
-    KNa = k_na_dlm(dlm, dlm.x_cas)
-    KK = KNa    # K⁺: same constant as Na⁺ (Tran 2018)
-
-    # DL capacitance coefficient [C/m²] = √(8·ε₀·ε_r·R·T·I)
-    F_val = 96485.0
-    R_val = 8.314
-    σ_cap = sqrt(8.0 * 8.854e-12 * dlm.eps_r * R_val * T_K * I)
-
-    # Surface speciation, normalised by [≡SiOH]. Written as functions of the
-    # concentrations rather than closing over them, so that the same expressions serve
-    # both the live (possibly dual) arguments and the stripped values the bracket needs.
-    A(β, cCl, cNa, cK, cCa, cH) = (1.0 +
-                                   Ka1 * exp(β) / cH +                # ≡SiO⁻
-                                   KCa * Ka1 * cCa * exp(-β) / cH +   # ≡SiOCa⁺
-                                   KCl * cCl * exp(β) +               # ≡SiOHCl⁻
-                                   (KNa * cNa + KK * cK) * Ka1 / cH)  # ≡SiONa + ≡SiOK (no β)
-
-    B(β, cCa, cCl, cH) = (KCa * Ka1 * cCa * exp(-β) / cH -   # +1
-                          Ka1 * exp(β) / cH -                 # −1
-                          KCl * cCl * exp(β))                 # −1
-
-    # f(β) = σ₀(β) − σ_DL(β)  (residual of the DLM balance equation)
-    residual(β, cCl, cNa, cK, cCa, cH, σ) =
-        F_val * dlm.Gamma_max * B(β, cCa, cCl, cH) / A(β, cCl, cNa, cK, cCa, cH) -
-        σ * sinh(β / 2.0)
-
-    f(β) = residual(β, c_Cl, c_Na, c_K, c_Ca, c_H, σ_cap)
-
-    # Bisection is a sequence of comparisons on floating-point values: differentiating
-    # through it would return dβ/dc = 0, because the bracket endpoints are constants
-    # rather than functions of the concentrations. So the bracket is closed on the
-    # stripped values, and the derivative is restored afterwards by a single Newton step
-    # at the converged root. `f(β★)` is zero to the bisection tolerance, so the step does
-    # not move β; its dual part is exactly −(∂f/∂c)/(∂f/∂β), the implicit-function
-    # derivative of the root.
-    v(x) = ForwardDiff.value(x)
-    fv(β) = residual(β, v(c_Cl), v(c_Na), v(c_K), v(c_Ca), v(c_H), v(σ_cap))
-
-    β_lo, β_hi = -10.0, 10.0
-    f_lo = fv(β_lo)
-    f_hi = fv(β_hi)
-    bracketed = f_lo * f_hi < 0.0
-
-    β_star = 0.0   # fallback: no surface potential
-    if bracketed
-        for _ in 1:64
-            β_mid = 0.5 * (β_lo + β_hi)
-            f_mid = fv(β_mid)
-            if f_mid * f_lo < 0.0
-                β_hi = β_mid
-            else
-                β_lo = β_mid
-                f_lo = f_mid
-            end
-            abs(β_hi - β_lo) < 1.0e-9 && break
-        end
-        β_star = 0.5 * (β_lo + β_hi)
-    else
-        # No sign change: f stays positive or negative across [-10, 10].
-        # Pick the β where |f| is smallest (closest to balance). There is no root here,
-        # so β is a constant and carries no derivative — which is the honest answer.
-        β_star = abs(f_lo) < abs(f_hi) ? β_lo : β_hi
-    end
-
-    β = bracketed ? β_star - f(β_star) / ForwardDiff.derivative(fv, β_star) : β_star
-
-    X = dlm.Gamma_max / A(β, c_Cl, c_Na, c_K, c_Ca, c_H)   # [≡SiOH] in mol/m²_CSH
-
-    # Surface species [mol/m²_CSH]
-    theta_OCa = KCa * Ka1 * X * c_Ca * exp(-β) / c_H
-    theta_OHCl = KCl * X * c_Cl * exp(β)
-    theta_ONa = KNa * Ka1 * X * c_Na / c_H
-    theta_OK = KK * Ka1 * X * c_K / c_H
-
-    # Bulk adsorbed [mol/m³_concrete]
-    fac = dlm.a_s * n_csh
-    S_Cl = theta_OHCl * fac
-    S_Na = theta_ONa * fac
-    S_K = theta_OK * fac
-    S_Ca = theta_OCa * fac
-
-    return β, S_Cl, S_Na, S_K, S_Ca
-end
+# One implementation, shared with `tran2018.jl` and `chloride_ternary.jl`. It used to be
+# copied into all three, differing only in whether magnesium was present, in the chloride
+# binding mechanism, and in whether the site density was interpolated — none of which
+# needs an implementation of its own.
+#
+# This model is the binary outer-sphere set of Tran 2018, and none of its four
+# transported species is magnesium, so every call below passes `c_Mg = 0`.
+include("dlm.jl")
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -223,7 +70,7 @@ Transport : 4 primary species (Cl⁻, Na⁺, K⁺, Ca²⁺), Fick's law.
 Chemistry : Gibbs through equilibrate() + DLM surface complexation.
 Adsorption: DLM replaces the phenomenological isotherms of Phase 3.
 """
-mutable struct ChlorideModel4 <: AbstractPoroModel
+mutable struct ChlorideModel4{D <: DLM} <: AbstractPoroModel
     # ── Geometry ──────────────────────────────────────────────────────────────
     L::Float64
 
@@ -249,7 +96,7 @@ mutable struct ChlorideModel4 <: AbstractPoroModel
     Kd_Ca::Vector{Float64}
 
     # ── DLM parameters ────────────────────────────────────────────────────────
-    dlm::DLMParams
+    dlm::D
 
     # ── Diffusion ionique en eau libre [m²/s] ─────────────────────────────────
     D_Cl::Float64
@@ -354,20 +201,20 @@ end
     ChlorideModel4(N_nodes, cs, has_friedels; dlm, kwargs...)
 
 Constructor with thermodynamic OPC initialisation + initial DLM.
-`dlm` : `DLMParams` (optional, defaults to Tran 2018).
+`dlm` : `DLM` (optional, defaults to `DLM_TRAN2018`).
 `kwargs` : forwarded to `_compute_opc_ic4` (phi0, T_K, n_ch0, …).
 """
 function ChlorideModel4(
     N_nodes::Int, cs, has_friedels::Bool;
-    dlm::DLMParams=DLMParams(),
+    dlm::DLM=DLM_TRAN2018(),
     kwargs...,
 )
     ic = _compute_opc_ic4(cs, has_friedels; kwargs...)
     N = N_nodes
 
     # ── DLM at the initial OPC state (Cl ≈ 0, in equilibrium with the pore solution) ─
-    _, S_Cl0, S_Na0, S_K0, S_Ca0 = solve_dlm(
-        ic.c_cl, ic.c_na, ic.c_k, ic.c_ca, ic.c_oh, dlm.n_csh0;
+    _, S_Cl0, S_Na0, S_K0, S_Ca0, _ = solve_dlm(
+        ic.c_cl, ic.c_na, ic.c_k, ic.c_ca, 0.0, ic.c_oh, dlm.n_csh0, dlm.x_cas;
         dlm=dlm, T_K=get(kwargs, :T_K, 293.15),
     )
     ε = 1.0e-15
@@ -650,10 +497,10 @@ function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
         # single evaluation, where the difference quotient needed two and a step size.
         n_csh_i = m.dlm.n_csh0   # C-S-H held fixed for now
         c_cl_seed = ForwardDiff.Dual{Nothing}(max(c_cl_new, 0.0), 1.0)
-        _, S_Cl_d, S_Na, S_K, S_Ca = solve_dlm(
+        _, S_Cl_d, S_Na, S_K, S_Ca, _ = solve_dlm(
             c_cl_seed, max(c_na_new, 0.0), max(c_k_new, 0.0),
-            max(c_ca_new, 0.0), max(c_oh_new, ε),
-            n_csh_i; dlm=m.dlm, T_K=m.T_K,
+            max(c_ca_new, 0.0), 0.0, max(c_oh_new, ε),
+            n_csh_i, m.dlm.x_cas; dlm=m.dlm, T_K=m.T_K,
         )
         m.S_Cl[i] = max(ForwardDiff.value(S_Cl_d), 0.0)
         m.S_Na[i] = max(ForwardDiff.value(S_Na), 0.0)
@@ -691,7 +538,7 @@ function run_chloride_ingress4(;
     t_end=3.1536e7,   # 1 year [s]
     n_save=12,
     verbose=false,
-    dlm=DLMParams(),
+    dlm=DLM_TRAN2018(),
     kwargs...,
 )
     cs, has_friedels = _init_chemistry4()
@@ -785,7 +632,7 @@ function run_chloride_ingress4(;
             copy(m.S_Ca),
         ))
 
-        @info "SNIA" seg = k - 1 φ_mean = round(mean(m.phi); sigdigits=4) n_FS0 = round(m.n_fs[2]; sigdigits=4) S_Cl0 = round(m.S_Cl[2]; sigdigits=4) β_node2 = round(let (_b, _, _, _, _) = solve_dlm(max(u_cur[ICL4, 2], 0.0), max(u_cur[INA4, 2], 0.0), max(u_cur[IK4, 2], 0.0), max(u_cur[ICA4, 2], 0.0), max(m.c_oh_frozen[2], 1e-15), m.dlm.n_csh0; dlm=m.dlm, T_K=m.T_K)
+        @info "SNIA" seg = k - 1 φ_mean = round(mean(m.phi); sigdigits=4) n_FS0 = round(m.n_fs[2]; sigdigits=4) S_Cl0 = round(m.S_Cl[2]; sigdigits=4) β_node2 = round(let (_b, _, _, _, _, _) = solve_dlm(max(u_cur[ICL4, 2], 0.0), max(u_cur[INA4, 2], 0.0), max(u_cur[IK4, 2], 0.0), max(u_cur[ICA4, 2], 0.0), 0.0, max(m.c_oh_frozen[2], 1e-15), m.dlm.n_csh0, m.dlm.x_cas; dlm=m.dlm, T_K=m.T_K)
             _b
         end; sigdigits=3)
     end
@@ -801,7 +648,7 @@ end
 Comparison table: Cl⁻ profile vs the C++ reference, with DLM.
 Balance in mol/m³_concrete and in g Cl / 100 g cement.
 """
-function compare_reference_4(results, grid; dlm::DLMParams=DLMParams())
+function compare_reference_4(results, grid; dlm::DLM=DLM_TRAN2018())
     # Conversion constants
     M_Cl = 35.453          # g/mol
     m_clinker = 350_000.0       # g/m³_concrete (350 kg/m³)
@@ -834,8 +681,8 @@ function compare_reference_4(results, grid; dlm::DLMParams=DLMParams())
         try
             β_node, = solve_dlm(
                 max(u[ICL4, idx], 0.0), max(u[INA4, idx], 0.0), max(u[IK4, idx], 0.0),
-                max(u[ICA4, idx], 0.0), max(c_oh[idx], 1e-15),
-                dlm.n_csh0; dlm=dlm, T_K=293.15)
+                max(u[ICA4, idx], 0.0), 0.0, max(c_oh[idx], 1e-15),
+                dlm.n_csh0, dlm.x_cas; dlm=dlm, T_K=293.15)
         catch
         end
         @printf("%-8.4f  %-14.4f  %-10.4f  %-12.4f  %-10.4f  %-8.2f  %-10.2f  %-10.3f\n",
@@ -874,7 +721,7 @@ Six panneaux :
   p5 – c_OH.
   p6 – DLM surface potential β.
 """
-function plot_chloride_ingress4(results, grid; n_curves=4, save_path=nothing, dlm::DLMParams=DLMParams())
+function plot_chloride_ingress4(results, grid; n_curves=4, save_path=nothing, dlm::DLM=DLM_TRAN2018())
     # Conversion constants: mol Cl / m³_concrete → g Cl / 100g cement
     M_Cl = 35.453
     m_clinker = 350_000.0          # g/m³_concrete
@@ -978,8 +825,8 @@ function plot_chloride_ingress4(results, grid; n_curves=4, save_path=nothing, dl
     β_profile = [
         begin
             β_v, = solve_dlm(max(u_f[ICL4, j], 0.0), max(u_f[INA4, j], 0.0), max(u_f[IK4, j], 0.0),
-                max(u_f[ICA4, j], 0.0), max(c_oh_f[j], 1e-15),
-                dlm.n_csh0; dlm=dlm, T_K=293.15)
+                max(u_f[ICA4, j], 0.0), 0.0, max(c_oh_f[j], 1e-15),
+                dlm.n_csh0, dlm.x_cas; dlm=dlm, T_K=293.15)
             β_v
         end for j in eachindex(x_dm)
     ]
@@ -999,7 +846,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # Parameters tuned on the C++ chloride_ingress version:
     #   n_csh0 = 635 mol/m³  ← InitialContent_csh = 0.635 mol/dm³
     #   n_ms0  = 3000 mol/m³ ← unlimited Al in C++ (n_c3a = -n_friedelsalt)
-    dlm = DLMParams(n_csh0=635.0)
+    dlm = DLM_TRAN2018(n_csh0=635.0)
 
     results, m_fin = run_chloride_ingress4(; N=100, t_end=3.1536e7, n_save=12, dlm=dlm, n_ms0=3000.0)
 

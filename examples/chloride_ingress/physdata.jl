@@ -5,7 +5,6 @@
 # here only until ChemistryLab.jl exposes them.
 #
 # Constants that depend neither on the material nor on the test:
-#   DLMConstants       : surface equilibrium constants on C-S-H (Tran & Soive 2018)
 #   IonicDiffusivities : free-water diffusion coefficients (Atkins 1987, Oelkers 1988)
 #   MolarVolumes       : molar volumes of the solid phases (cemdata18, Lothenbach 2019)
 #
@@ -16,23 +15,9 @@
 # Invariant physico-chemical data
 # ════════════════════════════════════════════════════════════════════════════════
 
-"""
-Double Layer Model constants (Tran & Soive 2018, Cem. Concr. Res. 110, 70–85),
-extended to Mg²⁺ for seawater. All values are equilibrium constants taken from
-the literature — they depend neither on the material nor on the test.
-"""
-Base.@kwdef struct DLMConstants
-    Ka1::Float64      = 2.0e-10    # [mol/m³]  ≡SiOH → ≡SiO⁻ + H⁺
-    K_Ca::Float64     = 2.0        # [m³/mol]  ≡SiO⁻ + Ca²⁺ → ≡SiOCa⁺
-    K_Mg::Float64     = 0.10       # [m³/mol]  ≡SiO⁻ + Mg²⁺ → ≡SiOMg⁺  (seawater)
-    K_OHCl::Float64   = 4.47e-4    # [m³/mol]  ≡SiOH + Cl⁻  → ≡SiOHCl⁻
-    K_Na_Tob::Float64 = 1.106e-3   # [m³/mol]  ≡SiO⁻ + Na⁺  → ≡SiONa  (x_CaS = 0.83)
-    K_Na_Jen::Float64 = 9.0e-5     # [m³/mol]  ≡SiO⁻ + Na⁺  → ≡SiONa  (x_CaS = 1.67)
-    Gamma_max::Float64 = 1.3e-6    # [mol/m²_CSH] density of silanol sites
-    a_s::Float64      = 85000.0    # [m²_CSH/mol_CSH] BET specific surface area
-    eps_r::Float64    = 78.5       # [-] relative permittivity of water
-    Kw_SI::Float64    = 6.76e-9    # [mol²/m⁶] ionic product of water at 20 °C
-end
+## `DLMConstants` used to live here. The surface complexation constants now sit with the
+## model that uses them, in `dlm.jl`, as `DLM_TRAN2018` — see the note at the top of that
+## file about where they really belong.
 
 """
 Ionic diffusion coefficients in free water [m²/s].

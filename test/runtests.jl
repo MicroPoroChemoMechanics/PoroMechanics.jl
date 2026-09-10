@@ -47,6 +47,11 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
 
         # ── The transport models the package ships ────────────────────────────────
         include("models.jl")
+
+        # ── Surface complexation, shared by the three chloride examples ───────────
+        # In `core` rather than `chemistry`: `dlm.jl` needs ForwardDiff and nothing else,
+        # so it costs nothing and does not pull in the thermodynamic stack.
+        include("dlm.jl")
     end
 
     # ── Validation against closed-form solutions ──────────────────────────────

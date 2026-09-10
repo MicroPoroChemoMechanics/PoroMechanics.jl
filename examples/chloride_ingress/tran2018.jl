@@ -149,126 +149,14 @@ Base.@kwdef struct ExposureConditions
     c_Si::Float64  = 0.005    # total surface Atlantic Si (~5 µmol/L)
 end
 
-function _k_na_dlm(dlm::DLMConstants, x_cas::Float64)
-    xT, xJ = 0.83, 1.67
-    x_c = clamp(x_cas, xT, xJ)
-    return dlm.K_Na_Jen + (dlm.K_Na_Tob - dlm.K_Na_Jen) * (xJ - x_c) / (xJ - xT)
-end
-
-"""
-    solve_dlm_marks(c_Cl, c_Na, c_K, c_Ca, c_Mg, c_OH, n_csh, x_cas; dlm, T_K)
-
-DLM equilibrium for the C-S-H with the Mg²⁺ extension (seawater).
-
-!!! note
-    This belongs in ChemistryLab.jl — surface complexation is chemistry, not transport.
-    It lives here only until ChemistryLab.jl exposes it.
-
-Bisection on β ∈ [−10, 10] of σ₀(β) = σ_DL(β).
-Retourne `(β, S_Cl, S_Na, S_K, S_Ca, S_Mg)` en mol/m³_concrete.
-Returns zeros when `n_csh ≤ 0` (DLM disabled).
-"""
-function solve_dlm_marks(
-    c_Cl::Real, c_Na::Real, c_K::Real, c_Ca::Real,
-    c_Mg::Real, c_OH::Real, n_csh::Real, x_cas::Real;
-    dlm::DLMConstants,
-    T_K::Real=293.15,
-)
-    ## `zero(...)` rather than `0.0`: this branch must not drop the dual type when the
-    ## caller is differentiating with respect to a concentration.
-    T_out = promote_type(typeof(c_Cl), typeof(c_Na), typeof(c_K), typeof(c_Ca),
-                         typeof(c_Mg), typeof(c_OH), typeof(n_csh))
-    n_csh ≤ 0.0 && return ntuple(_ -> zero(T_out), 6)
-
-    c_H = dlm.Kw_SI / max(c_OH, 1.0e-20)
-    I = max(0.5 * (c_Cl + c_Na + c_K + 4.0 * c_Ca + 4.0 * c_Mg + c_OH + c_H), 1.0)
-
-    Ka1 = dlm.Ka1
-    KCa = dlm.K_Ca
-    KMg = dlm.K_Mg
-    KCl = dlm.K_OHCl
-    KNa = _k_na_dlm(dlm, x_cas)
-    KK = KNa   # K⁺: same constant as Na⁺ (Tran 2018)
-
-    F_val = 96485.0
-    R_val = 8.314
-    σ_cap = sqrt(8.0 * 8.854e-12 * dlm.eps_r * R_val * T_K * I)
-
-    ## Written as functions of the concentrations rather than closing over them, so the
-    ## same expressions serve both the live (possibly dual) arguments and the stripped
-    ## values the bracket below needs.
-    A(β, cCl, cNa, cK, cCa, cMg, cH) = (1.0
-                                        + Ka1 * exp(β) / cH
-                                        + KCa * Ka1 * cCa * exp(-β) / cH
-                                        + KMg * Ka1 * cMg * exp(-β) / cH
-                                        + KCl * cCl * exp(β)
-                                        + (KNa * cNa + KK * cK) * Ka1 / cH)
-
-    B(β, cCl, cCa, cMg, cH) = (KCa * Ka1 * cCa * exp(-β) / cH
-                               +
-                               KMg * Ka1 * cMg * exp(-β) / cH
-                               -
-                               Ka1 * exp(β) / cH
-                               -
-                               KCl * cCl * exp(β))
-
-    residual(β, cCl, cNa, cK, cCa, cMg, cH, σ) =
-        F_val * dlm.Gamma_max * B(β, cCl, cCa, cMg, cH) /
-        A(β, cCl, cNa, cK, cCa, cMg, cH) - σ * sinh(β / 2.0)
-
-    f(β) = residual(β, c_Cl, c_Na, c_K, c_Ca, c_Mg, c_H, σ_cap)
-
-    ## Bisection is a sequence of comparisons: differentiating through it returns
-    ## dβ/dc = 0, because the bracket endpoints are constants. The bracket is therefore
-    ## closed on the stripped values, and one Newton step at the converged root restores
-    ## the derivative — `f(β★)` is zero to the bisection tolerance, so the step leaves β
-    ## where it is while its dual part is −(∂f/∂c)/(∂f/∂β).
-    v(x) = ForwardDiff.value(x)
-    fv(β) = residual(β, v(c_Cl), v(c_Na), v(c_K), v(c_Ca), v(c_Mg), v(c_H), v(σ_cap))
-
-    β_lo, β_hi = -10.0, 10.0
-    f_lo = fv(β_lo)
-    f_hi = fv(β_hi)
-    bracketed = f_lo * f_hi < 0.0
-    β_star = 0.0
-    if bracketed
-        for _ in 1:64
-            β_mid = 0.5 * (β_lo + β_hi)
-            f_mid = fv(β_mid)
-            if f_mid * f_lo < 0.0
-                β_hi = β_mid
-            else
-                β_lo = β_mid
-                f_lo = f_mid
-            end
-            abs(β_hi - β_lo) < 1.0e-9 && break
-        end
-        β_star = 0.5 * (β_lo + β_hi)
-    else
-        ## No sign change on [-10, 10]: there is no root to differentiate, so β is a
-        ## constant and carries no derivative.
-        β_star = abs(f_lo) < abs(f_hi) ? β_lo : β_hi
-    end
-
-    β = bracketed ? β_star - f(β_star) / ForwardDiff.derivative(fv, β_star) : β_star
-
-    X = dlm.Gamma_max / A(β, c_Cl, c_Na, c_K, c_Ca, c_Mg, c_H)
-
-    theta_OHCl = KCl * X * c_Cl * exp(β)
-    theta_OCa = KCa * Ka1 * X * c_Ca * exp(-β) / c_H
-    theta_OMg = KMg * Ka1 * X * c_Mg * exp(-β) / c_H
-    theta_ONa = KNa * Ka1 * X * c_Na / c_H
-    theta_OK = KK * Ka1 * X * c_K / c_H
-
-    fac = dlm.a_s * n_csh
-    S_Cl = theta_OHCl * fac
-    S_Na = theta_ONa * fac
-    S_K = theta_OK * fac
-    S_Ca = theta_OCa * fac
-    S_Mg = theta_OMg * fac
-
-    return β, S_Cl, S_Na, S_K, S_Ca, S_Mg
-end
+# ── DLM surface complexation ──────────────────────────────────────────────────
+#
+# Shared implementation, see `dlm.jl`. This model is the Tran 2018 outer-sphere set
+# with the magnesium extension for seawater, so it passes a live `c_Mg`.
+#
+# Guarded because `chloride_ternary.jl` includes the same file, and `m100_ternary.jl`
+# loads both into one module: a function may be redefined, a struct may not.
+isdefined(@__MODULE__, :DLM) || include("dlm.jl")
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -294,7 +182,7 @@ mutable struct Marks2015Model <: AbstractPoroModel
     # ── Immutable data ────────────────────────────────────────────────────────
     diff::IonicDiffusivities
     vm::MolarVolumes
-    dlm::DLMConstants
+    dlm::DLM
 
     # ── Material and environment data ─────────────────────────────────────────
     mat::CementMaterial
@@ -588,7 +476,7 @@ Constructor with thermodynamic hydration initialisation (Bogue phases + equilibr
   `env`  : exposure conditions (ExposureConditions) — seawater, temperature
   `diff` : diffusion coefficients (IonicDiffusivities) — Atkins/Oelkers values
   `vm`   : molar volumes (MolarVolumes) — cemdata18
-  `dlm`  : DLM constants (DLMConstants) — Tran & Soive 2018
+  `dlm`  : DLM constants (`DLM`, see `dlm.jl`) — Tran & Soive 2018
 """
 function Marks2015Model(
     N_nodes::Int, cs_hyd;
@@ -596,7 +484,7 @@ function Marks2015Model(
     env::ExposureConditions  = ExposureConditions(),
     diff::IonicDiffusivities = IonicDiffusivities(),
     vm::MolarVolumes         = MolarVolumes(),
-    dlm::DLMConstants        = DLMConstants(),
+    dlm::DLM                 = DLM_TRAN2018(),
 )
     ic = _hydrate_m100(cs_hyd, mat, env)
     N  = N_nodes
@@ -608,7 +496,7 @@ function Marks2015Model(
          9 / 6 * ic.n_csh_jenh + 10 / 6 * ic.n_csh_jend) / n_csh_init
     ) : 1.5
     n_csh_dlm_init = mat.transport.n_csh0 > 0.0 ? mat.transport.n_csh0 : n_csh_init
-    _, S_Cl0, S_Na0, S_K0, S_Ca0, S_Mg0 = solve_dlm_marks(
+    _, S_Cl0, S_Na0, S_K0, S_Ca0, S_Mg0 = solve_dlm(
         ic.c_cl, ic.c_na, ic.c_k, ic.c_ca, ic.c_mg, ic.c_oh,
         n_csh_dlm_init, x_cas_init; dlm=dlm, T_K=env.T_K,
     )
@@ -969,12 +857,12 @@ function chemistry_step_marks2015!(
         n_csh_dlm = m.mat.transport.n_csh0 > 0.0 ? m.mat.transport.n_csh0 : n_csh_i
         dS_Cl_dc  = 0.0
         if n_csh_dlm > 0.0
-            ## `solve_dlm_marks` is differentiable in its arguments — the surface
+            ## `solve_dlm` is differentiable in its arguments — the surface
             ## potential β is a root, bracketed on the values and corrected by one
             ## Newton step — so seeding c_Cl with a dual returns S_Cl and dS_Cl/dc from
             ## a single evaluation, where the difference quotient needed two and a δ.
             c_cl_seed = ForwardDiff.Dual{Nothing}(max(c_cl_new, 0.0), 1.0)
-            _, S_Cl_i, S_Na_i, S_K_i, S_Ca_i, S_Mg_i = solve_dlm_marks(
+            _, S_Cl_i, S_Na_i, S_K_i, S_Ca_i, S_Mg_i = solve_dlm(
                 c_cl_seed, max(c_na_new, 0.0), max(c_k_new, 0.0),
                 max(c_ca_new, 0.0), max(c_mg_new, 0.0), max(c_oh_new, ε),
                 n_csh_dlm, x_cas_i; dlm=dlm_i, T_K=m.env.T_K,
@@ -1036,7 +924,7 @@ function run_Marks2015(;
     env::ExposureConditions  = ExposureConditions(),
     diff::IonicDiffusivities = IonicDiffusivities(),
     vm::MolarVolumes         = MolarVolumes(),
-    dlm::DLMConstants        = DLMConstants(),
+    dlm::DLM                 = DLM_TRAN2018(),
 )
     @info "Chemistry parallelism" n_threads = Threads.nthreads()
 

@@ -19,6 +19,8 @@ LocalPreferences.toml
 # Working notes (kept in MicroPoroChemoMechanics/InternalDocs)
 CLAUDE/
 CLAUDE.md
+CODEX/
+AGENTS.md
 
 # Simulation output and heavy data sets
 *.vtu

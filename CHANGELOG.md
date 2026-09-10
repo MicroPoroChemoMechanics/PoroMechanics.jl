@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- Merge the three copies of the C-S-H double layer model into
+  `examples/chloride_ingress/dlm.jl`. `run_4.jl`, `tran2018.jl` and `chloride_ternary.jl`
+  each carried their own; they differed only in whether magnesium was present, in the
+  chloride binding mechanism, and in whether the site density was interpolated. Magnesium
+  at zero concentration and an interpolation between equal endpoints are special cases, so
+  only the mechanism is a real branch and it is now carried by dispatch on `OuterSphere`
+  or `TernaryNeutral`. 485 lines removed for 415 added, one of which is a file the three
+  examples share.
+- The double layer coefficients are type parameters, so a `ForwardDiff.Dual` can enter
+  `K_Cl` or `Gamma_max`. The three replaced implementations declared every coefficient
+  `::Float64`, which allowed differentiation with respect to a concentration but never
+  with respect to a surface constant — the derivative an inverse identification needs.
+- Split the model into `dlm_residual`, `dlm_loadings` and `solve_dlm`. The residual has no
+  root finding inside, which is what a globally implicit scheme needs in order to carry the
+  surface potential as an unknown; the solver is built on the same expression, so the two
+  cannot disagree.
+- Add `test/dlm.jl` to the `core` group: 26 tests on values, on derivatives against central
+  differences, on differentiation with respect to a parameter, and on the `n_csh ≤ 0` guard.
+  The pinned numbers were measured on the three implementations before the merge, so they
+  guard the refactor rather than the physics.
+
+  The merge is exact where it can be. `solve_dlm_marks` is reproduced bit for bit on all
+  288 measured quantities, `solve_dlm_ternary` on 287 of 288 — the exception is one
+  derivative differing by one unit in the last place. `run_4.jl` end to end is unchanged
+  on all 252 values of a reduced run. Two intended differences remain, both in `run_4.jl`:
+  it now sees the `n_csh ≤ 0` guard the other two already had, and it would account for
+  magnesium if it transported any, which it does not.
 - Bound `MeanFieldHomogenization` to 0.7 in `docs/Project.toml` and `examples/Project.toml`.
   The documentation build resolves its manifest from scratch — `docs/Manifest.toml` is
   gitignored — so an unbounded dependency picked up 0.12, where `RVE(::Symbol)` no longer

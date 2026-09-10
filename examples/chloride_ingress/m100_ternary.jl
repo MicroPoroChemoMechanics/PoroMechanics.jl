@@ -175,7 +175,7 @@ end
 
 function CementTernaryModel(
     N_nodes::Int, cs_hyd;
-    dlm::DLMTernaryParams    = DLMTernaryParams(),
+    dlm::DLM                 = DLM_TERNARY(),
     kin::KineticParams       = KineticParams(),
     mat::CementMaterial      = CementMaterial(),
     env::ExposureConditions  = ExposureConditions(),
@@ -197,7 +197,7 @@ function CementTernaryModel(
         (x_cas_cshq0 * n_csh_init + x_cas_cash0 * n_cash_init) / n_csh_total_init
     ) : 1.5
     n_csh_dlm_init = dlm.n_csh0 > 0.0 ? dlm.n_csh0 : n_csh_total_init
-    _, S_Cl0, S_Na0, S_K0, S_Ca0, S_Mg0 = solve_dlm_ternary(
+    _, S_Cl0, S_Na0, S_K0, S_Ca0, S_Mg0 = solve_dlm(
         ic.c_cl, ic.c_na, ic.c_k, ic.c_ca, ic.c_mg, ic.c_oh,
         n_csh_dlm_init, x_cas_init; dlm, T_K=env.T_K,
     )
@@ -240,7 +240,7 @@ function run_fickian_diffusion00_ternary(;
     t_end=3.1536e7,
     n_save=12,
     verbose=false,
-    dlm::DLMTernaryParams    = DLMTernaryParams(),
+    dlm::DLM                 = DLM_TERNARY(),
     kin::KineticParams       = KineticParams(),
     mat::CementMaterial      = CementMaterial(),
     env::ExposureConditions  = ExposureConditions(),
