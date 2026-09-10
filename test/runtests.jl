@@ -56,6 +56,10 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
         # ── Does a scheme conserve what it transports? ────────────────────────────
         # Also `core`: the harness is VoronoiFVM plus a two-line tracer, no chemistry.
         include("reactive/conservation.jl")
+
+        # ── Multi-ionic transport with a zero-current closure ─────────────────────
+        # Uses the harness above, so it comes after it.
+        include("reactive/nernst_planck.jl")
     end
 
     # ── Validation against closed-form solutions ──────────────────────────────

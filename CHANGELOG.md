@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- Add `examples/chloride_ingress/nernst_planck.jl`: multi-ionic transport with a
+  zero-current closure, the transport core of the rewrite of `run_4.jl` onto conservative
+  balances. Ions of different mobility cannot separate freely, and `run_4.jl` lets them:
+  measured on its own solution, the net current it carries reaches
+  `|Σ zᵢJᵢ| / Σ|zᵢJᵢ| = 0.46` at the front, and neutrality is then restored inside the
+  chemistry pass by letting OH⁻ absorb it. ChemistryLab states the same thing structurally
+  — charge is a pseudo-element `:Zz`, one row of the conservation matrix, and on the OPC
+  system that row is independent: `A` is 9×34 of rank 9, rank 8 without it.
+- Validate it against the closed form. For a binary z:z salt the zero-current condition
+  gives `Ψ = r ln(c/c_boundary)` with `r = (D₋−D₊)/(D₋+D₊) = 0.20737`. Measured over
+  21…321 nodes the error is −9.87, −3.51, −1.01, −0.26, −0.066 %: second order in `dx`,
+  converging to the analytical value.
+- Record that a transient parameter sensitivity does **not** follow from making a model's
+  coefficients type parameters. `fvm_system` builds a system whose unknowns are `Float64`;
+  a `Dual` in a coefficient reaches the callbacks but the solution vector cannot carry its
+  partials, and the solve fails converting one back. VoronoiFVM's own mechanism —
+  `System(...; nparams)` plus `solve(...; params)` — is the supported route, and it
+  requires the model to read the coefficient from `params`. Marked `@test_broken` with the
+  reason, in `test/reactive/nernst_planck.jl`.
+- Correct four stale claims in `CLAUDE.md`: the DLM is no longer in three copies, the
+  `[compat]` pins are 0.14.2/0.5 rather than 0.13/0.4, the solid-solution construction
+  failure was not reproduced, and the rank-8 explanation of the broken OPC equilibrium is
+  not supported by the current matrices — `cs.SM.A`, `DualEquilibriumSolver.A` and the
+  aqueous block are all full rank. The residual stands; its cause is open again.
 - Read the molar volumes of the solid phases from the database rather than from a copy.
   `chemistry_step4!` carried four hard-coded values; they had drifted from what `sp[:V⁰]`
   returns by up to 0.48 %, and the two that drifted most, monosulphate and Friedel's salt,
