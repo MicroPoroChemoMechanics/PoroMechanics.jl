@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Read the molar volumes of the solid phases from the database rather than from a copy.
+  `chemistry_step4!` carried four hard-coded values; they had drifted from what `sp[:V⁰]`
+  returns by up to 0.48 %, and the two that drifted most, monosulphate and Friedel's salt,
+  are the pair whose exchange drives the porosity change. The reduced run moves by 2.5e-8
+  in relative L2, below the regression tolerance.
+- Instrument the porosity clamp. `clamp(φ, 1e-4, 0.999)` is a guard, not a correction: if
+  it bites, the volume closure has produced a porosity outside the physical range and
+  everything downstream is meaningless. It now warns instead of absorbing it silently.
+- Add `molar_volume` and `water_density` next to the chloride examples, both reading the
+  thermodynamic database. `water_density` is documented and **not yet used**: the molar
+  density of water is written as `55_500.0` in five files and nine places, and only
+  `run_4.jl` has a regression reference, so changing it there alone would shift four
+  uncovered examples and break the initial-condition cross-check against `run_3.jl` in
+  `test/chemistry_interface.jl`. The database value is 55345.3 mol/m³ at 20 °C, 0.28 %
+  below. Clearing that debt waits until the other examples are pinned.
 - Add a conservation harness, `test/reactive/conservation.jl`. `element_balance_error`
   answers the right question for a closed cell and the wrong one for a cell transport runs
   through; the general identity is `d/dt ∫T = Σ_Γ ∫J·n`, and VoronoiFVM's test functions

@@ -61,6 +61,37 @@ const V_REV_4 = 1.0e-3   # [m³] = 1 dm³
 # transported species is magnesium, so every call below passes `c_Mg = 0`.
 include("dlm.jl")
 
+# ── Physico-chemical data: read it, do not retype it ──────────────────────────
+#
+# Molar volumes and the molar density of water used to be hard-coded here. They are
+# database values, so the database is where they belong: `sp[:V⁰]` carries them, and the
+# copies had drifted — monosulphate by 0.36 % and Friedel's salt by 0.48 %, which are the
+# two phases whose exchange drives the porosity change.
+#
+# Both helpers are called once per chemistry pass, not once per node.
+
+"""
+    molar_volume(cs, name; T_K, P_Pa) -> Float64
+
+Molar volume [m³/mol] of a species, from the thermodynamic database.
+"""
+function molar_volume(cs, name::AbstractString; T_K = 293.15, P_Pa = 1.0e5)
+    i = findfirst(s -> string(symbol(s)) == name, cs.species)
+    i === nothing && error("molar_volume: `$name` is not in the chemical system")
+    sp = cs.species[i]
+    haskey(sp, :V⁰) || error("molar_volume: `$name` carries no V⁰ in the database")
+    return ustrip(uconvert(us"m^3/mol", sp[:V⁰](T = T_K * us"K", P = P_Pa * us"Pa"; unit = true)))
+end
+
+"""
+    water_density(cs; T_K, P_Pa) -> Float64
+
+Molar density of liquid water [mol/m³], as `1/V̄_w` from the database. 55345 at 20 °C,
+against the 55500 that used to be written here.
+"""
+water_density(cs; T_K = 293.15, P_Pa = 1.0e5) =
+    1 / molar_volume(cs, "H2O@"; T_K = T_K, P_Pa = P_Pa)
+
 # ── Model ─────────────────────────────────────────────────────────────────────
 
 """
@@ -152,7 +183,7 @@ function _compute_opc_ic4(
     n_k = 2.0 * n_K2O
     n_oh_alk = n_na + n_k
     n_h2o_ox = n_Na2O + n_K2O
-    n_water = V_liq * 55_500.0 - n_h2o_ox
+    n_water = V_liq * 55_500.0 - n_h2o_ox   # voir la note sur `water_density`
     n_ch_mol = n_ch0 * V_REV_4
     n_ms_mol = n_ms0 * V_REV_4
     n_ett_mol = n_ett0 * V_REV_4
@@ -355,10 +386,18 @@ K_d_Cl = dS_DLM/dc + 2·dN_fs/dc (tangents), K_d_Na/K/Ca = secant.
 function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
     N = size(u, 2)
     T_q = m.T_K * us"K"
-    Vm_CH = 33.06e-6
-    Vm_ett = 707.0e-6
-    Vm_ms = 309.0e-6
-    Vm_fs = 271.0e-6
+    ## Resolved once per pass, from the database rather than from a copy.
+    Vm_CH = molar_volume(cs, "Portlandite"; T_K = m.T_K)
+    Vm_ett = molar_volume(cs, "ettringite"; T_K = m.T_K)
+    Vm_ms = molar_volume(cs, "monosulphate12"; T_K = m.T_K)
+    Vm_fs = has_friedels ? molar_volume(cs, "C4AClH10"; T_K = m.T_K) : 0.0
+    ## 55 500 rather than `water_density(cs)` = 55 345: the constant is written in five
+    ## files and nine places across the chloride examples, and only this one has a
+    ## regression reference. Changing it here alone breaks the cross-check in
+    ## `test/chemistry_interface.jl`, which compares this initial condition against
+    ## `run_3.jl`'s. Clear the whole debt once the other examples are pinned — see
+    ## `water_density` above for the value the database actually carries.
+    ρ_w_LEGACY = 55_500.0
     ε = 1.0e-15
 
     ## Species positions, resolved once: the tangent below seeds the composition vector
@@ -381,7 +420,7 @@ function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
         n_k = C_K * phi_i * V_REV_4
         n_ca_aq = C_Ca * phi_i * V_REV_4
         n_oh_en = max(n_na + n_k + 2.0 * n_ca_aq - n_cl_aq, 1.0e-20)
-        n_water = phi_i * V_REV_4 * 55_500.0
+        n_water = phi_i * V_REV_4 * ρ_w_LEGACY
 
         state = ChemicalState(cs; T=T_q)
         set_quantity!(state, "H2O@", n_water * us"mol")
@@ -425,7 +464,13 @@ function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
         Δn_ms = n_ms_new - m.n_ms[i]
         Δn_fs = n_fs_new - m.n_fs[i]
         phi_new = phi_i - Δn_ch * Vm_CH - Δn_ett * Vm_ett - Δn_ms * Vm_ms - Δn_fs * Vm_fs
-        m.phi[i] = clamp(phi_new, 1e-4, 0.999)
+        ## The clamp is a guard, not a correction: if it bites, the volume balance has
+        ## produced a porosity outside the physical range and the result downstream is
+        ## meaningless. Say so rather than absorb it silently.
+        if !(1.0e-4 <= phi_new <= 0.999)
+            @warn "porosity out of range — the volume closure is inconsistent" node = i φ = phi_new maxlog = 5
+        end
+        m.phi[i] = clamp(phi_new, 1.0e-4, 0.999)
         m.n_ch[i] = n_ch_new
         m.n_ett[i] = n_ett_new
         m.n_ms[i] = n_ms_new
@@ -448,7 +493,7 @@ function chemistry_step4!(m::ChlorideModel4, u::Matrix, cs, has_friedels::Bool)
         n_k_t = c_k_new * phi_new * V_REV_4
         n_ca_t = c_ca_new * phi_new * V_REV_4
         n_oh_t = max(n_na_t + n_k_t + 2.0 * n_ca_t - n_cl_t, 1.0e-20)
-        n_w_t = phi_new * V_REV_4 * 55_500.0
+        n_w_t = phi_new * V_REV_4 * ρ_w_LEGACY
 
         state_t = ChemicalState(cs; T=T_q)
         set_quantity!(state_t, "H2O@", n_w_t * us"mol")
