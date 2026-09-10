@@ -36,8 +36,9 @@ using PoroMechanics
 """
     IonIndex(; Cl, Na, K, Ca, OH, Mg = 0)
 
-Where each ion the double layer needs sits in the transported vector. `Mg = 0` means the
-system has none, and the model passes a zero concentration — magnesium at zero contributes
+Where each ion sits in the transported vector. `Mg = 0` and `SO4 = 0` mean the system has
+none — sulfate is not used by the double layer at all, only by the AFm exchange next door.
+`Mg = 0` means the system has none, and the model passes a zero concentration — magnesium at zero contributes
 nothing to the site sum, the charge sum or the ionic strength, which is why `dlm.jl` needs
 no separate binary implementation.
 """
@@ -48,6 +49,7 @@ Base.@kwdef struct IonIndex
     Ca::Int
     OH::Int
     Mg::Int = 0
+    SO4::Int = 0
 end
 
 """

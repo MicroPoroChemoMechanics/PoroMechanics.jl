@@ -2,6 +2,49 @@
 
 ## Unreleased
 
+- Add `examples/chloride_ingress/run_5.jl`: the balances of `CLAUDE/gia_formulation.md`
+  assembled into a case — the certified OPC initial state from ChemistryLab, a NaCl
+  boundary, and transport, double layer and AFm exchange as **one implicit system**, with
+  no `equilibrate` inside the time loop. Runs a full year in 350 steps; neutrality holds to
+  1.1e-13 and `x̂` stays in `[0,1]` to 1e-9.
+- Read the exchange constant from the database rather than the literature:
+  `log₁₀K = −1.9838` for `MS + 2Cl⁻ ⇌ FS + SO₄²⁻ + 2H₂O`, with the two waters that the
+  `·6H₂O` and `·4H₂O` hydration states make non-optional.
+- Carry the background charge explicitly. Six ions out of some thirty: the rest have a net
+  `0.63 mol/m³` against `Σ|zc| = 771`, and the constraint reads `Σ zᵢcᵢ = q_bg` rather than
+  zero. Letting one ion absorb it is what `run_4.jl` does to OH⁻.
+- **The AFm exchange does not converge at the monosulphate content `run_4.jl` uses.** The
+  diagnosis matters more than the fact: it is not a physical limit — the released sulfate
+  does not accumulate, the coexistence branch pins `c_SO4` near `K c_Cl²` and the peak is
+  1.59 whatever `n_afm` is — and it is **not monotone**, in `n_afm` (100 converges, 300 does
+  not, 1000 does, 3000 does not) or in the smoothing (`ε = 1e-2` converges at 300 and not at
+  1000, `ε = 1e-4` the reverse). That is Newton chattering across the branch switch, so a
+  fixed `ε` is not the parade; a continuation within each step, or an active set, is. The
+  entry point runs a tenth of the monosulphate and says so, and the two schemes are
+  therefore **not yet comparable on profiles**.
+- Note two diagnostics that cost time. Over-damping stalls Newton rather than stabilising
+  it: at `damp_initial = 0.1` the residual sits at 1e-3 and oscillates for a hundred
+  iterations, which reads as non-smoothness. And the certified OPC equilibrium returns
+  `c_Cl ≈ 8e-301`, a denormal that `run_4.jl` never notices because its transport is linear
+  in `c`, while an affinity takes its logarithm.
+- Add `examples/chloride_ingress/afm_exchange.jl`: the monosulphate ⇌ Friedel's salt
+  exchange as a complementarity **on a box**. Both phases carry the same two aluminium, so
+  one normalised unknown `x̂ = n_FS/n_AFm ∈ [0,1]` describes the pair, and both bounds have
+  to be in the condition — imposing `𝒜 = 0` everywhere drives `x̂` out of the box, imposing
+  `x̂ ≥ 0` alone lets the monosulphate go negative.
+- Use the mid reformulation, `Φ = x̂ − clamp(x̂ − λF, 0, 1)`, smoothed with
+  `(a+b±√((a−b)²+ε²))/2`. **The nested Fischer-Burmeister that one writes first is exactly
+  wrong here**: measured on the four corner cases it returns zero on the two infeasible
+  ones and non-zero on the two feasible ones. The corners are pinned in the tests.
+- Note that in the coexistence branch `Φ = λF`, which does not involve `x̂`: the row's own
+  diagonal is zero and `x̂` is fixed by the chloride and sulfate balances instead. The `ε`
+  smoothing is what puts a diagonal back, so it cannot be driven to zero for free.
+- The three branches occur in a single solution, which is what makes the complementarity
+  testable branch by branch: at the exposed face `x̂ = 1` with `𝒜 = 10.9`, at 1.25 mm
+  `x̂ = 0.794` with `𝒜 = 0` to five decimals, and beyond `x̂ = 0` with `𝒜 < 0`. The
+  physical signature is there too — sulfate reaches 170 mol/m³ at the front against 5 in
+  the bulk and 0.05 at the boundary, released by the conversion and pushed inward.
+  Conservation over the six ions is `2.2e-10`.
 - Add `SurfaceResolvedTransport`: the surface potential as a nodal unknown, with the
   Gouy-Chapman balance as its equation, so nothing is solved inside a callback any more.
   The two formulations of the same physics — nested root-find against nodal unknown — agree

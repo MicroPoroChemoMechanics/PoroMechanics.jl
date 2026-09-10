@@ -59,7 +59,10 @@ const V_REV_4 = 1.0e-3   # [m³] = 1 dm³
 #
 # This model is the binary outer-sphere set of Tran 2018, and none of its four
 # transported species is magnesium, so every call below passes `c_Mg = 0`.
-include("dlm.jl")
+#
+# Guarded like the other two: `run_5.jl` includes this file for its OPC initialisation and
+# has already loaded `dlm.jl` itself. A function may be redefined, a struct may not.
+isdefined(@__MODULE__, :DLM) || include("dlm.jl")
 
 # ── Physico-chemical data: read it, do not retype it ──────────────────────────
 #

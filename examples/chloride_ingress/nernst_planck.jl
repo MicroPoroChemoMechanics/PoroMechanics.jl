@@ -26,7 +26,7 @@
 # ## What it solves
 #
 #     ∂ₜ(φ cᵢ) + ∇·Jᵢ = 0,     Jᵢ = − Dᵢ τ(φ) (∇cᵢ + zᵢ cᵢ ∇Ψ)
-#     Σᵢ zᵢ cᵢ = 0
+#     Σᵢ zᵢ cᵢ = q_background
 #
 # with `Ψ = F φ_e / RT` the dimensionless potential. The closure is the **algebraic**
 # electroneutrality constraint, node-local, with no storage and no flux of its own — the
@@ -74,11 +74,17 @@ Every coefficient is a type parameter, so a `ForwardDiff.Dual` can enter a *para
     the storage does. Mixing that up with `FickModel`, whose `D` is a pore diffusivity,
     costs a factor `1/φ`.
 """
-Base.@kwdef struct NernstPlanck{T, DD, ZZ, TT, B} <: PoroMechanics.AbstractPoroModel
+Base.@kwdef struct NernstPlanck{T, DD, ZZ, TT, Q, B} <: PoroMechanics.AbstractPoroModel
     phi::T = 0.121
     D::DD = (2.032e-9, 1.334e-9, 1.957e-9, 0.792e-9)
     z::ZZ = (-1, 1, 1, 2)
     tortuosity::TT = nothing
+    ## Net charge of everything that is **not** transported [mol·m⁻³ of solution]. A pore
+    ## solution has some thirty aqueous species and this model carries six, so the
+    ## reduction leaves a charge residue: on the OPC initial state it is 0.63 against
+    ## `Σ|zc| = 771`, i.e. 0.082 %. Small, and not zero. Carrying it explicitly is the
+    ## alternative to letting one ion absorb it, which is what `run_4.jl` does to OH⁻.
+    q_background::Q = 0.0
     dirichlet::B = ()
 end
 
@@ -116,14 +122,14 @@ end
 """
     reaction!(f, u, node, m::NernstPlanck, data)
 
-The electroneutrality constraint `Σᵢ zᵢ cᵢ = 0`, which is what determines `Ψ`. Zero for the
-ions: they have no volumetric source here.
+The electroneutrality constraint `Σᵢ zᵢ cᵢ = q_background`, which is what determines `Ψ`.
+Zero for the ions: they have no volumetric source here.
 """
 function PoroMechanics.reaction!(f, u, node, m::NernstPlanck, ::Any)
     for i in 1:nions(m)
         f[i] = zero(eltype(f))
     end
-    f[ipot(m)] = sum(m.z[i] * u[i] for i in 1:nions(m))
+    f[ipot(m)] = sum(m.z[i] * u[i] for i in 1:nions(m)) - m.q_background
     return nothing
 end
 
@@ -172,8 +178,8 @@ end
 """
     net_charge(m, u) -> Vector
 
-`Σᵢ zᵢ cᵢ` at every node. Zero to round-off when the initial and boundary data are
-electroneutral — the property the zero-current closure is there to preserve, and the one
+`Σᵢ zᵢ cᵢ` at every node — to be compared with `q_background`, not with zero. Constant to
+round-off when the initial and boundary data are consistent — the property the zero-current closure is there to preserve, and the one
 `run_4.jl` restores by hand at every chemistry pass instead.
 """
 net_charge(m::NernstPlanck, u) =

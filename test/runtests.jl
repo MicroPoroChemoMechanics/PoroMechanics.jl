@@ -63,6 +63,9 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
 
         # ── The double layer inside the storage, so the inventory is conserved ────
         include("reactive/sorbing_transport.jl")
+
+        # ── The mineral exchange, as a box complementarity ────────────────────────
+        include("reactive/afm_exchange.jl")
     end
 
     # ── Validation against closed-form solutions ──────────────────────────────
