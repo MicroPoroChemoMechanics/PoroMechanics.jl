@@ -20,7 +20,7 @@
 # physics. That is what separates
 #
 #     T = φc + S(c)              the inventory
-#     T = (φ + K_d) c            the linearised retardation, K_d frozen over a step
+#     T = (φ + K_d) c            the linearized retardation, K_d frozen over a step
 #
 # which agree to first order and not at all as a conserved quantity. The second testset
 # below is written to fail if the harness cannot see that difference, because a

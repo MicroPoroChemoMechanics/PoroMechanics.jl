@@ -12,7 +12,7 @@
   the inventory form `T = φc + S(c)` violates the balance by 7e-14 and the frozen
   retardation `T = (φ + K_d)c` by 0.79.
 - Add `chloride_ingress` to the regression cases. It is a **non-regression** reference and
-  is labelled as one: the transient chemistry still reports `MaxIters` from the legacy
+  is labeled as one: the transient chemistry still reports `MaxIters` from the legacy
   interior-point path, so the pinned profile records what the code does rather than what is
   physically right. Its tolerance is 1e-6 rather than the 1e-10 of the pure-transport
   cases, because the interior-point solve is not reproducible in its last digits. It has to
