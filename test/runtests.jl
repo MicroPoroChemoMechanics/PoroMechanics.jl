@@ -52,6 +52,10 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
         # In `core` rather than `chemistry`: `dlm.jl` needs ForwardDiff and nothing else,
         # so it costs nothing and does not pull in the thermodynamic stack.
         include("dlm.jl")
+
+        # ── Does a scheme conserve what it transports? ────────────────────────────
+        # Also `core`: the harness is VoronoiFVM plus a two-line tracer, no chemistry.
+        include("reactive/conservation.jl")
     end
 
     # ── Validation against closed-form solutions ──────────────────────────────

@@ -59,6 +59,23 @@ module _NonisothermalDrying
     include("../../examples/nonisothermal_drying/run.jl")
 end
 
+## `run_4.jl` guards its entry point, so including it defines without running. The case
+## then drives it itself, at a mesh and a duration small enough for CI — this is a
+## **non-regression** reference, not a validation: `CHANGELOG.md` records that the
+## transient chemistry still reports `MaxIters` from the legacy interior-point path, so
+## the profile pinned here is what the code does, not what is physically right.
+##
+## Regenerate with `julia +1.12 --project=examples test/regression/generate.jl
+## chloride_ingress` — **not** the `--project` of the header the reference file carries,
+## since the root environment has neither ChemistryLab nor OptimaSolver.
+module _ChlorideIngress
+    include(joinpath(@__DIR__, "..", "..", "examples", "chloride_ingress", "run_4.jl"))
+    const results, model = run_chloride_ingress4(;
+        N = 12, t_end = 3.1536e6, n_save = 2,
+        dlm = DLM_TRAN2018(n_csh0 = 635.0), n_ms0 = 3000.0,
+    )
+end
+
 module _BiotConsolidation
     include("../../examples/biot_consolidation/run.jl")
 end
@@ -117,6 +134,16 @@ const CASES = [
         # Fixed mesh, one solve: the raw dof vector is already deterministic.
         "biot_consolidation",
         () -> _BiotConsolidation.result.x,
+    ),
+    RegressionCase(
+        # Concentrations, porosity and every solid profile at each saved time. The
+        # chemistry runs through an interior-point solver, so this cannot hold to the
+        # 1e-10 the pure-transport cases do — see the tolerance table in `regression.jl`.
+        "chloride_ingress",
+        () -> reduce(
+            vcat,
+            [vcat(vec(r[2]), reduce(vcat, r[3:end])) for r in _ChlorideIngress.results],
+        ),
     ),
 ]
 

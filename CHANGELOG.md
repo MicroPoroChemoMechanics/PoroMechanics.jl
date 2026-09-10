@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Add a conservation harness, `test/reactive/conservation.jl`. `element_balance_error`
+  answers the right question for a closed cell and the wrong one for a cell transport runs
+  through; the general identity is `d/dt ∫T = Σ_Γ ∫J·n`, and VoronoiFVM's test functions
+  compute the right-hand side exactly. The harness integrates an inventory defined
+  independently of the scheme, which is the only way it can contradict one: applied to a
+  scheme's own storage the identity holds by construction and measures nothing.
+  It falsifies, which was the condition for it to prove anything — on a Langmuir tracer,
+  the inventory form `T = φc + S(c)` violates the balance by 7e-14 and the frozen
+  retardation `T = (φ + K_d)c` by 0.79.
+- Add `chloride_ingress` to the regression cases. It is a **non-regression** reference and
+  is labelled as one: the transient chemistry still reports `MaxIters` from the legacy
+  interior-point path, so the pinned profile records what the code does rather than what is
+  physically right. Its tolerance is 1e-6 rather than the 1e-10 of the pure-transport
+  cases, because the interior-point solve is not reproducible in its last digits. It has to
+  be regenerated from the `examples` environment, the root one having no chemistry stack.
 - Merge the three copies of the C-S-H double layer model into
   `examples/chloride_ingress/dlm.jl`. `run_4.jl`, `tran2018.jl` and `chloride_ternary.jl`
   each carried their own; they differed only in whether magnesium was present, in the
