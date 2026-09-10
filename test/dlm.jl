@@ -47,10 +47,16 @@ end
         ## alone, so the two must agree or the schemes will not.
         for dlm in (D.DLM_TRAN2018(), D.DLM_TERNARY())
             β = D.solve_dlm(st...; dlm = dlm, T_K = 293.15)[1]
-            r = D.dlm_residual(β, st[1], st[2], st[3], st[4], st[5], st[6], st[8];
-                dlm = dlm, T_K = 293.15)
-            scale = abs(D.dlm_residual(β + 1.0e-3, st[1], st[2], st[3], st[4], st[5],
-                st[6], st[8]; dlm = dlm, T_K = 293.15) - r) / 1.0e-3
+            r = D.dlm_residual(
+                β, st[1], st[2], st[3], st[4], st[5], st[6], st[8];
+                dlm = dlm, T_K = 293.15
+            )
+            scale = abs(
+                D.dlm_residual(
+                    β + 1.0e-3, st[1], st[2], st[3], st[4], st[5],
+                    st[6], st[8]; dlm = dlm, T_K = 293.15
+                ) - r
+            ) / 1.0e-3
             @test abs(r) < 1.0e-8 * max(scale, 1.0)
         end
     end
@@ -65,8 +71,10 @@ end
             h = 1.0e-4 * st[k]
             up = ntuple(i -> i == k ? st[i] + h : st[i], 8)
             dn = ntuple(i -> i == k ? st[i] - h : st[i], 8)
-            S_fd = (D.solve_dlm(up...; dlm = dlm, T_K = 293.15)[2] -
-                D.solve_dlm(dn...; dlm = dlm, T_K = 293.15)[2]) / (2h)
+            S_fd = (
+                D.solve_dlm(up...; dlm = dlm, T_K = 293.15)[2] -
+                    D.solve_dlm(dn...; dlm = dlm, T_K = 293.15)[2]
+            ) / (2h)
             @test S_ad ≈ S_fd rtol = 1.0e-5
         end
     end
@@ -106,10 +114,14 @@ end
         ## and it is why the mechanism is a type rather than a number.
         cH = 1.0e-4
         args = (0.3, 546.0, 9.97, 52.2, cH)
-        b_outer = D.dlm_charge_sum(args[1], args[2], args[3], args[4], args[5],
-            D.DLM_TRAN2018())
-        b_tern = D.dlm_charge_sum(args[1], args[2], args[3], args[4], args[5],
-            D.DLM_TERNARY())
+        b_outer = D.dlm_charge_sum(
+            args[1], args[2], args[3], args[4], args[5],
+            D.DLM_TRAN2018()
+        )
+        b_tern = D.dlm_charge_sum(
+            args[1], args[2], args[3], args[4], args[5],
+            D.DLM_TERNARY()
+        )
         @test b_outer != b_tern
         ## With no chloride at all the two charge sums coincide, since the only term that
         ## distinguishes them is the chloride one.
