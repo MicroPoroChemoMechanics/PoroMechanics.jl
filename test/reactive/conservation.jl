@@ -61,21 +61,29 @@ function boundary_influx(sys, u, uold, Δt, regions)
 end
 
 """
-    conservation_defect(sys, tsol, regions; F) -> (worst, step, scale)
+    conservation_defect(sys, tsol, regions; F, species) -> (worst, step, scale)
 
 Worst relative violation of `d/dt ∫T = Σ_Γ influx` over the steps of `tsol`, the step it
 occurs at, and the scale it is relative to. `F` defaults to the scheme's own storage, in
 which case the identity is exact by construction — pass the physical inventory instead to
 make the check bite.
+
+**Pass `species` whenever the model has algebraic rows.** A row with no storage — an
+electroneutrality constraint, a surface-potential equation — has `rate = 0` while
+`integrate` returns its constraint residual, so the difference is that residual, divided by
+a scale the transported rows set. It reads as a conservation defect and is nothing of the
+kind. On the double layer model this contaminated figure is `1e-8` against `1.1e-11` for
+the transported rows alone: three orders of noise, and it cost two wrong explanations
+before the cause was found.
 """
-function conservation_defect(sys, tsol, regions; F = sys.physics.storage)
+function conservation_defect(sys, tsol, regions; F = sys.physics.storage, species = :)
     worst, at, scale = 0.0, 0, 0.0
     for k in 2:length(tsol.t)
         u, uold = tsol.u[k], tsol.u[k - 1]
         Δt = tsol.t[k] - tsol.t[k - 1]
         Δt > 0 || continue
-        rate = (inventory(sys, u, F) .- inventory(sys, uold, F)) ./ Δt
-        influx = sum(boundary_influx(sys, u, uold, Δt, regions); dims = 2) |> vec
+        rate = ((inventory(sys, u, F) .- inventory(sys, uold, F)) ./ Δt)[species]
+        influx = (sum(boundary_influx(sys, u, uold, Δt, regions); dims = 2) |> vec)[species]
         ## The scale is the size of the terms being differenced, not of their difference:
         ## a defect is only meaningful next to the flux that produced it.
         s = max(norm(rate), norm(influx))

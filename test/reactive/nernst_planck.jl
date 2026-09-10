@@ -99,11 +99,11 @@ end
     end
 
     @testset "and it conserves" begin
-        ## `conservation.jl` is included by `runtests.jl` before this file, so the harness
-        ## is in scope. Charge has no storage, so its row is excluded: `d/dt ∫T = Σ influx`
-        ## is a statement about the ions.
+        ## Charge has no storage, so its row is excluded — `d/dt ∫T = Σ influx` is a
+        ## statement about the ions, and including the constraint row reports its residual
+        ## instead. See the note on `species` in `conservation_defect`.
         m, sys, tsol = nacl()
-        worst, _, _ = conservation_defect(sys, tsol, [1, 2])
+        worst, _, _ = conservation_defect(sys, tsol, [1, 2]; species = 1:2)
         @test worst < 1.0e-10
     end
 

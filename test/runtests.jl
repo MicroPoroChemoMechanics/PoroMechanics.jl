@@ -60,6 +60,9 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
         # ── Multi-ionic transport with a zero-current closure ─────────────────────
         # Uses the harness above, so it comes after it.
         include("reactive/nernst_planck.jl")
+
+        # ── The double layer inside the storage, so the inventory is conserved ────
+        include("reactive/sorbing_transport.jl")
     end
 
     # ── Validation against closed-form solutions ──────────────────────────────

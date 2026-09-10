@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- Add `SurfaceResolvedTransport`: the surface potential as a nodal unknown, with the
+  Gouy-Chapman balance as its equation, so nothing is solved inside a callback any more.
+  The two formulations of the same physics — nested root-find against nodal unknown — agree
+  to `1.9e-16` on every transported species, which is the strongest check either can get.
+  The nodal one is **6.6× faster** (1.5 s against 9.9 s for the same 67 steps): removing a
+  bisection from a storage term evaluated on `Dual`s, once per node per Newton iteration,
+  more than pays for the extra unknown. Its residual is scaled by `F Γ_max`, without which
+  it sits four orders below the concentration rows that Newton measures convergence on.
+- Note that the algebraic unknown needs a consistent initial value. `β = 0` is not on the
+  constraint manifold, and the first step then has to move the whole surface inventory at
+  once: the step controller collapses to `Δt_min` and reports `Δu/Δu_opt = 1.8e8`, which
+  reads as a physics failure and is an initialisation failure.
+- **Fix `conservation_defect`**, which was measuring the wrong thing on models with
+  algebraic rows. A row with no storage has `rate = 0` while `integrate` returns its
+  constraint residual, so the difference is that residual over a scale the transported rows
+  set. On the double layer model that reported `1e-8`; restricted to the rows that have a
+  storage it is `1.1e-11`. It takes a `species` argument now. Two explanations of the
+  `1e-8` were proposed and measured before the cause was found — the bisection tolerance
+  and the Newton tolerance — and neither survived: tightening Newton to `1e-12` made it
+  marginally worse.
+- Add `examples/chloride_ingress/sorbing_transport.jl`: the double layer inside the
+  **storage**, so that `T_i = φ c_i + S_i(c)` is what the scheme conserves. `S_i` is a
+  function of the unknowns rather than a field refreshed between segments, so VoronoiFVM
+  differentiates it and the whole matrix `∂S_i/∂c_j` lands in the Jacobian — exactly, and
+  without the lag. The surface potential is still a root-find inside the storage term, once
+  per node per Newton iteration; that is affordable (67 steps, 11 s on 41 nodes) and it is
+  the reduced-Newton idea applied where it is cheap.
+- Measure what the diagonal retardation of `run_4.jl` discards. At the front, the row of
+  `∂S_Cl/∂c` reads `+1.64e-3` for chloride, `−2.71e-5` for sodium and potassium, `−6.56e-4`
+  for hydroxide and **`−1.51e-2` for calcium** — 9.2 times the diagonal term, and of the
+  opposite sign. Calcium competes for the deprotonated silanol sites, so it governs
+  chloride binding more strongly than chloride does. Keeping only `∂S_Cl/∂c_Cl` keeps the
+  second smallest term of the row.
+- Measure the conservation defect on the real double layer: `1.0e-8` for the inventory
+  form against `2.7e-2` for a frozen `K_d`, six orders apart. The `1.0e-8` is not
+  round-off and its floor is identified: `solve_dlm` brackets β to `1e-9` and
+  `dS_Cl/dβ = 0.197`, so `S_Cl` is defined to about `1.1e-9` relative and the transient
+  accumulates it. Promoting β to a nodal unknown, which `dlm_residual` exists for, removes
+  the root-find and that floor together.
 - Add `examples/chloride_ingress/nernst_planck.jl`: multi-ionic transport with a
   zero-current closure, the transport core of the rewrite of `run_4.jl` onto conservative
   balances. Ions of different mobility cannot separate freely, and `run_4.jl` lets them:
