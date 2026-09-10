@@ -108,7 +108,7 @@ end
         ## β is algebraic, so the initial value has to sit on the constraint manifold
         ## already. Starting it at zero makes the first step move the whole surface
         ## inventory at once, and the step controller collapses to `Δt_min` — a
-        ## consistent-initialisation failure that reads like a physics failure.
+        ## consistent-initialization failure that reads like a physics failure.
         d = ST.DLM_TRAN2018(n_csh0 = 635.0)
         iv[7, :] .= ST.solve_dlm(CIC[1], CIC[2], CIC[3], CIC[4], 0.0, CIC[5], 635.0, 1.5; dlm = d)[1]
         iv[7, 1] = ST.solve_dlm(CBC[1], CBC[2], CBC[3], CBC[4], 0.0, CBC[5], 635.0, 1.5; dlm = d)[1]

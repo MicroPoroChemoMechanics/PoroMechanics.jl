@@ -13,7 +13,7 @@
 - Note that the algebraic unknown needs a consistent initial value. `β = 0` is not on the
   constraint manifold, and the first step then has to move the whole surface inventory at
   once: the step controller collapses to `Δt_min` and reports `Δu/Δu_opt = 1.8e8`, which
-  reads as a physics failure and is an initialisation failure.
+  reads as a physics failure and is an initialization failure.
 - **Fix `conservation_defect`**, which was measuring the wrong thing on models with
   algebraic rows. A row with no storage has `rate = 0` while `integrate` returns its
   constraint residual, so the difference is that residual over a scale the transported rows
