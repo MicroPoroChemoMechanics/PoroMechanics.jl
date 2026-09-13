@@ -78,8 +78,9 @@ reactive-transport profile.
 
 Since ChemistryLab 0.14, `equilibrate(state)` uses the certified route by default. This
 affects example 2b and may change compositions and runtime. Calls that explicitly pass an
-optimizer retain the single-backend behavior, including the transient callbacks in
-examples 3 and 4. Updating the dependency alone does not certify those transient results.
+optimizer retain the single-backend behavior, including the transient callback in
+example 3. Example 4 explicitly requires certified transient equilibria and Friedel
+sensitivities, and aborts the segment if certification fails.
 
 ### Validation status
 
@@ -91,13 +92,15 @@ examples 3 and 4. Updating the dependency alone does not certify those transient
 | BBM, Drucker–Prager | Material paths, tangents and parameter sensitivities; BBM reference cases | Live Bil comparisons require an external Bil checkout |
 | Homogenization | Cell tests and reference comparisons | 2D plane strain; Float64 assembly and finite-difference macroscopic tangent |
 | Non-isothermal drying | Profile regression | Regression alone does not establish physical accuracy |
-| Chloride and reactive transport | Chemistry interface, element balance and certified OPC initialization for examples 3 and 4 | No full-profile regression; transient chemistry still uses the legacy solver |
+| Chloride and reactive transport | Chemistry interface, element balance, certified OPC initialization, example 4 profile regression and certified transient chemistry | Example 3 retains legacy transient chemistry; full SNIA accuracy and conservation remain unvalidated |
 
 The reactive examples are experimental. Examples 3 and 4 now initialize OPC through
 ChemistryLab’s certified solver, checked against the original element totals. The legacy
 interior-point solver still fails the OPC mass-action criterion in
-`test/chemistry_interface.jl` and remains in the transient chemistry callbacks. Certifying
-the initial condition does not validate the full transport history. The previously reported
+`test/chemistry_interface.jl` and remains in example 3's transient callback. Example 4's
+reference was renewed after replacing its unconverged transient chemistry; see the
+[regression comparison](test/regression/README.md). Certifying local equilibria does not
+validate the full transport history. The previously reported
 solid-solution `ChemicalState` construction failures in `tran2018.jl` and
 `m100_ternary.jl` were not reproduced in the migration checks under either 0.13.0 or
 0.14.2 with the current example code and saved dependency environments. Their full

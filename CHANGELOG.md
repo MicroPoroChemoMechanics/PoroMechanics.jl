@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Certify every transient equilibrium and Friedel sensitivity in `run_4.jl`, and abort
+  the segment when certification fails. Renew the chloride regression reference for
+  this solver correction without changing its tolerance. The previous reference
+  contained unconverged states that amplified tiny initialization differences across
+  OptimaSolver versions. See `test/regression/README.md` for the numerical comparison.
+
 - Correct the reduced-Newton equilibrium adapter: pass complete signed totals explicitly,
   retain a separate physical starting state, and reject uncertified chemistry in flux
   assembly. Validate component bases and compare aqueous component totals consistently.

@@ -151,6 +151,19 @@ end
 
     equilibrated = equilibrate(state, OptimaOptimizer(tol = 1.0e-10, verbose = false))
 
+    @testset "transient chemistry requires a certificate" begin
+        solve_transient = _OPC4.certified_transient_equilibrium4
+        @test_throws ErrorException solve_transient(state; solve_equilibrium = s -> (s, (; optimal = false)))
+        @test_throws ErrorException solve_transient(state; solve_equilibrium = s -> (s, nothing))
+        @test_throws DomainError solve_transient(state; solve_equilibrium = s -> throw(DomainError(s)))
+        eq = solve_transient(state)
+        des = ChemistryLab.DualEquilibriumSolver(system)
+        b = des.A * ustrip.(us"mol", state.n)
+        @test ChemistryLab.optimality_certificate(des, eq; b).optimal
+        _, balance_error = _Balance.element_balance_error(state, eq, system)
+        @test balance_error < 1.0e-8
+    end
+
     @testset "certified OPC initialization" begin
         eq, certificate = _Balance.certified_initial_equilibrium(state; initial_guess = equilibrated)
         @test certificate.optimal

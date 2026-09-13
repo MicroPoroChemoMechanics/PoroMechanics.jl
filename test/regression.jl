@@ -22,9 +22,8 @@ const REGRESSION_TOLERANCES = Dict(
     "richards_1d" => 1.0e-3,
     "nonisothermal_drying" => 1.0e-10,
     "biot_consolidation" => 1.0e-10,
-    ## Not 1e-10: the chemistry goes through an interior-point solve whose last digits are
-    ## not reproducible across BLAS builds. Loose enough to survive that, tight enough
-    ## that a changed profile still shows.
+    ## Certified chemistry still has solver and phase-boundary tolerances. Keep the
+    ## existing threshold after replacing the unconverged interior-point reference.
     "chloride_ingress" => 1.0e-6,
 )
 

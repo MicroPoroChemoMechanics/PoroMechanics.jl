@@ -61,9 +61,9 @@ end
 
 ## `run_4.jl` guards its entry point, so including it defines without running. The case
 ## then drives it itself, at a mesh and a duration small enough for CI — this is a
-## **non-regression** reference, not a validation: `CHANGELOG.md` records that the
-## transient chemistry still reports `MaxIters` from the legacy interior-point path, so
-## the profile pinned here is what the code does, not what is physically right.
+## regression reference, not a validation of the full SNIA scheme. Every transient
+## equilibrium and Friedel sensitivity must now be certified. The reference was renewed
+## after replacing the unconverged interior-point path; see `README.md` in this folder.
 ##
 ## Regenerate with `julia +1.12 --project=examples test/regression/generate.jl
 ## chloride_ingress` — **not** the `--project` of the header the reference file carries,
@@ -136,9 +136,9 @@ const CASES = [
         () -> _BiotConsolidation.result.x,
     ),
     RegressionCase(
-        # Concentrations, porosity and every solid profile at each saved time. The
-        # chemistry runs through an interior-point solver, so this cannot hold to the
-        # 1e-10 the pure-transport cases do — see the tolerance table in `regression.jl`.
+        # Concentrations, porosity, solids and adsorbed amounts at each saved time.
+        # Local equilibria are certified; the full profile retains the existing
+        # portability tolerance in `regression.jl`.
         "chloride_ingress",
         () -> reduce(
             vcat,
