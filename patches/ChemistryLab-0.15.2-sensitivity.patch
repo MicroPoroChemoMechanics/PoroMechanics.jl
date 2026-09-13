@@ -1,0 +1,188 @@
+diff --git a/src/equilibrium/dual_solver.jl b/src/equilibrium/dual_solver.jl
+index 5115003..a8fde45 100644
+--- a/src/equilibrium/dual_solver.jl
++++ b/src/equilibrium/dual_solver.jl
+@@ -225,9 +225,10 @@ function optimality_certificate(
+         des::DualEquilibriumSolver, state::ChemicalState;
+         b = nothing, ϵ::Float64 = 1.0e-16, floor::Float64 = 1.0e-25,
+     )
+-    p = _build_params(state; ϵ = ϵ)
+-    n = Float64[ustrip(us"mol", x) for x in state.n]
+-    bv = b === nothing ? des.A * n : Float64.(collect(b))
++    primal = _primal(state)
++    p = _build_params(primal; ϵ = ϵ)
++    n = Float64[ustrip(us"mol", x) for x in primal.n]
++    bv = b === nothing ? des.A * n : _plain.(collect(b))
+ 
+     c = _optima_kkt_certificate(
+         _dual_problem(des, p, n), n, bv, floor, des.opts.tol, des.opts.si_tol,
+diff --git a/src/equilibrium/equilibrium_solver.jl b/src/equilibrium/equilibrium_solver.jl
+index 5e4f90f..349afcd 100644
+--- a/src/equilibrium/equilibrium_solver.jl
++++ b/src/equilibrium/equilibrium_solver.jl
+@@ -220,48 +220,52 @@ with `ndot = 0` on the complement and `H = grad^2 G` at the solution. One
+ factorization serves every partial derivative, and the answer is exact — no
+ finite difference, no step size.
+ 
+-The complementarity block is not optional, and dropping it fails loudly rather
+-than subtly: on calcite + CO2 in water **with a gas phase declared**, the
+-unreduced system puts the whole perturbation into the absent gas species —
+-`n(CO2,g) = 5.8e-9`, held at its bound — returning `ndot = e_CO2(g)`, which
+-satisfies `A ndot = bdot` to 4e-16 and means nothing.
+-
+-No back-end returns `z`, so the active set is recovered here: a species that is
+-negligible on the scale of the system yet takes a leading share of the response
+-is pinned, and the system re-solved. Each pass pins at least one species, so the
+-loop terminates.
++The caller pins absent pure phases. Members of mixing phases, including aqueous
++traces, remain free: their small amount does not remove their conservation law.
++The KKT matrix is row/column equilibrated before a rank-revealing solve; both
++stationarity and the imposed component perturbation are checked before returning.
++Redundant conservation rows may make the multipliers nonunique, but may not change
++the species response or erase a component perturbation.
+ 
+ `H` is singular by construction, and correctly so — a pure phase has unit
+ activity, hence a zero row. The saddle-point form handles that; any method
+ inverting `H` does not.
+ """
+-function _equilibrium_sensitivity(A, H, gθ, bdot, nstar; maxpin::Int = 8)
+-    ns = length(nstar)
++function _equilibrium_sensitivity(A, H, gθ, bdot, nstar; pinned = falses(length(nstar)))
++    # Only absent non-mixing phases are pinned by the caller. A trace aqueous
++    # species still carries its component, however small its amount is.
++    free = findall(!, pinned)
+     m = size(A, 1)
+-    scale = maximum(abs, nstar)
+-    pinned = falses(ns)
+-    ndot = zeros(ns)
+-
+-    for _ in 0:maxpin
+-        free = findall(!, pinned)
+-        K = [H[free, free] A[:, free]'; A[:, free] zeros(m, m)]
+-        rhs = vcat(-gθ[free], bdot)
+-        sol = try
+-            K \ rhs
+-        catch
+-            pinv(Matrix(K)) * rhs
+-        end
+-        fill!(ndot, 0.0)
+-        ndot[free] .= sol[1:length(free)]
+-
+-        big = maximum(abs, ndot)
+-        offenders = [
+-            i for i in free
+-                if nstar[i] < 1.0e-6 * scale && abs(ndot[i]) > 0.1 * big
+-        ]
+-        isempty(offenders) && return ndot
+-        pinned[offenders] .= true
++    K = [H[free, free] A[:, free]'; A[:, free] zeros(m, m)]
++    rhs = vcat(-gθ[free], bdot)
++    all(isfinite, K) && all(isfinite, rhs) || error("nonfinite equilibrium sensitivity system")
++
++    # Equilibrate before rank-revealing solution: trace species can have curvature
++    # near 1e300, whereas the conservation block has order-one entries. Applying
++    # pinv to the unscaled matrix silently discards the conservation equations.
++    scaled = copy(K)
++    load = copy(rhs)
++    columns = ones(size(K, 2))
++    for _ in 1:32
++        rs = vec(maximum(abs, scaled; dims = 2))
++        rs = map(x -> iszero(x) ? 1.0 : inv(x), rs)
++        scaled .*= rs
++        load .*= rs
++        cs = vec(maximum(abs, scaled; dims = 1))
++        cs = map(x -> iszero(x) ? 1.0 : inv(x), cs)
++        scaled .*= cs'
++        columns .*= cs
+     end
++    F = svd(scaled)
++    cutoff = maximum(F.S) * max(size(scaled)...) * eps(Float64)
++    y = F.V * [s > cutoff ? v / s : 0.0 for (s, v) in zip(F.S, F.U' * load)]
++    solution = columns .* y
++    ndot = zeros(length(nstar))
++    ndot[free] .= solution[1:length(free)]
++    norm(scaled * y - load, Inf) <= 1.0e-8 * max(1.0, norm(load, Inf)) ||
++        error("equilibrium sensitivity does not satisfy stationarity")
++    norm(A * ndot - bdot, Inf) <= 1.0e-8 * max(1.0, norm(bdot, Inf)) ||
++        error("equilibrium sensitivity does not conserve the imposed component perturbation")
+     return ndot
+ end
+ 
+@@ -459,15 +463,28 @@ function _attach_sensitivity(
+     state_v = _primal(state)
+ 
+     A = Float64.(state.system.SM.A)
+-    p_v = _build_params(state_v; ϵ = ϵ)
++    # Differentiate the physical log activities, not the numerical floor used
++    # by the primal optimizer. In a certified state aqueous traces may be < ϵ.
++    positive = filter(>(0), nstar)
++    sensitivity_floor = isempty(positive) ? ϵ : min(ϵ, max(floatmin(Float64), minimum(positive) / 10))
++    p_v = _build_params(state_v; ϵ = sensitivity_floor)
+     H = ForwardDiff.jacobian(n -> esolver.μ(n, p_v), nstar)
+ 
+     # The parameter enters through the potentials and through the element
+     # amounts; both partial derivatives are read off the dual parts.
+-    p_d = _build_params(state; ϵ = ϵ)
++    p_d = _build_params(state; ϵ = sensitivity_floor)
+     μ_d = esolver.μ(nstar, p_d)
+     n0_d = _build_n0(state)
+ 
++    pinned = falses(length(nstar))
++    # Mixing-phase members remain free, including aqueous traces. The certificate
++    # treats only absent pure phases as bound-constrained.
++    if _dual_applicable(state.system)
++        des = DualEquilibriumSolver(state.system)
++        for i in des.idx_pure
++            pinned[i] = nstar[i] <= 1.0e-25
++        end
++    end
+     npart = ForwardDiff.npartials(R)
+     ns = length(nstar)
+     ndot = Matrix{Float64}(undef, ns, npart)
+@@ -476,7 +493,7 @@ function _attach_sensitivity(
+         bdot = isnothing(b) ?
+             A * Float64[ForwardDiff.partials(nᵢ, k) for nᵢ in n0_d] :
+             Float64[ForwardDiff.partials(bᵢ, k) for bᵢ in b]
+-        @views ndot[:, k] .= _equilibrium_sensitivity(A, H, gθ, bdot, nstar)
++        @views ndot[:, k] .= _equilibrium_sensitivity(A, H, gθ, bdot, nstar; pinned = pinned)
+     end
+ 
+     Tag = ForwardDiff.tagtype(R)
+diff --git a/test/runtests.jl b/test/runtests.jl
+index 0774afd..65c3b58 100644
+--- a/test/runtests.jl
++++ b/test/runtests.jl
+@@ -8,6 +8,8 @@ using OrderedCollections
+ using Test
+ using TimerOutputs
+ 
++include("trace_sensitivity.jl")
++
+ macro testsection(str, block)
+     return quote
+         @timeit "$($(esc(str)))" begin
+diff --git a/test/trace_sensitivity.jl b/test/trace_sensitivity.jl
+new file mode 100644
+--- /dev/null
++++ b/test/trace_sensitivity.jl
+@@ -0,0 +1,20 @@
++using Test, ChemistryLab, LinearAlgebra
++@testset "Trace sensitivities preserve conservation" begin
++    for trace in (1.0e-13, 1.0e-100, 1.0e-300)
++        A = Matrix{Float64}(I, 2, 2)
++        n = [1.0e4, trace]
++        db = [0.0, 1.0]
++        dn = ChemistryLab._equilibrium_sensitivity(A, diagm(1 ./ n), zeros(2), db, n)
++        @test dn ≈ db atol = 1.0e-10
++        redundant = [1.0 0.0; 0.0 1.0; 0.0 2.0]
++        dn = ChemistryLab._equilibrium_sensitivity(redundant, diagm(1 ./ n), zeros(2), redundant * db, n)
++        @test redundant * dn ≈ redundant * db atol = 1.0e-10
++    end
++    A = [1.0 1.0]
++    dn = ChemistryLab._equilibrium_sensitivity(A, diagm([1.0, 0.0]), zeros(2), [1.0], [1.0, 0.0]; pinned = [false, true])
++    @test dn ≈ [1.0, 0.0]
++    @test_throws ErrorException ChemistryLab._equilibrium_sensitivity(
++        Matrix{Float64}(I, 2, 2),
++        diagm([1.0, 0.0]), zeros(2), [0.0, 1.0], [1.0, 0.0]; pinned = [false, true]
++    )
++end

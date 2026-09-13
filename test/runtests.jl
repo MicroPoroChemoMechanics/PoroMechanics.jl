@@ -79,6 +79,7 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
 
     # ── The dialog with ChemistryLab ─────────────────────────────────────────
     "chemistry" in TEST_GROUPS && include("chemistry_interface.jl")
+    "chemistry" in TEST_GROUPS && include("reactive/equilibrated_transport.jl")
 
     # ── Agreement with Bil, an independently written code ─────────────────────
     "bil" in TEST_GROUPS && include("bil.jl")

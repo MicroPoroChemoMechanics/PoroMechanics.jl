@@ -62,13 +62,19 @@ That is also why the chemistry stack is not a dependency of this package: nothin
 calls it. `ChemistryLab.jl` and `OptimaSolver.jl` are dependencies of `examples/` and of the
 test suite, where they are actually used.
 
-The examples and tests use ChemistryLab **0.14.2** with OptimaSolver **0.5**. Compatible
-patch updates are allowed; a new ChemistryLab minor version needs another compatibility
-review. Update an existing examples environment with:
+The examples and tests use ChemistryLab **0.15.2** with OptimaSolver **0.5** and
+an upstream sensitivity correction maintained as a local patch. Before using either
+environment on a fresh checkout, prepare the pinned source:
 
 ```sh
-julia +1.12 --project=examples -e 'using Pkg; Pkg.update(["ChemistryLab", "OptimaSolver"])'
+julia +1.12 scripts/prepare_chemistrylab.jl
+julia +1.12 --project=examples -e 'using Pkg; Pkg.instantiate()'
 ```
+
+See [patches/README.md](patches/README.md) for the correction and its validation.
+The example `examples/chloride_ingress/repro_equilibrated_transport.jl` checks a
+certified component equilibrium and its Jacobian; it does not validate a long-term
+reactive-transport profile.
 
 Since ChemistryLab 0.14, `equilibrate(state)` uses the certified route by default. This
 affects example 2b and may change compositions and runtime. Calls that explicitly pass an

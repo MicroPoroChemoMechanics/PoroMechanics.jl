@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- Correct the reduced-Newton equilibrium adapter: pass complete signed totals explicitly,
+  retain a separate physical starting state, and reject uncertified chemistry in flux
+  assembly. Validate component bases and compare aqueous component totals consistently.
+- Use ChemistryLab 0.15.2 with a reproducible upstream sensitivity patch. Preserve trace
+  aqueous responses, scale the KKT system and check differentiated conservation. The
+  patch also permits primal certification of dual-valued states. See `patches/README.md`.
+- Add OPC balance, gradient and failure-propagation tests plus a maintained reproduction
+  under `examples/chloride_ingress/`. Long-term transport validation remains separate.
+
+- Measure what a nested `equilibrate` costs, which is the question step E of the plan
+  deferred and never answered. The two objections raised against nesting — its cost with
+  seeded derivatives, and its robustness on the non-physical iterates Newton proposes — do
+  not survive measurement.
+
+  | | measured |
+  |---|---|
+  | `equilibrate`, isolated state | 22 ms |
+  | `equilibrate`, sequence of neighboring states | **6.4 ms** median, 10 ms mean, 231 ms worst |
+  | derivatives, 1 to 9 partials | **×1.2 to ×1.6** — the implicit-function route is nearly free |
+  | adversarial iterates (negative concentrations, zero OH, 1e-15 everywhere) | **7/7 survived** |
+  | `solve_certified` | 25–31 ms, slower than `equilibrate` — not the path to nest |
+
+  Budget at 6.4 ms: 6.1 minutes for a 41-node year-long run at four Newton iterations per
+  step, against 0.1 minute for the SNIA of `run_4.jl`, and about an hour at 400 nodes.
+  Affordable.
+- The consequence is that the hand-written AFm complementarity, which chatters, is solving
+  a problem ChemistryLab already solves with an active set built for phase stability. The
+  explicit-residual DSA of step F loses both of its arguments at once.
 - Add `examples/chloride_ingress/run_5.jl`: the balances of `CLAUDE/gia_formulation.md`
   assembled into a case — the certified OPC initial state from ChemistryLab, a NaCl
   boundary, and transport, double layer and AFm exchange as **one implicit system**, with
@@ -22,14 +50,14 @@
   fixed `ε` is not the parade; a continuation within each step, or an active set, is. The
   entry point runs a tenth of the monosulphate and says so, and the two schemes are
   therefore **not yet comparable on profiles**.
-- Note two diagnostics that cost time. Over-damping stalls Newton rather than stabilising
+- Note two diagnostics that cost time. Over-damping stalls Newton rather than stabilizing
   it: at `damp_initial = 0.1` the residual sits at 1e-3 and oscillates for a hundred
   iterations, which reads as non-smoothness. And the certified OPC equilibrium returns
   `c_Cl ≈ 8e-301`, a denormal that `run_4.jl` never notices because its transport is linear
   in `c`, while an affinity takes its logarithm.
 - Add `examples/chloride_ingress/afm_exchange.jl`: the monosulphate ⇌ Friedel's salt
-  exchange as a complementarity **on a box**. Both phases carry the same two aluminium, so
-  one normalised unknown `x̂ = n_FS/n_AFm ∈ [0,1]` describes the pair, and both bounds have
+  exchange as a complementarity **on a box**. Both phases carry the same two aluminum, so
+  one normalized unknown `x̂ = n_FS/n_AFm ∈ [0,1]` describes the pair, and both bounds have
   to be in the condition — imposing `𝒜 = 0` everywhere drives `x̂` out of the box, imposing
   `x̂ ≥ 0` alone lets the monosulphate go negative.
 - Use the mid reformulation, `Φ = x̂ − clamp(x̂ − λF, 0, 1)`, smoothed with
