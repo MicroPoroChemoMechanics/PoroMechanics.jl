@@ -87,7 +87,10 @@ end
         initial = repeat(totals, 1, 3)
         initial[1, 1] += 1.0 # A NaCl perturbation at the left node.
         initial[2, 1] += 1.0
-        control = VoronoiFVM.SolverControl(; Δt = 1.0, Δt_max = 1.0, Δt_min = 1.0e-4)
+        # Retry failed Newton steps with a smaller time step down to Δt_min.
+        control = VoronoiFVM.SolverControl(;
+            Δt = 1.0, Δt_max = 1.0, Δt_min = 1.0e-4, handle_exceptions = true,
+        )
         solution = VoronoiFVM.solve(sys; inival = initial, times = [0.0, 1.0], control)
         final = solution(1.0)
         weights = [0.0025, 0.005, 0.0025]
