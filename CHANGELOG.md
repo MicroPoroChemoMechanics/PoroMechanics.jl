@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Add `examples/fickian_identification/run.jl`, the inverse of the Fick example. It
+  identifies `D` and `c_in` from noisy points on analytical profiles, using
+  Levenberg–Marquardt with a `ForwardDiff` Jacobian of the transient solve. The Jacobian is
+  checked against central differences. The example also shows that the porosity cannot be
+  identified, reports standard errors, and measures the discretization bias under mesh
+  refinement. The transient solve is differentiated through `ODEProblem` and
+  OrdinaryDiffEq, because `VoronoiFVM.solve` turns the time into a `Dual` and fails.
+  `OrdinaryDiffEq = "7"` is added to `docs/Project.toml`. `demos/solver_sensitivity.jl`
+  no longer states that transient FVM solves cannot be differentiated.
+- Rewrite the Getting Started page for beginners: schematics of the problem and of the
+  finite volume discretization, the link between each term of the balance and each
+  callback, the meaning of `u[i]` and `u[i, j]`, generic functions and dispatch, and the
+  step-size controller.
+
 - Certify every transient equilibrium and Friedel sensitivity in `run_4.jl`, and abort
   the segment when certification fails. Renew the chloride regression reference for
   this solver correction without changing its tolerance. The previous reference

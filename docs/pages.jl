@@ -3,6 +3,7 @@ pages = [
     "Getting Started" => "quickstart.md",
     "Examples" => [
         "Fickian diffusion 1D"   => "examples/fickian_diffusion.md",
+        "Identifying a diffusion coefficient" => "examples/fickian_identification.md",
         "Darcy column"           => "examples/darcy_column.md",
         "Richards 1D"            => "examples/richards_1d.md",
         "Non-isothermal drying"  => "examples/nonisothermal_drying.md",

@@ -34,6 +34,7 @@ const NONEXECUTED_BENCHMARKS = ["bil_richards", "bil_poroplast", "bil_mechamic"]
 
 const LITERATE_EXAMPLES = [
     "fickian_diffusion",
+    "fickian_identification",
     "darcy_column",
     "richards_1d",
     "nonisothermal_drying",

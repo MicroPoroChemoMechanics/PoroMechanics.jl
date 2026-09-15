@@ -103,9 +103,9 @@ end
 # storage term, which is identically zero. No amount of measurement of a steady flux will
 # ever determine them.
 
-# ## Finite volumes, transient — blocked upstream
+# ## Finite volumes, transient — not through VoronoiFVM's own time loop
 #
-# The same trick does not work for a transient `VoronoiFVM` solve, and the reason is worth
+# The same trick does not work for a transient `VoronoiFVM.solve`, and the reason is worth
 # recording because it is not a property of this package.
 #
 # `VoronoiFVM` builds its boundary-node object with the *coordinate* type rather than the
@@ -119,17 +119,22 @@ end
 # ```
 #
 # — an acknowledged compromise in `vfvm_geometryitems.jl`. In a stationary solve nothing
-# notices. In a transient one the solver promotes the time to the system's value type, and
-# a `Dual` time cannot be stored in a node whose fields are `Float64`. The solve fails at
-# initialisation with a conversion error.
+# notices. In a transient one, the step-size update involves the change ``\Delta u`` of the
+# previous step, which is a `Dual`. The next step and then the time become `Dual`s, and a
+# `Dual` time cannot be stored in a node whose fields are `Float64`. Measured with
+# VoronoiFVM 3.5.2 on the Fick model, the first step passes and the second stops with
+# `MethodError(Float64, Dual(2.0e6, …))`. Fixed time steps fail the same way, because the
+# update still goes through that expression. The error message itself then fails: building
+# it rounds the time with `round(x; sigdigits = 5)`, which recurses on a `Dual` until the
+# stack overflows and hides the cause.
 #
-# Two ways round it exist and neither is free. `VoronoiFVM` supports declared parameters
-# (`nparams`, `parameters(node)`) and assembles ``\partial R/\partial\theta`` alongside the
-# Jacobian, which is the raw material for propagating sensitivities forward across time
-# steps by the implicit function theorem — the storage Jacobian at the previous step has to
-# be supplied separately. Or the time loop can be written outside the package. Both are more
-# than this page needs, and the honest summary today is: steady state yes, transient not
-# through this backend.
+# The time loop does not have to be VoronoiFVM's, though. `ODEProblem(sys, inival, tspan)`
+# gives the same system to OrdinaryDiffEq as a system of ordinary differential equations,
+# with the same callbacks and the same automatic Jacobian, and OrdinaryDiffEq carries dual
+# numbers through its own step-size control.
+# [Identifying a diffusion coefficient](../examples/fickian_identification.md) uses it to
+# calibrate a transient Fick model and checks its Jacobian against central differences. The
+# summary today: steady state through `solve`, transient through `ODEProblem`.
 
 # ## Finite elements, transient and nonlinear
 #
