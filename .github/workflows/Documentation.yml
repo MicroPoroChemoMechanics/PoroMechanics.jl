@@ -33,7 +33,7 @@ jobs:
       # MeanFieldHomogenizationSymPyExt a *triggered* extension: Julia
       # precompiles it on `using MeanFieldHomogenization`, and PyCall needs a
       # Python interpreter that can import sympy for that to succeed.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - name: Provide sympy to PyCall
