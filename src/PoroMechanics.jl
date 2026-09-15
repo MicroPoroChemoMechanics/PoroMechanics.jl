@@ -100,7 +100,7 @@ Supertype for all physics models in PoroMechanics.jl.
 Concrete subtypes must implement the methods appropriate for their backend:
 
 ### FVM backend (VoronoiFVM.jl) — transport / diffusion
-- `storage!(f, u, node, model, data)` — accumulation terms ∂M/∂t
+- `storage!(f, u, node, model, data)` — stored amount M (the solver forms ∂M/∂t)
 - `flux!(f, u, edge, model, data)`    — inter-node fluxes (Darcy, Fick, Fourier…)
 - `bcondition!(f, u, node, model, data)` — boundary conditions
 
@@ -145,7 +145,8 @@ end
 """
     storage!(f, u, node, model::AbstractPoroModel, data)
 
-Fill `f` with the accumulation (storage) terms for `model` at `node`.
+Fill `f` with the stored amounts ``M(u)`` for `model` at `node` — not their time
+derivative: the solver forms the accumulation term ``∂M/∂t`` from them.
 Must be implemented by each concrete FVM model.
 """
 function storage!(f, u, node, model::AbstractPoroModel, data)

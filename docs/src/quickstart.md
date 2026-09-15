@@ -62,10 +62,13 @@ therefore change only by what flows in or out:
 
 The equation has two terms, and each one answers a separate question.
 
-- **The accumulation term** answers *how much tracer is stored here?* ``c`` is counted per
-  m³ of pore solution, but only the fraction ``\varphi`` of the medium is solution. So
-  ``\varphi c`` is the amount of tracer per m³ of *porous medium* [mol/m³]. Its time
-  derivative is the rate at which that stored amount grows or shrinks.
+- **The accumulation term** ``\partial(\varphi c)/\partial t`` answers *how fast does the
+  amount of tracer stored here change?* It is built on the **stored amount** ``\varphi c``.
+  ``c`` is counted per m³ of pore solution, but only the fraction ``\varphi`` of the medium
+  is solution, so ``\varphi c`` is the amount of tracer per m³ of *porous medium*
+  [mol/m³]. The accumulation term is its time derivative [mol/(m³·s)]: the rate at which
+  that stored amount grows or shrinks. Keep the two apart. You will provide the stored
+  amount, and the solver will take its time derivative.
 - **The flux** ``\mathbf{j}`` answers *how much tracer crosses a surface?* It is an
   amount per unit area per unit time [mol/(m²·s)]. Fick's law says that tracer moves from
   high to low concentration, which is where the minus sign comes from. The factor
@@ -239,7 +242,7 @@ the edge, and `flux!` would fill both `f[1]` and `f[2]`, one flux per unknown.
 They are not the nodes numbered 1 and 2 in the grid. The grid numbering only appears later,
 in the initial values (section 5.4).
 
-### 4.5 `storage!`: the accumulation term
+### 4.5 `storage!`: the stored amount
 
 ```@example quickstart
 function PoroMechanics.storage!(f, u, node, m::TracerModel, data)
@@ -250,9 +253,12 @@ end
 nothing # hide
 ```
 
-This is ``s(c) = \varphi c``, the quantity **inside** ``\partial/\partial t``, and not its
-derivative. The solver computes ``(s^n - s^{n-1})/\Delta t`` and multiplies it by
-``\lvert\omega_K\rvert``.
+This is the stored amount ``s(c) = \varphi c``, the quantity **inside**
+``\partial/\partial t``. It is not the accumulation term itself. From it, the solver builds
+the accumulation term of the control volume: it computes
+``(s^n - s^{n-1})/\Delta t`` and multiplies it by ``\lvert\omega_K\rvert``. Returning
+a time derivative from `storage!` would be wrong. The solver would differentiate it a second
+time.
 
 ### 4.6 `flux!`: the flux between two nodes
 
@@ -372,9 +378,8 @@ at ``x = 0``.
     In `flux!`, the second index of `u[1, 1]` means *the first node of the edge*. In
     `inival[1, 1]`, it means *node number 1 of the grid*.
 
-Setting that one value matters. If it were left at zero, the Dirichlet node would jump from
-`0` to `c_in` during the first step. The step-size controller would see a change that
-shrinking `Δt` cannot reduce, and it would halve the step down to `Δt_min` before giving up.
+Setting that one value is not a detail: without it, the simulation does not start. Section
+5.5 explains why, once the step-size controller has been introduced.
 
 ### 5.5 Time stepping
 
@@ -391,6 +396,60 @@ between and stores the solution after each one.
 - `Δu_opt` is the change in concentration per step that the controller aims for, in the
   units of the unknown. If it is left at its default, a problem whose time scale is 10⁸ s is
   integrated with steps sized for a different problem.
+
+#### How a step is accepted or rejected
+
+After each step, the solver measures how much the solution changed, as the largest change over
+all nodes:
+
+```math
+\Delta u = \max_k \big\lvert c_k^{n} - c_k^{n-1} \big\rvert
+```
+
+- If ``\Delta u > 1.2\,\Delta u_\text{opt}``, the step is **rejected**. `Δt` is halved and
+  the step is computed again. The factor 1.2 is the `Δu_max_factor` option.
+- Otherwise the step is **accepted**, and the next `Δt` is scaled by
+  ``\Delta u_\text{opt}/\Delta u``, capped at a growth of 1.2 per step and at `Δt_max`.
+
+This rests on one assumption: **a shorter step gives a smaller change**. For diffusion that
+holds, since over one step ``\Delta u \approx \Delta t\,\partial c/\partial t``.
+
+#### Why the initial value at ``x = 0`` matters
+
+`bcondition!` imposes ``c = c_\text{in}`` at ``x = 0`` at the end of **every** step,
+whatever its length. If `inival[1, 1]` were left at `0`, that node would go from `0` to
+`1` during the first step. The change would be ``\Delta u = 1`` whether `Δt` is 10⁴ s,
+1 s or 10⁻³ s. This jump is not an evolution in time. It is a discontinuity, at ``t = 0``,
+between the initial state and the boundary condition, and no step size can resolve it. The
+controller keeps halving the step, sees ``\Delta u/\Delta u_\text{opt} = 10`` every time,
+and gives up at `Δt_min`. With `verbose = "e"` in `SolverControl`, the solver prints:
+
+```text
+[e]volution:  Δu/Δu_opt=1.000e+01 => retry: Δt=5.000e+03
+[e]volution:  Δu/Δu_opt=1.000e+01 => retry: Δt=2.500e+03
+  ⋮
+[e]volution:  Δu/Δu_opt=1.000e+01 => retry: Δt=1.000e-03
+ERROR: Δt_min=0.001 reached while Δu/Δu_opt=10.0.
+```
+
+Because ``\Delta u`` is a maximum over the nodes, that single boundary node blocks the whole
+computation, even though the interior nodes barely move.
+
+With `inival[1, 1] = m.c_in`, the boundary node starts at its imposed value and does not
+move. The first step gives ``\Delta u = 9.8 \times 10^{-3}``, well below the threshold, and
+every step is accepted:
+
+```text
+[e]volution: step=1 t=1.000e+04 Δt=1.000e+04 Δu=9.805e-03
+[e]volution: step=2 t=2.200e+04 Δt=1.200e+04 Δu=1.149e-02
+  ⋮
+[e]volution: step=43 t=1.000e+08 Δt=9.754e+06 Δu=2.488e-02
+```
+
+The rule applies to any model: **the initial state must satisfy the Dirichlet conditions**.
+The `force_first_step = true` option of `SolverControl` accepts the first step anyway once
+`Δt_min` is reached, but only after all those halvings. It works around the inconsistency
+instead of removing it.
 
 ### 5.6 Reading the solution
 
@@ -449,7 +508,7 @@ respect to ``D`` or ``\varphi`` as well as ``u``. See
 
 | In the equation | In the discrete balance | Callback | Code |
 |---|---|---|---|
-| accumulation ``\varphi c`` | ``s(c_K)`` | `storage!` | `f[1] = m.φ * u[1]` |
+| accumulation ``\partial(\varphi c)/\partial t``, built on the stored amount ``\varphi c`` | ``s(c_K)``, differenced in time by the solver | `storage!` | `f[1] = m.φ * u[1]` |
 | flux ``j = -D\varphi\,\partial c/\partial x`` | ``g(c_K, c_L)`` | `flux!` | `f[1] = m.D * m.φ * (u[1, 1] - u[1, 2])` |
 | ``c = c_\text{in}`` at ``x = 0`` | penalty at the boundary node | `bcondition!` | `boundary_dirichlet!(…; region = 1, value = m.c_in)` |
 | ``j = 0`` at ``x = L`` | nothing added | — | — |
