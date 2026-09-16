@@ -14,6 +14,8 @@ using PoroMechanics
 using VoronoiFVM
 using ExtendableGrids
 using LinearAlgebra: norm
+using ForwardDiff
+import OrdinaryDiffEq
 
 module _NP
     include(joinpath(@__DIR__, "..", "..", "examples", "chloride_ingress", "nernst_planck.jl"))
@@ -149,44 +151,59 @@ end
     end
 
     @testset "differentiating with respect to a diffusivity" begin
-        ## This is the claim the whole plan rests on, and it does **not** work by making
-        ## the model parametric. `fvm_system` builds a `VoronoiFVM.System` whose unknowns
-        ## are `Float64`; a `Dual` sitting in `m.D` reaches `flux!` but the solution
-        ## vector cannot hold its partials, and the solve dies converting one back:
+        ## This is the claim the whole plan rests on: the derivative of a transient
+        ## multi-ionic solve with respect to a material parameter.
         ##
-        ##     MethodError: no method matching Float64(::ForwardDiff.Dual{…})
+        ## It does not go through `VoronoiFVM.solve`. Its step-size update involves Δu,
+        ## which carries partials, so the time becomes a `Dual` and cannot be stored:
+        ## `MethodError(Float64, Dual(…))` at the second step, fixed steps included.
+        ## `ODEProblem(sys, inival, tspan)` keeps VoronoiFVM for the space discretization
+        ## and hands the time stepping to OrdinaryDiffEq, whose controller carries
+        ## `Dual`s — the route of `examples/fickian_identification/run.jl`.
         ##
-        ## VoronoiFVM has its own mechanism for this — `System(...; nparams = k)` plus
-        ## `solve(...; params = p)`, documented as "the parameters with respect to which
-        ## the derivatives will be computed". The model must then read the coefficient
-        ## from `params`, not from its own field.
-        ##
-        ## Marked broken rather than deleted: making a model's coefficients type
-        ## parameters is necessary for the constitutive laws, and it is **not sufficient**
-        ## for a transient sensitivity. Reworking `NernstPlanck` onto `nparams` belongs to
-        ## the step that needs the gradient.
+        ## The potential row has zero storage, so this is a DAE with a singular mass
+        ## matrix, which `Rosenbrock23` accepts. The initial state is on the constraint
+        ## manifold (`c_Cl == c_Na`, `q_background = 0`); an inconsistent one would have
+        ## to be projected first.
         function front(D_Cl)
+            T = typeof(D_Cl)
             m = NP.NernstPlanck(;
                 phi = 0.121, D = (D_Cl, 1.334e-9), z = (-1, 1),
                 tortuosity = OhJang(; phi_c = 0.18, n = 2.7, ds = 2.0e-4, tau_agg = 0.27),
                 dirichlet = (((1, 523.0),), ((1, 523.0),), ((1, 0.0),)),
             )
-            sys = fvm_system(m, grid; reaction = true)
-            iv = unknowns(sys)
+            sys = fvm_system(m, grid; reaction = true, valuetype = T)
+            iv = unknowns(sys; inival = zero(T))
             iv[1, :] .= 1.0
             iv[2, :] .= 1.0
             iv[3, :] .= 0.0
             iv[1, 1] = 523.0
             iv[2, 1] = 523.0
-            sol = solve(sys; inival = iv, times = [0.0, 3.1536e6], control = ctrl)
-            return sum(sol.u[end][1, :]) * dx
+            problem = OrdinaryDiffEq.ODEProblem(sys, iv, (0.0, 3.1536e6))
+            sol = OrdinaryDiffEq.solve(
+                problem, OrdinaryDiffEq.Rosenbrock23();
+                abstol = 1.0e-9, reltol = 1.0e-9, saveat = [3.1536e6],
+            )
+            u = reshape(sol, sys)
+            return m, u[:, :, end]
         end
-        ## The value is fine; only the derivative is out of reach.
-        @test front(2.032e-9) > 0
-        @test_broken try
-            isfinite(ForwardDiff.derivative(front, 2.032e-9))
-        catch
-            false
-        end
+        inventory(D_Cl) = sum(front(D_Cl)[2][1, :]) * dx
+
+        D0 = 2.032e-9
+        m, u = front(D0)
+        ## Something is measured: the potential is far from flat, so the derivative
+        ## goes through the migration term and not only through a Fick law.
+        @test maximum(abs, u[3, :]) > 0.5
+        ## The constraint still holds along the adaptive integration.
+        @test maximum(abs, NP.net_charge(m, u)) < 1.0e-8
+
+        ## Measured: 1.2978504547e8 against 1.2978503344e8, a relative gap of 9.3e-8.
+        ## The difference quotient carries its own truncation and solver error, so the
+        ## tolerance is set above that, not at the round-off of either.
+        h = 1.0e-4 * D0
+        d_ad = ForwardDiff.derivative(inventory, D0)
+        d_fd = (inventory(D0 + h) - inventory(D0 - h)) / 2h
+        @test d_ad > 0
+        @test d_ad ≈ d_fd rtol = 1.0e-5
     end
 end

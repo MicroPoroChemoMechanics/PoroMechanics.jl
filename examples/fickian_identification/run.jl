@@ -62,15 +62,53 @@ using Plots
 # \exp(a + a'\varepsilon) = e^{a} + e^{a} a'\,\varepsilon .
 # ```
 #
-# The first is the product rule, the second the chain rule. To differentiate with respect to
-# ``x`` at ``x = 2``, start from the value 2 with derivative ``dx/dx = 1``:
+# The first is the product rule, the second the chain rule.
+#
+# Take ``f(x) = x^2 e^x`` at ``x = 2``. The computation starts from its input, so the
+# input must already carry a derivative for the rules to propagate. That derivative is the
+# **seed**: the derivative of the input with respect to the variable chosen for
+# differentiation. To differentiate with respect to ``x`` itself, the seed is
+# ``dx/dx = 1``.
 
-a = ForwardDiff.Dual(2.0, 1.0)     # value 2, derivative 1
+a = ForwardDiff.Dual(2.0, 1.0)     # x = 2, seeded with dx/dx = 1: differentiate with respect to x
 fa = a^2 * exp(a)
 
-# The value part is ``f(2) = 4e^2 \approx 29.56``. The derivative part is
-# ``f'(2) = (2x + x^2)\,e^x = 8e^2 \approx 59.11``, obtained without writing ``f'``.
-# `ForwardDiff.derivative` does the same seeding and reading for you:
+# Each operation passes the derivative along:
+#
+# | quantity | value | derivative part |
+# |---|---|---|
+# | ``a`` | ``2`` | ``1`` (the seed) |
+# | ``a^2`` | ``4`` | ``2 \cdot 2 \cdot 1 = 4`` |
+# | ``e^a`` | ``e^2`` | ``e^2 \cdot 1 = e^2`` |
+# | ``a^2 e^a`` | ``4e^2 \approx 29.56`` | ``4 \cdot e^2 + 4 \cdot e^2 = 8e^2 \approx 59.11`` |
+#
+# The computation never used a formula for ``f'``. It only applied the product rule and the
+# chain rule to each operation, with numbers, as the last column shows. The formula
+# ``f'(x) = (2x + x^2)\,e^x`` appears here only to **check** the result: at ``x = 2`` it gives
+# ``8e^2 \approx 59.11``, the derivative part found above. For the finite volume solve below,
+# no such formula exists to check against, and the derivative is compared with finite
+# differences instead.
+#
+# Without the seed of 1, the chain would have no derivative to multiply.
+#
+# The seed says **with respect to what** the derivative is taken:
+#
+# | seed | meaning | derivative part |
+# |---|---|---|
+# | 1 | ``a`` is the variable, ``a = x`` | ``f'(2)`` |
+# | 0 | ``a`` is a constant | ``0`` |
+# | 3 | ``a = 2 + 3s``, derivative with respect to ``s`` | ``3 f'(2)`` |
+
+for seed in (1.0, 0.0, 3.0)
+    z = ForwardDiff.Dual(2.0, seed)
+    @printf("seed %.0f  ->  derivative part %.2f\n", seed, ForwardDiff.partials(z^2 * exp(z))[1])
+end
+
+# With several parameters, each one gets its own seed. For ``(D, c_\text{in})``, the first
+# carries the derivative parts ``(1, 0)`` and the second ``(0, 1)``. Each result then carries
+# two derivative parts, which form its row of the Jacobian. `ForwardDiff.derivative` and
+# `ForwardDiff.jacobian` set these seeds and read the results for you. Writing `Dual` by hand,
+# as above, only serves to show the mechanism:
 
 ForwardDiff.derivative(x -> x^2 * exp(x), 2.0)
 
