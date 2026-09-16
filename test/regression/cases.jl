@@ -22,6 +22,7 @@
 
 using Printf: @printf
 using LinearAlgebra: BLAS
+using FerriteGmsh: Gmsh
 
 const REFERENCE_DIR = joinpath(@__DIR__, "references")
 
@@ -76,8 +77,25 @@ module _ChlorideIngress
     )
 end
 
-module _BiotConsolidation
+## Gmsh reaches Julia through a binary artifact, and that artifact is not sound on every
+## platform: measured on windows-latest with Julia 1.13.0, `gmsh.initialize` answers
+## "Gmsh has not been initialized" and `togrid` throws, while Julia 1.12.7 on the same
+## runner reads the very same mesh. The failure used to land at *include* time, so it took
+## down every case after it and the whole `chemistry` group with it — 778 tests reported
+## instead of 843, with a mesh reader named nowhere in the summary. Probe once; the case
+## is registered below only if the probe passes, and `regression.jl` reports the skip.
+const GMSH_FAILURE = try
+    Gmsh.initialize()
+    Gmsh.finalize()
+    nothing
+catch err
+    sprint(showerror, err)
+end
+
+if GMSH_FAILURE === nothing
+    @eval module _BiotConsolidation
     include("../../examples/biot_consolidation/run.jl")
+    end
 end
 
 # ── Case registry ─────────────────────────────────────────────────────────────
@@ -100,6 +118,9 @@ The examples covered by the harness. `richards_2d` is absent on purpose: it is a
 bare top-level script with no entry function, and it pulls in Plots, Triangulate
 and SimplexGridFactory, which are not dependencies of the package. It joins the
 harness when it is converted to a Literate script with a `run_*` function.
+
+`biot_consolidation` is appended after this literal, and only where Gmsh initializes:
+it is the one case that needs a mesh file, hence a binary mesh reader.
 """
 const CASES = [
     RegressionCase(
@@ -131,11 +152,6 @@ const CASES = [
         end,
     ),
     RegressionCase(
-        # Fixed mesh, one solve: the raw dof vector is already deterministic.
-        "biot_consolidation",
-        () -> _BiotConsolidation.result.x,
-    ),
-    RegressionCase(
         # Concentrations, porosity, solids and adsorbed amounts at each saved time.
         # Local equilibria are certified; the full profile retains the existing
         # portability tolerance in `regression.jl`.
@@ -146,6 +162,20 @@ const CASES = [
         ),
     ),
 ]
+
+## Only where the mesh reader works. A missing binary is not a numerical regression, and
+## must not be reported as one — nor may it pass unnoticed: `regression.jl` turns the
+## absence into a visible skip.
+if GMSH_FAILURE === nothing
+    push!(
+        CASES,
+        RegressionCase(
+            # Fixed mesh, one solve: the raw dof vector is already deterministic.
+            "biot_consolidation",
+            () -> _BiotConsolidation.result.x,
+        ),
+    )
+end
 
 # ── Reference file I/O ────────────────────────────────────────────────────────
 # Plain text at full precision rather than a binary format: the references are

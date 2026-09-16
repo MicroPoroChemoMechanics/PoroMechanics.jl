@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Stop the regression harness from dying when Gmsh will not initialize. On windows-latest
+  with Julia 1.13.0, `gmsh.initialize` answers "Gmsh has not been initialized" and the
+  Biot example threw at *include* time, which aborted `test/regression/cases.jl` and
+  everything after it: the `chemistry` group never ran and CI reported 778 tests instead
+  of 843, naming no mesh reader. `cases.jl` now probes Gmsh once, registers
+  `biot_consolidation` only when the probe passes, and `regression.jl` reports the case as
+  skipped with the underlying error. Julia 1.12.7 on the same runner reads the same mesh,
+  so this is the binary artifact, not the model.
+- Raise the `chloride_ingress` regression tolerance from 1e-6 to 1e-3, and record why.
+  CI measures a relative L2 deviation of 1.01e-4 against the Mac-generated reference on
+  both ubuntu-latest and windows-latest, bit-identical per platform across runs two days
+  apart; a later run of the same code fell under 1e-6 with DispatchDoctor 0.4.28 → 0.4.29
+  and DomainSets 0.8.1 → 0.8.2 as the only manifest difference. Neither carries physics,
+  so the coupling is amplifying last-bit changes by about twelve orders of magnitude. The
+  amplification is unexplained and stays open; see `test/regression/README.md`.
+
 - Add `examples/fickian_identification/run.jl`, the inverse of the Fick example. It
   identifies `D` and `c_in` from noisy points on analytical profiles, using
   Levenberg–Marquardt with a `ForwardDiff` Jacobian of the transient solve. The Jacobian is
