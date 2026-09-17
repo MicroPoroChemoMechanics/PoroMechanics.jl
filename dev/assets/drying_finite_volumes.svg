@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 580" width="1000" height="580" role="img" aria-labelledby="title description">
+<title id="title">Finite volumes: one account for each radial shell</title><desc id="description">Node i owns a shell between the two midpoint faces. The balance is accumulation plus right-face outflow minus left-face inflow. A shared face flux enters neighboring accounts with opposite signs. Storage, edge flux, and boundary conditions map to the three model callbacks.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#19796d"/></marker>
+<marker id="muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="578" rx="16" fill="#ffffff" stroke="#ccd8e1" stroke-width="1.5"/>
+<text x="35" y="43" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="bold" text-anchor="start" fill="#193047">Finite volumes: one account for each radial shell</text>
+<text x="35" y="78" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="start" fill="#536879">An interior shell in one material; each node carries p_l, p_a, and T.</text>
+<rect x="310" y="138" width="260" height="128" rx="4" fill="#fff0db" stroke="#d3913f" stroke-width="1.5"/>
+<path d="M310 130L310 318" fill="none" stroke="#af8048" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="310" y="116" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">r_(i−1/2)</text>
+<path d="M570 130L570 318" fill="none" stroke="#af8048" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="570" y="116" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">r_(i+1/2)</text>
+<path d="M95 209L865 209" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#muted)"/>
+<text x="895" y="216" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="normal" text-anchor="start" fill="#193047">r</text>
+<circle cx="180" cy="209" r="8" fill="#216baf" stroke="none" stroke-width="2"/>
+<text x="180" y="185" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#216baf">Node i−1</text>
+<circle cx="440" cy="209" r="8" fill="#216baf" stroke="none" stroke-width="2"/>
+<text x="440" y="185" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#216baf">Node i</text>
+<circle cx="700" cy="209" r="8" fill="#216baf" stroke="none" stroke-width="2"/>
+<text x="700" y="185" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#216baf">Node i+1</text>
+<text x="440" y="250" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">Stored amount: V_i B(u_i)</text>
+<path d="M260 294L360 294" fill="none" stroke="#19796d" stroke-width="4" marker-end="url(#teal)"/>
+<path d="M520 294L620 294" fill="none" stroke="#c65a24" stroke-width="4" marker-end="url(#orange)"/>
+<text x="218" y="341" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#19796d">Left-face inflow</text>
+<text x="662" y="341" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#c65a24">Right-face outflow</text>
+<text x="500" y="387" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#193047">Accumulation + right outflow − left inflow = 0</text>
+<rect x="35" y="422" width="290" height="123" rx="10" fill="#fff3e5" stroke="#c65a24" stroke-width="1.5"/>
+<text x="180" y="455" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="bold" text-anchor="middle" fill="#c65a24">storage!</text>
+<text x="180" y="492" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">Amount per bulk volume</text>
+<text x="180" y="522" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">Solver adds volume / Δt</text>
+<rect x="355" y="422" width="290" height="123" rx="10" fill="#eaf3fb" stroke="#216baf" stroke-width="1.5"/>
+<text x="500" y="455" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="bold" text-anchor="middle" fill="#216baf">flux!</text>
+<text x="500" y="492" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">Coefficient × state difference</text>
+<text x="500" y="522" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">Solver adds area / distance</text>
+<rect x="675" y="422" width="290" height="123" rx="10" fill="#e9f5f1" stroke="#19796d" stroke-width="1.5"/>
+<text x="820" y="455" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="bold" text-anchor="middle" fill="#19796d">bcondition!</text>
+<text x="820" y="492" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">Values or boundary fluxes</text>
+<text x="820" y="522" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">Only at the domain ends</text>
+</svg>
