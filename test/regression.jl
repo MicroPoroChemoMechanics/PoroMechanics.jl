@@ -8,6 +8,7 @@
 using LinearAlgebra: norm
 
 include("regression/cases.jl")
+include("regression/drying.jl")
 
 # Tolerances are per case and independent of the platform triplet: Sys.MACHINE
 # does not identify a Julia/BLAS/dependency environment. Richards' adaptive stepping

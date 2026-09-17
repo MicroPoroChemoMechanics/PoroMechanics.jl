@@ -21,16 +21,15 @@ abstract type AbstractRetention end
 """
     saturation(curve, pc)
 
-Liquid saturation ``S_l`` at capillary pressure `pc` [Pa]. Returns 1 for `pc ≤ 0`, the
-saturated branch.
+Liquid saturation ``S_l`` at capillary pressure `pc` [Pa]. The saturated branch is
+law-dependent; [`ExponentialCutoff`](@ref) approaches 1 asymptotically.
 """
 function saturation end
 
 """
     dsaturation_dpc(curve, pc)
 
-Derivative ``\\partial S_l / \\partial p_c`` [Pa⁻¹] of the retention curve. Zero on the
-saturated branch.
+Derivative ``\\partial S_l / \\partial p_c`` [Pa⁻¹] of the retention curve.
 """
 function dsaturation_dpc end
 
@@ -87,12 +86,14 @@ joined at `p_c3`:
 
 ```math
 S_l(p_c) = 1 - \\left(1 - S_l^{\\text{raw}}(p_{c3})\\right)
-           \\exp\\!\\left(\\frac{p_c - p_{c3}}{p_{c3}}\\right), \\qquad 0 < p_c < p_{c3}
+           \\exp\\!\\left(\\frac{p_c - p_{c3}}{p_{c3}}\\right), \\qquad p_c < p_{c3}
 ```
 
-Van Genuchten curves have an unbounded derivative as ``p_c \\to 0``, which starves the
-Newton solver near saturation. The exponential branch keeps the slope finite while
-matching the raw curve at the junction.
+For Van Genuchten exponents `n > 1`, the raw slope vanishes as ``p_c \\to 0``.
+The exponential branch retains a nonzero slope near zero while matching the raw
+curve's value at the junction. It extends to negative pressures, approaching 1
+asymptotically. Clamping it to 1 at zero would introduce a jump in stored water
+and remove the pressure dependence of storage in nearly saturated cells.
 """
 struct ExponentialCutoff{R <: AbstractRetention, T} <: AbstractRetention
     raw::R
@@ -103,7 +104,6 @@ Base.eltype(r::ExponentialCutoff) = promote_type(eltype(r.raw), typeof(r.p_c3))
 
 function saturation(r::ExponentialCutoff, pc)
     T = promote_type(typeof(pc), eltype(r))
-    pc <= 0 && return one(T)
     pc >= r.p_c3 && return saturation(r.raw, pc)
     sl3 = saturation(r.raw, r.p_c3)
     return one(T) - (one(T) - sl3) * exp((pc - r.p_c3) / r.p_c3)
@@ -111,7 +111,6 @@ end
 
 function dsaturation_dpc(r::ExponentialCutoff, pc)
     T = promote_type(typeof(pc), eltype(r))
-    pc <= 0 && return zero(T)
     pc >= r.p_c3 && return dsaturation_dpc(r.raw, pc)
     sl3 = saturation(r.raw, r.p_c3)
     return -(one(T) - sl3) * exp((pc - r.p_c3) / r.p_c3) / r.p_c3

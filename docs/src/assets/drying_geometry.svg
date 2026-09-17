@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 645" width="1000" height="645" role="img" aria-labelledby="title description">
+<title id="title">One radial coordinate, a cylindrical physical domain</title><desc id="description">Not to scale. A canister of radius 0.425 m is surrounded by clay to 1.225 m and rock to 10 m. Heat enters at the canister; the outer boundary is a reservoir. A volume-fraction bar distinguishes porosity from saturation.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#19796d"/></marker>
+<marker id="muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="643" rx="16" fill="#ffffff" stroke="#ccd8e1" stroke-width="1.5"/>
+<text x="35" y="43" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="bold" text-anchor="start" fill="#193047">One radial coordinate, a cylindrical physical domain</text>
+<text x="35" y="76" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="start" fill="#536879">Cross-section perpendicular to the cylinder axis · schematic, not to scale</text>
+<circle cx="220" cy="278" r="172" fill="#e4eeec" stroke="#19796d" stroke-width="2"/>
+<circle cx="220" cy="278" r="108" fill="#f6ddc2" stroke="#c19362" stroke-width="2"/>
+<circle cx="220" cy="278" r="46" fill="#f6b190" stroke="#c65a24" stroke-width="2"/>
+<text x="220" y="270" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" text-anchor="middle" fill="#193047">Hot</text>
+<text x="220" y="296" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#193047">canister</text>
+<text x="220" y="197" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" text-anchor="middle" fill="#193047">CLAY</text>
+<text x="220" y="135" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" text-anchor="middle" fill="#193047">ROCK</text>
+<path d="M267 280L387 280" fill="none" stroke="#c65a24" stroke-width="4" marker-end="url(#orange)"/>
+<text x="310" y="266" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" text-anchor="middle" fill="#c65a24">heat</text>
+<path d="M220 355L435 355" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#muted)"/>
+<text x="418" y="341" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" text-anchor="start" fill="#536879">r</text>
+<text x="478" y="128" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" text-anchor="start" fill="#193047">The computational interval</text>
+<rect x="480" y="180" width="170" height="86" rx="0" fill="#f6ddc2" stroke="#c19362" stroke-width="1.5"/>
+<rect x="650" y="180" width="292" height="86" rx="0" fill="#e4eeec" stroke="#19796d" stroke-width="1.5"/>
+<text x="565" y="230" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="normal" text-anchor="middle" fill="#193047">Clay</text>
+<text x="795" y="230" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="normal" text-anchor="middle" fill="#193047">Rock</text>
+<path d="M480 168L480 278" fill="none" stroke="#536879" stroke-width="2"/>
+<text x="480" y="307" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">0.425 m</text>
+<path d="M650 168L650 278" fill="none" stroke="#536879" stroke-width="2"/>
+<text x="650" y="307" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">1.225 m</text>
+<path d="M942 168L942 278" fill="none" stroke="#536879" stroke-width="2"/>
+<text x="942" y="307" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">10 m</text>
+<path d="M445 218L480 218" fill="none" stroke="#c65a24" stroke-width="4" marker-end="url(#orange)"/>
+<text x="480" y="350" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="start" fill="#c65a24">Inner wall: heat in; water and air sealed</text>
+<text x="480" y="382" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="start" fill="#19796d">Outer boundary: fixed pressures and T</text>
+<text x="35" y="483" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" text-anchor="start" fill="#193047">Example: 1 m³ of material with porosity 0.30 and liquid saturation 0.80</text>
+<rect x="50" y="510" width="630" height="55" rx="0" fill="#dce3e9" stroke="#ffffff" stroke-width="1.5"/>
+<rect x="680" y="510" width="216" height="55" rx="0" fill="#acd2f2" stroke="#ffffff" stroke-width="1.5"/>
+<rect x="896" y="510" width="54" height="55" rx="0" fill="#fff0c2" stroke="#ffffff" stroke-width="1.5"/>
+<text x="365" y="545" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" text-anchor="middle" fill="#193047">Solid: 0.70 m³</text>
+<text x="788" y="545" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">Liquid: 0.24 m³</text>
+<path d="M923 565L923 584" fill="none" stroke="#536879" stroke-width="2"/>
+<text x="945" y="611" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="end" fill="#193047">Gas: 0.06 m³</text>
+<text x="50" y="610" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" text-anchor="start" fill="#216baf">Pores = liquid + gas = 0.30 m³</text>
+</svg>

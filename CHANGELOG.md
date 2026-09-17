@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fix the discontinuity of `ExponentialCutoff` at zero capillary pressure by extending
+  its exponential branch to negative pressures. The nearly saturated rock in the
+  non-isothermal drying example now retains water storage sensitivity instead of
+  producing a pressure jump independent of the time step. Include the corresponding
+  capillary entropy contribution, stop at heat-flux changes, and scale pressure and
+  temperature updates separately. Renew the drying regression for the corrected
+  axisymmetric case; see `test/regression/README.md`.
+
 - Stop the regression harness from dying when Gmsh will not initialize. On windows-latest
   with Julia 1.13.0, `gmsh.initialize` answers "Gmsh has not been initialized" and the
   Biot example threw at *include* time, which aborted `test/regression/cases.jl` and

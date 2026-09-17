@@ -72,18 +72,27 @@ end
     raw = VanGenuchten(1.5e6, 1.06383, 0.06)
     reg = ExponentialCutoff(raw, 1.0e5)
 
-    @test saturation(reg, -1.0) == 1.0
+    @test 0 < saturation(reg, 0.0) < saturation(reg, -1.0) < 1
+    @test saturation(reg, -100reg.p_c3) ≈ 1.0
     @test saturation(reg, 2.0e5) == saturation(raw, 2.0e5)     # above the junction
     @test saturation(reg, 1.0e5) ≈ saturation(raw, 1.0e5)      # continuous at p_c3
 
-    ## The whole point: a finite slope where the raw curve steepens without bound.
+    ## A nonzero slope near saturation, including negative capillary pressures.
     @test abs(dsaturation_dpc(reg, 1.0)) < abs(dsaturation_dpc(raw, 1.0))
     @test isfinite(dsaturation_dpc(reg, 1.0e-8))
 
-    for pc in (1.0e3, 5.0e4, 3.0e5)
-        fd = FiniteDiff.finite_difference_derivative(p -> saturation(reg, p), pc, Val{:central})
+    for pc in (-1.0e5, -50.0, 0.0, 1.0e3, 5.0e4, 3.0e5)
+        h = 1.0e-5 * max(abs(pc), reg.p_c3)
+        fd = (saturation(reg, pc + h) - saturation(reg, pc - h)) / (2h)
         @test isapprox(dsaturation_dpc(reg, pc), fd; rtol = 1.0e-6)
+        @test ForwardDiff.derivative(p -> saturation(reg, p), pc) ≈ dsaturation_dpc(reg, pc)
     end
+
+    ## The old clamp at zero had a finite jump and a zero storage Jacobian below it.
+    h = 1.0
+    @test saturation(reg, -h) - saturation(reg, h) ≈ -2h * dsaturation_dpc(reg, 0.0)
+    @test dsaturation_dpc(reg, -50.0) < 0
+    @test_derivative a -> saturation(ExponentialCutoff(VanGenuchten(a, 1.06383, 0.06), 1.0e5), -50.0) 1.5e6
 end
 
 @testset "Relative permeability" begin

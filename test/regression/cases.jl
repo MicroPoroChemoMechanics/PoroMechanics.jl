@@ -147,7 +147,7 @@ const CASES = [
         () -> let mod = _NonisothermalDrying
             reduce(
                 vcat,
-                vcat([mod.x_all], [vcat(t, vec(u)) for (t, u) in mod.results]),
+                vcat([mod.r_all], [vcat(t, vec(u)) for (t, u) in mod.results]),
             )
         end,
     ),

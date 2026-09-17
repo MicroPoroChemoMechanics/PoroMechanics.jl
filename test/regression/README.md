@@ -3,6 +3,47 @@
 References record numerical behavior; they do not establish physical accuracy.
 Regenerate a reference only for an intentional change, and document the reason.
 
+## Non-isothermal drying
+
+The drying reference was renewed after correcting the exponential retention branch.
+Previously, `ExponentialCutoff` returned exactly 1 for nonpositive capillary pressure,
+but approached `1 - (1 - S_l(p_c3))/exp(1)` from the positive side. This jump also
+removed the water storage derivative in the initially nearly saturated rock
+(`p_c = -50.10 Pa`). On the axisymmetric case, the first pressure update approached
+14.16 MPa as the time step decreased from 0.01 s to 1e-6 s; time-step reduction
+could not satisfy the 1e4 Pa update target.
+
+The exponential branch now extends to negative pressures and approaches saturation
+asymptotically. The capillary entropy integral uses the same signed pressure interval.
+The solver also stops at every change in the imposed heat flux, controls pressure
+and temperature changes separately (1e4 Pa and 1 K), and permits a failed Newton
+step to be retried. A segment must still reach its requested end time.
+
+The new reference includes the axisymmetric geometry (92 nodes from 0.425 to 10 m,
+with the clay/rock interface at 1.225 m), region-specific material storage, dissolved
+air, and the time-dependent boundary flux. It replaces the old planar reference
+whose temperature remained exactly 323 K at all nodes and all ten output times.
+That reference recorded a frozen state despite continuous heating. The regression
+tolerance is unchanged; new checks require evolving temperatures, positive air
+pressures, bounded saturations, and a nonzero rock water-storage derivative.
+
+The corrected 100-year run reaches all ten outputs. The canister temperature at
+4 years is 615.22 K and at 100 years is 373.68 K. These are numerical results for
+the specified model, not a physical validation of its constitutive laws at those
+temperatures. The thermal retention factor remains positive at the saved states.
+
+Halving both the update target (`Δu_opt = 0.5`) and maximum time step to half a
+year changes the saved profiles by at most 0.00233 K, 6.04 kPa in liquid pressure,
+and 1.43 kPa in air pressure on this mesh (Julia 1.12.7, macOS ARM64).
+
+![Corrected drying temperature and saturation profiles](../../docs/src/assets/nonisothermal_drying_corrected.png)
+
+```sh
+GKSwstype=100 julia +1.12 --project=examples examples/nonisothermal_drying/run.jl
+julia +1.12 --project=examples test/regression/generate.jl nonisothermal_drying
+julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["core", "regression"])'
+```
+
 ## Certified chloride chemistry
 
 The chloride reference was renewed when `run_4.jl` switched its transient Gibbs
