@@ -134,8 +134,10 @@
 #
 # ### Water storage and Darcy flow
 #
-# Let ``\zeta`` denote the change in fluid content: the additional fluid volume per
-# unit reference bulk volume. Linear poroelasticity writes
+# Let ``\zeta`` denote the change in fluid content: the additional fluid mass,
+# divided by the reference liquid density and the reference bulk volume. It is
+# dimensionless: an equivalent fluid volume per initial bulk volume. Linear
+# poroelasticity writes, with pressure measured from the reference state,
 #
 # ```math
 # \zeta=b\varepsilon_v+Np,\qquad
@@ -145,9 +147,10 @@
 # The first term describes storage associated with deformation. The second describes
 # pressure-dependent storage at fixed strain. **``N`` is a storage coefficient**, in
 # Pa⁻¹; it is the inverse of the Biot modulus often denoted ``M`` in other texts.
-# ``\mathbf q`` is the Darcy volume flux [m/s], not the velocity of an individual
-# water molecule or the mass flux. Intrinsic permeability ``k_{\mathrm{int}}`` [m²]
-# measures how easily the pore network transmits water.
+# ``\mathbf q`` is the Darcy volume flux **relative to the solid skeleton** [m/s],
+# not the velocity of an individual water molecule or the mass flux. Intrinsic
+# permeability ``k_{\mathrm{int}}`` [m²] measures how easily the pore network
+# transmits water.
 #
 # As a sign check, consider a locally undrained compression: no water leaves, so
 # ``d\zeta=0``. Then ``dp=-(b/N)d\varepsilon_v``. A negative strain increment raises
@@ -167,6 +170,78 @@
 # written in terms of fluid content. Together with force balance, it supplies three
 # scalar equations for ``u_1``, ``u_2``, and ``p``.
 #
+# ### Does the volume in the conservation law change?
+#
+# **Yes: the material deforms, but it is water mass that is conserved.** Imagine a
+# small piece of the dam whose boundary follows the solid skeleton. Call its current
+# domain ``V(t)``. Its volume can change, and water can cross its moving boundary.
+# Without a fluid source, the exact integral balance is
+#
+# ```math
+# \frac{d}{dt}\int_{V(t)}\phi\rho_l\,dV
+# =-\int_{\partial V(t)}\rho_l\mathbf q\cdot\mathbf n\,dS,
+# \qquad \mathbf q=\phi(\mathbf v_l-\mathbf v_s).
+# ```
+#
+# Here ``\phi`` is the current porosity, ``\rho_l`` the current liquid density,
+# and ``\mathbf v_l`` and ``\mathbf v_s`` the liquid and solid velocities.
+# The integral on the left is the water mass inside the deforming piece; the one
+# on the right is its outward mass flow rate. The derivative includes the motion
+# of the domain, not just a change in ``\phi\rho_l`` at fixed coordinates. A boundary
+# moving with the solid does not necessarily move with the water, which is why the
+# flux uses the relative velocity.
+#
+# To express this balance on an unchanged reference domain ``V_0``, introduce the
+# local volume ratio ``J=dV/dV_0``. The water mass per reference bulk volume is
+# ``J\phi\rho_l``, and the dimensionless change in fluid content is
+#
+# ```math
+# \zeta=\frac{J\phi\rho_l-\phi_0\rho_{l0}}{\rho_{l0}}.
+# ```
+#
+# Subscript 0 denotes the reference state, where ``J=1``. Dividing by the fixed
+# reference density ``\rho_{l0}`` is a choice of units; it does not require the
+# actual liquid to be incompressible. Notice that both changing pore volume and
+# changing liquid density can change the amount of water stored.
+#
+# In small-strain theory, ``J\simeq1+\varepsilon_v``. Linearizing the storage law
+# gives ``\zeta=b\varepsilon_v+Np``. Consistently linearizing the balance and flux
+# about the reference state gives
+#
+# ```math
+# b\dot\varepsilon_v+N\dot p+\nabla\cdot\mathbf q=0.
+# ```
+#
+# Dots denote time derivatives following the reference material points. Thus the
+# fixed mesh used by this example does **not** assume a constant physical volume:
+# its first-order effect is retained through ``b\dot\varepsilon_v``. At finite
+# deformation, one would need the full volume ratio and transformations of areas
+# and fluxes between current and reference configurations. Those geometric effects
+# are outside this linear example.
+#
+# ### Must the material be free to deform?
+#
+# No. The mass balance holds whether displacement is allowed or constrained.
+# **Small deformation**, rather than unrestricted deformation, is the assumption
+# behind its linear form. Mechanical conditions determine which strain occurs;
+# hydraulic conditions determine how water can enter or leave.
+#
+# | Situation | Consequence for the local balance | Interpretation |
+# |:--|:--|:--|
+# | Locally fixed volume: ``\dot\varepsilon_v=0`` | ``N\dot p+\nabla\cdot\mathbf q=0`` | Pressure-dependent storage remains even without bulk-volume change. |
+# | Locally undrained compression: ``d\zeta=0`` | ``dp=-(b/N)d\varepsilon_v`` | Water mass stays constant while compression raises pressure. |
+#
+# For the first case, compressibility allows fluid exchange to change pressure
+# even though the bulk volume is fixed. For the second, imagine a sealed, uniformly
+# compressed small specimen. Sealing the exterior of a large heterogeneous domain
+# fixes its total water mass but does not prevent internal redistribution: it does
+# not by itself imply ``d\zeta=0`` at every point.
+#
+# Our dam already has mechanical constraints: the foundation base is fixed and its
+# sides cannot move horizontally. These conditions do not set volumetric strain to
+# zero everywhere. Likewise, a drained boundary does not imply a mechanically free
+# boundary. Keep the two types of conditions separate when interpreting the model.
+#
 # ### Parameters and a useful time-scale estimate
 #
 # | Symbol | Concrete | Rock | Unit | Meaning |
@@ -178,14 +253,69 @@
 # | ``N`` | ``10^{-10}`` | ``10^{-10}`` | Pa⁻¹ | Storage coefficient at fixed strain |
 # | ``\mu_l`` | ``10^{-3}`` | ``10^{-3}`` | Pa·s | Liquid viscosity |
 #
-# For a homogeneous, one-dimensional, constrained consolidation problem, an estimate is
+# **The coefficient of consolidation ``c_v`` is not the effective storage.**
+# To see the distinction, consider a separate, homogeneous one-dimensional column,
+# with deformation along ``y``, lateral strains held at zero, and axial total stress
+# held constant after a load increment. Its axial strain is its volumetric strain,
+# and the axial constitutive equation gives
 #
 # ```math
-# c_v=\frac{k_{\mathrm{int}}/\mu_l}{N+b^2/(\lambda+2\mu)},
-# \qquad t_c\sim\frac{L^2}{c_v}.
+# \sigma_{yy}=(\lambda+2\mu)\varepsilon_v-bp,
+# \qquad \dot\sigma_{yy}=0
+# \quad\Longrightarrow\quad
+# \dot\varepsilon_v=\frac{b}{\lambda+2\mu}\dot p.
 # ```
 #
-# The effective storage includes deformation as well as ``N``. The values here give
+# The column is laterally constrained but can shorten in the axial direction.
+# Substituting this relation into the water balance, with constant coefficients,
+# yields a pressure diffusion equation:
+#
+# ```math
+# \underbrace{\left(N+\frac{b^2}{\lambda+2\mu}\right)}_{S_{\mathrm{eff}}}
+# \frac{\partial p}{\partial t}
+# =\frac{k_{\mathrm{int}}}{\mu_l}\frac{\partial^2p}{\partial y^2},
+# \qquad
+# \frac{\partial p}{\partial t}=c_v\frac{\partial^2p}{\partial y^2}.
+# ```
+#
+# ```math
+# S_{\mathrm{eff}}=N+\frac{b^2}{\lambda+2\mu},
+# \qquad c_v=\frac{k_{\mathrm{int}}/\mu_l}{S_{\mathrm{eff}}}.
+# ```
+#
+# | Quantity | Unit | Physical role |
+# |:--|:--|:--|
+# | ``N`` | Pa⁻¹ | Storage response to pressure at fixed strain |
+# | ``S_{\mathrm{eff}}`` | Pa⁻¹ | Storage response including the strain allowed by this column's mechanical conditions |
+# | ``c_v`` | m²/s | Diffusivity governing the redistribution of pressure |
+#
+# The extra term ``b^2/(\lambda+2\mu)`` is the mechanical contribution to effective
+# storage. It follows from the stated column constraints; it is not a universal
+# replacement for ``N`` under any mechanical boundary conditions. The dam solver
+# retains displacement and pressure as coupled unknowns and does not substitute
+# this scalar estimate for their equations.
+#
+# **Consolidation connects this diffusion to deformation.** A rapid compressive
+# load on a saturated specimen can first raise pore pressure. As water drains, the
+# excess pressure dissipates, the skeleton carries more of the fixed total load,
+# and the specimen progressively compresses. This delayed deformation associated
+# with drainage is consolidation. Larger permeability speeds up the process;
+# larger effective storage slows it down for a given permeability and viscosity.
+#
+# Balancing the time and space derivatives in the diffusion equation gives the
+# characteristic time for a drainage length ``L``:
+#
+# ```math
+# t_c\sim\frac{L^2}{c_v}.
+# ```
+#
+# This is a time-scale estimate, not an exact time to complete consolidation;
+# numerical factors depend on the boundary conditions and chosen degree of
+# consolidation. Dissipation refers to excess pressure relative to the eventual
+# steady state, whose pressure need not be zero. In the dam example, hydraulic
+# boundary loading also acts alongside the mechanical reservoir force.
+#
+# The material values here give
 # ``c_v\approx0.0903`` m²/s for concrete and ``97.9`` m²/s for rock. For an illustrative
 # drainage length ``L=10`` m, the corresponding times are about 1,108 s (18.5 min) and
 # 1.02 s. Doubling ``L`` multiplies the estimate by four. These estimates explain why
@@ -776,6 +906,12 @@ result = run_biot()
 # - **Coupling sign:** for concrete, take an undrained volumetric strain increment
 #   of ``-10^{-5}``. Using the local storage relation gives ``dp=40\,000`` Pa.
 #   Explain why this is an illustrative local calculation, not a predicted dam profile.
+# - **Constraints and drainage:** can a specimen have fixed bulk volume while still
+#   exchanging water? Write the reduced mass balance and identify the storage term
+#   that remains. Does fixing the base of a dam impose that condition everywhere?
+# - **Storage versus diffusivity:** check the units of ``S_{\mathrm{eff}}`` and
+#   ``c_v``. At fixed permeability, viscosity, and drainage length, what happens to
+#   ``c_v`` and ``t_c`` if the effective storage doubles?
 # - **Drainage length:** use ``L=20`` m in the time-scale estimate. Why is the estimate
 #   four times larger than at 10 m even though material coefficients are unchanged?
 # - **Time resolution:** compare 100 s, 50 s, and 25 s steps, all ending at 2,000 s.
