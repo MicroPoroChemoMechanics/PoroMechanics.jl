@@ -2,13 +2,16 @@
 
 ## Unreleased
 
-- Pin the environment that carries the numeric assertions. `test/Manifest.toml` is now
-  committed and instantiated with `allow_reresolve: false` on the Julia 1.12 CI jobs,
-  which run every test group. The Julia 1 jobs still resolve from scratch — that is what
-  catches an unbounded dependency whose API moved — but run every group except
-  `regression`, so they no longer assert on profiles. Coverage is uploaded from the pinned
-  ubuntu job. Two tolerances in two days had been invalidated by the next run, each time
-  with an unrelated package as the only manifest difference.
+- Pin the environment that carries the numeric assertions. `Manifest.toml` and
+  `test/Manifest.toml` are now committed **as a pair** and instantiated with
+  `allow_reresolve: false` on the Julia 1.12 CI jobs, which run every test group. Pkg
+  builds the test sandbox from both, so pinning only the test manifest left CI resolving
+  the root afresh and reconciling the two, which was unsatisfiable (XML2_jll 2.15.3 against
+  Hwloc_jll 2.14.0). The Julia 1 jobs drop both manifests before the build step and resolve
+  from scratch — that is what catches an unbounded dependency whose API moved — but run
+  every group except `regression`, so they no longer assert on profiles. Coverage is
+  uploaded from the pinned ubuntu job. Two tolerances in two days had been invalidated by
+  the next run, each time with an unrelated package as the only manifest difference.
 
 - Set the drying regression tolerance to 1e-5, anchored to the scheme's own step-size
   sensitivity rather than to the drift measured on a given day. Run 35268241275 measured

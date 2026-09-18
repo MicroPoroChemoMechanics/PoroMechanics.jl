@@ -5,9 +5,15 @@ Regenerate a reference only for an intentional change, and document the reason.
 
 ## Where the numbers are asserted
 
-`test/Manifest.toml` is committed, and the Julia 1.12 CI jobs instantiate it with
-`allow_reresolve: false`. This is the one environment in which the references are
-compared. The reason is measured rather than precautionary: twice in two days a tolerance
+`Manifest.toml` and `test/Manifest.toml` are committed as a pair, and the Julia 1.12 CI
+jobs instantiate them with `allow_reresolve: false`. This is the one environment in which
+the references are compared. The pair matters: Pkg builds the test sandbox from both
+manifests, so pinning only the test one leaves CI resolving the root afresh and then
+reconciling the two. That reconciliation is not always satisfiable — the first attempt
+died on XML2_jll 2.15.3 from the freshly resolved root against Hwloc_jll 2.14.0 from the
+pinned test manifest, with no version left.
+
+The reason for pinning at all is measured rather than precautionary: twice in two days a tolerance
 set from a CI measurement was invalidated by the very next run, with an unrelated package
 as the only difference in the resolved manifest — DispatchDoctor 0.4.28 → 0.4.29 with
 DomainSets 0.8.1 → 0.8.2 on the chloride signature, GeometryBasics 0.5.12 → 0.5.13 on the
