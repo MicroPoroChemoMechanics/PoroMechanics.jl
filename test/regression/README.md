@@ -23,8 +23,8 @@ The new reference includes the axisymmetric geometry (92 nodes from 0.425 to 10 
 with the clay/rock interface at 1.225 m), region-specific material storage, dissolved
 air, and the time-dependent boundary flux. It replaces the old planar reference
 whose temperature remained exactly 323 K at all nodes and all ten output times.
-That reference recorded a frozen state despite continuous heating. The regression
-tolerance is unchanged; new checks require evolving temperatures, positive air
+That reference recorded a frozen state despite continuous heating. Additional
+checks require evolving temperatures, positive air
 pressures, bounded saturations, and a nonzero rock water-storage derivative.
 
 The corrected 100-year run reaches all ten outputs. The canister temperature at
@@ -35,6 +35,20 @@ temperatures. The thermal retention factor remains positive at the saved states.
 Halving both the update target (`Δu_opt = 0.5`) and maximum time step to half a
 year changes the saved profiles by at most 0.00233 K, 6.04 kPa in liquid pressure,
 and 1.43 kPa in air pressure on this mesh (Julia 1.12.7, macOS ARM64).
+
+The first CI run with this corrected reference exposed a portability mismatch:
+[run 35268241275](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/runs/35268241275)
+reported the same relative L2 difference, **3.286368518461479e-8**, in all four
+Linux/Windows x64 jobs using Julia 1.12.7 and 1.13.0. This was their only failing
+assertion; the completed-transient and physical checks passed. The largest absolute
+difference was 47.55 Pa (3,737,557.30 Pa in the reference versus 3,737,509.75 Pa in CI),
+well below the 6.04 kPa sensitivity measured when refining time steps.
+
+The default drying tolerance is therefore **1e-7**, replacing 1e-10 with a factor of
+about three over the observed environment difference. The reference, solver, and
+physical checks are unchanged. `POROMECHANICS_STRICT_REGRESSION=true` still requests
+1e-10. These measurements establish an environment-dependent difference, not its
+precise dependency or floating-point cause; no separate tolerance is selected by OS.
 
 ![Corrected drying temperature and saturation profiles](../../docs/src/assets/nonisothermal_drying_corrected.png)
 

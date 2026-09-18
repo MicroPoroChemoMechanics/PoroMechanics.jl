@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Set the drying regression tolerance to 1e-7 after all four Linux/Windows CI jobs
+  measured the same 3.29e-8 difference from the macOS reference (maximum difference
+  47.55 Pa). Preserve the reference, physical checks, and optional 1e-10 strict mode.
+- Expand the Biot consolidation example into a tutorial explaining saturated
+  poroelasticity, weak forms, mixed finite elements, assembly, and result extraction,
+  with diagrams and explicit limits of the demonstration.
+
 - Fix the discontinuity of `ExponentialCutoff` at zero capillary pressure by extending
   its exponential branch to negative pressures. The nearly saturated rock in the
   non-isothermal drying example now retains water storage sensitivity instead of

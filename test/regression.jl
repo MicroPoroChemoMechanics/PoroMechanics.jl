@@ -12,8 +12,8 @@ include("regression/drying.jl")
 
 # Tolerances are per case and independent of the platform triplet: Sys.MACHINE
 # does not identify a Julia/BLAS/dependency environment. Richards' adaptive stepping
-# has measured portable drift of 1.7e-5 in L2 and chloride ingress 1.0e-4 (see below);
-# the other three cases remain below 1e-10.
+# has measured portable drift of 1.7e-5 in L2, drying 3.29e-8, and chloride ingress
+# 1.0e-4 (see below); the remaining cases retain the 1e-10 tolerance.
 # A developer comparing within a controlled environment can explicitly request 1e-10
 # for every case with POROMECHANICS_STRICT_REGRESSION=true.
 const STRICT_REGRESSION = get(ENV, "POROMECHANICS_STRICT_REGRESSION", "false")
@@ -22,7 +22,10 @@ const REGRESSION_TOLERANCES = Dict(
     "fickian_diffusion" => 1.0e-10,
     "darcy_column" => 1.0e-10,
     "richards_1d" => 1.0e-3,
-    "nonisothermal_drying" => 1.0e-10,
+    ## All four Linux/Windows jobs (Julia 1.12.7 and 1.13.0) measured the same
+    ## 3.2864e-8 drift from the macOS ARM reference, at most 47.56 Pa in one entry.
+    ## Keep a modest margin for environment differences; see regression/README.md.
+    "nonisothermal_drying" => 1.0e-7,
     "biot_consolidation" => 1.0e-10,
     ## Certified chemistry still has solver and phase-boundary tolerances, and the
     ## signature moves with the environment by more than certification alone controls.
