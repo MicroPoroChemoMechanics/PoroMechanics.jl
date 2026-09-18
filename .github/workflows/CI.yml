@@ -25,8 +25,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.12'      # minimum supported: ChemistryLab and OptimaSolver require >= 1.12
-          - '1'         # latest stable
+          - '1.12'      # minimum supported, and the pinned environment: carries the numeric assertions
+          - '1'         # latest stable, resolved from scratch: carries the API-drift check
         os:
           - ubuntu-latest
           - windows-latest
@@ -41,12 +41,45 @@ jobs:
       - uses: julia-actions/cache@v3
       - name: Prepare ChemistryLab sensitivity correction
         run: julia scripts/prepare_chemistrylab.jl
+      # The moving Julia resolves everything from scratch, which is what catches an
+      # unbounded dependency whose API moved under us — it is how the MeanFieldHomogenization
+      # drift was found. Both manifests go before the build step, or `julia-buildpkg`
+      # instantiates the pinned pair and the resolve never happens.
+      - name: Drop the pin on the moving Julia
+        if: matrix.version == '1'
+        shell: bash
+        run: rm -f Manifest.toml test/Manifest.toml
+
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+
+      # The numeric assertions live in one pinned environment, and nowhere else. Twice in
+      # two days a regression tolerance set from a CI measurement was invalidated by the
+      # next run, each time with an unrelated package as the only difference in the
+      # resolved manifest: DispatchDoctor and DomainSets on the chloride signature,
+      # GeometryBasics on the drying one. `Manifest.toml` and `test/Manifest.toml` are
+      # therefore committed **as a pair**: Pkg builds the test sandbox from both, and
+      # pinning only the second one left CI resolving the root afresh, which collided —
+      # XML2_jll 2.15.3 there against Hwloc_jll 2.14.0 here, with no version left.
+      # `allow_reresolve: false` makes the pin fail loudly rather than drift silently.
+      - name: Test the pinned environment — every group
+        if: matrix.version == '1.12'
+        uses: julia-actions/julia-runtest@v1
+        with:
+          allow_reresolve: false
+
+      # The freshly resolved environment must not carry the numeric assertions, so it runs
+      # every group but `regression`. The examples are still executed on every push by the
+      # Documentation workflow, so a broken example is still caught there.
+      - name: Test the freshly resolved environment — no numeric assertions
+        if: matrix.version == '1'
+        uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: 'core validation chemistry'
+
       - uses: julia-actions/julia-processcoverage@v1
-        if: matrix.version == '1' && matrix.os == 'ubuntu-latest'
+        if: matrix.version == '1.12' && matrix.os == 'ubuntu-latest'
       - uses: codecov/codecov-action@v7
-        if: matrix.version == '1' && matrix.os == 'ubuntu-latest'
+        if: matrix.version == '1.12' && matrix.os == 'ubuntu-latest'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info

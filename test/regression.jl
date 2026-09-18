@@ -12,7 +12,7 @@ include("regression/drying.jl")
 
 # Tolerances are per case and independent of the platform triplet: Sys.MACHINE
 # does not identify a Julia/BLAS/dependency environment. Richards' adaptive stepping
-# has measured portable drift of 1.7e-5 in L2, drying 3.29e-8, and chloride ingress
+# has measured portable drift of 1.7e-5 in L2, drying 1.54e-7, and chloride ingress
 # 1.0e-4 (see below); the remaining cases retain the 1e-10 tolerance.
 # A developer comparing within a controlled environment can explicitly request 1e-10
 # for every case with POROMECHANICS_STRICT_REGRESSION=true.
@@ -22,10 +22,21 @@ const REGRESSION_TOLERANCES = Dict(
     "fickian_diffusion" => 1.0e-10,
     "darcy_column" => 1.0e-10,
     "richards_1d" => 1.0e-3,
-    ## All four Linux/Windows jobs (Julia 1.12.7 and 1.13.0) measured the same
-    ## 3.2864e-8 drift from the macOS ARM reference, at most 47.56 Pa in one entry.
-    ## Keep a modest margin for environment differences; see regression/README.md.
-    "nonisothermal_drying" => 1.0e-7,
+    ## Path divergence, not floating-point noise, and it moves with the environment.
+    ## Run 35268241275 measured 3.2864e-8 against the macOS ARM reference in all four
+    ## Linux/Windows jobs. One day later, run 35315496053 measured 1.5416e-7 in three of
+    ## them and below 1e-7 in the fourth (windows-latest, Julia 1.13.0), with
+    ## GeometryBasics 0.5.12 → 0.5.13 the only difference in the resolved manifest — so a
+    ## 1e-7 threshold set from the first measurement failed the next day. The largest
+    ## single difference, 173 Pa, sits at the hundred-year output on the air pressure:
+    ## the adaptive step sequence diverges and the gap accumulates to the final time.
+    ## Anchor the threshold to what the scheme controls rather than to the drift of the
+    ## day. Halving `Δu_opt` and the maximum step moves one entry by 6.04 kPa, which is
+    ## 1.6e-6 in relative L2 against a reference norm of 3.83e9, so 1e-7 asserted ten
+    ## times more than the discretization guarantees. 1e-5 keeps 65× over the measured
+    ## drift and still catches a real change by orders of magnitude here: correcting
+    ## `ExponentialCutoff` rewrote this reference wholesale.
+    "nonisothermal_drying" => 1.0e-5,
     "biot_consolidation" => 1.0e-10,
     ## Certified chemistry still has solver and phase-boundary tolerances, and the
     ## signature moves with the environment by more than certification alone controls.

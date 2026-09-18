@@ -2,10 +2,14 @@
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
-/Manifest.toml
 /docs/Manifest.toml
 /examples/Manifest.toml
-/test/Manifest.toml
+# `/Manifest.toml` and `/test/Manifest.toml` are deliberately missing from this list.
+# The regression references are compared inside the test environment, and Pkg builds that
+# sandbox from *both* manifests: the root one fixes the versions of the package's own
+# dependencies. Pinning only the test manifest makes CI resolve the root one afresh and
+# then reconcile the two, which is unsatisfiable. They are committed as a pair, and CI
+# instantiates them as-is. See `test/regression/README.md`.
 /deps/deps.jl
 LocalPreferences.toml
 

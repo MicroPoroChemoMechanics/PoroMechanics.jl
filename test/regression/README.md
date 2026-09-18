@@ -3,6 +3,28 @@
 References record numerical behavior; they do not establish physical accuracy.
 Regenerate a reference only for an intentional change, and document the reason.
 
+## Where the numbers are asserted
+
+`Manifest.toml` and `test/Manifest.toml` are committed as a pair, and the Julia 1.12 CI
+jobs instantiate them with `allow_reresolve: false`. This is the one environment in which
+the references are compared. The pair matters: Pkg builds the test sandbox from both
+manifests, so pinning only the test one leaves CI resolving the root afresh and then
+reconciling the two. That reconciliation is not always satisfiable — the first attempt
+died on XML2_jll 2.15.3 from the freshly resolved root against Hwloc_jll 2.14.0 from the
+pinned test manifest, with no version left.
+
+The reason for pinning at all is measured rather than precautionary: twice in two days a tolerance
+set from a CI measurement was invalidated by the very next run, with an unrelated package
+as the only difference in the resolved manifest — DispatchDoctor 0.4.28 → 0.4.29 with
+DomainSets 0.8.1 → 0.8.2 on the chloride signature, GeometryBasics 0.5.12 → 0.5.13 on the
+drying one. A reference compared in an environment that is never twice the same measures
+the resolver as much as the package.
+
+The Julia 1 jobs keep resolving from scratch, because that is what catches an unbounded
+dependency whose API has moved, but they run every group except `regression`. Tolerances
+below still cover what remains once the environment is fixed: the difference between the
+macOS ARM machine that generated the references and the x86 runners that read them.
+
 ## Non-isothermal drying
 
 The drying reference was renewed after correcting the exponential retention branch.
@@ -44,11 +66,26 @@ assertion; the completed-transient and physical checks passed. The largest absol
 difference was 47.55 Pa (3,737,557.30 Pa in the reference versus 3,737,509.75 Pa in CI),
 well below the 6.04 kPa sensitivity measured when refining time steps.
 
-The default drying tolerance is therefore **1e-7**, replacing 1e-10 with a factor of
-about three over the observed environment difference. The reference, solver, and
-physical checks are unchanged. `POROMECHANICS_STRICT_REGRESSION=true` still requests
-1e-10. These measurements establish an environment-dependent difference, not its
-precise dependency or floating-point cause; no separate tolerance is selected by OS.
+A tolerance of 1e-7 was set from that measurement, a factor of about three over it. It
+survived one day. [Run 35315496053](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/actions/runs/35315496053)
+measured **1.5416159893909087e-7** in three of the four jobs — bit-identical between them —
+and below 1e-7 in the fourth, windows-latest with Julia 1.13.0, which passed. The commit
+under test changed only the Biot example, the tolerances and this file. The single
+difference in the resolved manifest was GeometryBasics 0.5.12 → 0.5.13, a package that
+carries no physics for this solve. The same entry then read 3,737,730.56 Pa instead of
+3,737,509.75 Pa: the mismatch is not a fixed offset but the accumulated divergence of the
+adaptive step sequence, and its size depends on the environment.
+
+The default drying tolerance is therefore **1e-5**, anchored to what the scheme itself
+controls rather than to the drift measured on a given day. Halving `Δu_opt` and the
+maximum step moves one entry by 6.04 kPa, which is 1.6e-6 in relative L2 against a
+reference norm of 3.83e9; any threshold below that asserts more than the discretization
+guarantees. 1e-5 keeps a factor of 65 over the observed drift and still catches a real
+change by orders of magnitude — correcting `ExponentialCutoff` rewrote this reference
+wholesale. The reference, solver, and physical checks are unchanged.
+`POROMECHANICS_STRICT_REGRESSION=true` still requests 1e-10. These measurements establish
+an environment-dependent difference, not its precise floating-point cause; no separate
+tolerance is selected by OS.
 
 ![Corrected drying temperature and saturation profiles](../../docs/src/assets/nonisothermal_drying_corrected.png)
 
