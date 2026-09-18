@@ -5,7 +5,9 @@
 /Manifest.toml
 /docs/Manifest.toml
 /examples/Manifest.toml
-/test/Manifest.toml
+# `/test/Manifest.toml` is deliberately missing from this list. The regression
+# references are compared inside that environment, so it is pinned, committed and
+# reviewable; CI instantiates it as-is. See `test/regression/README.md`.
 /deps/deps.jl
 LocalPreferences.toml
 

@@ -2,9 +2,22 @@
 
 ## Unreleased
 
-- Set the drying regression tolerance to 1e-7 after all four Linux/Windows CI jobs
-  measured the same 3.29e-8 difference from the macOS reference (maximum difference
-  47.55 Pa). Preserve the reference, physical checks, and optional 1e-10 strict mode.
+- Pin the environment that carries the numeric assertions. `test/Manifest.toml` is now
+  committed and instantiated with `allow_reresolve: false` on the Julia 1.12 CI jobs,
+  which run every test group. The Julia 1 jobs still resolve from scratch — that is what
+  catches an unbounded dependency whose API moved — but run every group except
+  `regression`, so they no longer assert on profiles. Coverage is uploaded from the pinned
+  ubuntu job. Two tolerances in two days had been invalidated by the next run, each time
+  with an unrelated package as the only manifest difference.
+
+- Set the drying regression tolerance to 1e-5, anchored to the scheme's own step-size
+  sensitivity rather than to the drift measured on a given day. Run 35268241275 measured
+  3.29e-8 from the macOS reference in all four Linux/Windows jobs; the 1e-7 threshold set
+  from it failed one day later, when run 35315496053 measured 1.5416e-7 in three jobs with
+  GeometryBasics 0.5.12 → 0.5.13 as the only difference in the resolved manifest. Halving
+  the update target moves one entry by 6.04 kPa, which is 1.6e-6 in relative L2, so 1e-7
+  asserted ten times more than the discretization guarantees. Preserve the reference,
+  physical checks, and optional 1e-10 strict mode.
 - Expand the Biot consolidation example into a tutorial explaining saturated
   poroelasticity, weak forms, mixed finite elements, assembly, and result extraction,
   with diagrams and explicit limits of the demonstration.
