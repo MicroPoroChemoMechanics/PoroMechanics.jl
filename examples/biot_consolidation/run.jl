@@ -356,11 +356,13 @@ using Printf
 # ## 4. Define the model and the result
 #
 # `BiotModel <: AbstractPoroModel` groups the material data and reservoir loading.
-# The suffix `_b` refers to concrete (*béton*); `_r` refers to rock. The FEM field
+# The suffix `_c` refers to concrete; `_r` refers to rock. The FEM field
 # `:u` has two components and `:p` has one. `nspecies` and `species_names` describe
 # these three scalar components in the PoroMechanics interface.
 #
-# The load uses `rho_g` directly. The `rho_l` field documents the density but is not
+# The parameter `rho_g = rho_l * g` is the product of liquid density and gravitational
+# acceleration, expressed in Pa/m. The load uses `rho_g` directly.
+# The `rho_l` field documents the density but is not
 # used separately in the assembly: changing `rho_l` alone does not change the load.
 # If you change the fluid, keep viscosity and the product `rho_g` consistent.
 #
@@ -372,11 +374,11 @@ using Printf
 """Parameters of model M7 (Biot poroelasticity, saturated medium)."""
 Base.@kwdef struct BiotModel <: AbstractPoroModel
     ## concrete (surface "1")
-    E_b     :: Float64 = 1.4e10    # Young's modulus [Pa]
-    nu_b    :: Float64 = 0.15      # Poisson's ratio [-]
-    k_b     :: Float64 = 1.0e-14   # intrinsic permeability [m²]
-    b_b     :: Float64 = 0.4       # Biot coefficient [-]
-    N_b     :: Float64 = 1.0e-10   # storage coefficient [Pa⁻¹]
+    E_c     :: Float64 = 1.4e10    # Young's modulus [Pa]
+    nu_c    :: Float64 = 0.15      # Poisson's ratio [-]
+    k_c     :: Float64 = 1.0e-14   # intrinsic permeability [m²]
+    b_c     :: Float64 = 0.4       # Biot coefficient [-]
+    N_c     :: Float64 = 1.0e-10   # storage coefficient [Pa⁻¹]
     ## rock (surface "2")
     E_r     :: Float64 = 1.8e10
     nu_r    :: Float64 = 0.15
@@ -418,31 +420,164 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 #
 # ### Why use a weak form?
 #
-# A triangular mesh represents the fields using simple polynomials. Their derivatives
-# need not be smooth across cell boundaries. Multiplying the equations by test
-# functions and integrating by parts reduces the derivative requirements and makes
-# boundary forces and fluxes appear explicitly.
+# The strong equations require force and water balances at each point. They contain
+# spatial derivatives of stress and flux, which themselves depend on derivatives of
+# displacement and pressure. However, the continuous, piecewise-linear fields used
+# on our triangles have gradients that can jump between cells. Their classical
+# second derivatives are not defined everywhere.
 #
-# Let ``\mathbf v`` be a virtual displacement and ``w`` a pressure test function,
-# both zero on the boundaries where their corresponding values are prescribed.
-# With ``\kappa=k_{\mathrm{int}}/\mu_l``, the weak equations are
+# The weak formulation transfers one spatial derivative to a **test function** by
+# integration by parts. It uses only first derivatives of the unknowns, and boundary
+# forces and fluxes appear explicitly. Here ``\Omega`` is the fixed reference domain
+# of the small-strain model discussed above.
+#
+# Before discretization, requiring the weak equations for every admissible test
+# function is a reformulation of the balance laws, with lower smoothness requirements.
+# It does not mean that conservation is optional or approximate. The finite element
+# approximation comes later, when we restrict unknowns and tests to finite-dimensional
+# spaces. It does not automatically enforce an exact local balance on every cell.
+#
+# ### Step 1: choose admissible test functions
+#
+# Let ``\mathbf v`` be a vector test function for displacement and ``w`` a scalar
+# test function for pressure. A test function weights the residual of an equation;
+# requiring every such weighted integral to vanish expresses the balance throughout
+# the domain. Mechanically, ``\mathbf v`` can also be interpreted as a virtual
+# displacement. It is not the solid velocity and is not an additional unknown.
+#
+# Why must the tests vanish on prescribed-value boundaries? Suppose that
+# ``\mathbf u=\mathbf u_D`` is imposed there. A trial variation
+# ``\mathbf u+\eta\mathbf v`` must keep that value for any small scalar ``\eta``,
+# so the corresponding components of ``\mathbf v`` must be zero. Similarly,
+# ``p=p_D`` requires ``w=0``. The prescribed values themselves need not be zero.
+#
+# | Field | Essential (Dirichlet) boundary | Natural boundary |
+# |:--|:--|:--|
+# | Displacement | Prescribe ``\mathbf u``; set the corresponding components of ``\mathbf v`` to zero | Prescribe traction ``\boldsymbol\sigma\mathbf n=\overline{\mathbf t}`` |
+# | Pressure | Prescribe ``p`` on ``\Gamma_p``; set ``w=0`` there | Prescribe outward flux ``\mathbf q\cdot\mathbf n=\overline q_n`` on ``\Gamma_q`` |
+#
+# For displacement, the split is componentwise: on the foundation sides, ``u_1=0``
+# implies ``v_1=0``, while ``v_2`` is unrestricted and the vertical traction is zero.
+# At the fixed base, both test components vanish. Reactions at constrained components
+# are not prescribed tractions; they are determined by the solution.
+#
+# ### Step 2: integrate mechanical equilibrium by parts
+#
+# There is no body force in this example. Multiply ``\nabla\cdot\boldsymbol\sigma=0``
+# by ``\mathbf v`` and integrate:
 #
 # ```math
+# 0=\int_\Omega\mathbf v\cdot(\nabla\cdot\boldsymbol\sigma)\,d\Omega.
+# ```
+#
+# Recall the one-dimensional identity ``\int v f'=[vf]-\int v'f``. The divergence
+# theorem gives its multidimensional counterpart:
+#
+# ```math
+# \int_\Omega\mathbf v\cdot(\nabla\cdot\boldsymbol\sigma)\,d\Omega
+# =\int_{\partial\Omega}\mathbf v\cdot(\boldsymbol\sigma\mathbf n)\,d\Gamma
+# -\int_\Omega\nabla\mathbf v:\boldsymbol\sigma\,d\Omega.
+# ```
+#
+# The boundary normal ``\mathbf n`` points outward. The colon is a tensor dot product:
+# ``A:B=\sum_{i,j}A_{ij}B_{ij}``. Since stress is symmetric, its contraction with the
+# antisymmetric part of ``\nabla\mathbf v`` is zero. Therefore
+# ``\nabla\mathbf v:\boldsymbol\sigma=\boldsymbol\varepsilon(\mathbf v):\boldsymbol\sigma``.
+# Moving the volume term to the other side gives the virtual-work identity
+#
+# ```math
+# \int_\Omega\boldsymbol\varepsilon(\mathbf v):\boldsymbol\sigma\,d\Omega
+# =\int_{\partial\Omega}\mathbf v\cdot(\boldsymbol\sigma\mathbf n)\,d\Gamma.
+# ```
+#
+# Now insert ``\boldsymbol\sigma=\mathsf C:\boldsymbol\varepsilon(\mathbf u)-bp\mathbf I``,
+# where ``\mathsf C`` is the elastic stiffness tensor encoded by ``\lambda`` and ``\mu``.
+# The identity ``\boldsymbol\varepsilon(\mathbf v):\mathbf I=\nabla\cdot\mathbf v``
+# explains the pressure coupling term. Tests vanish at prescribed displacement
+# components; the other boundary components contribute prescribed traction. Thus
+#
+# ```math
+# \boxed{
 # \int_\Omega\boldsymbol\varepsilon(\mathbf v):\mathsf C:
 #   \boldsymbol\varepsilon(\mathbf u)\,d\Omega
 # -\int_\Omega b(\nabla\cdot\mathbf v)p\,d\Omega
-# =\int_{\Gamma_t}\mathbf v\cdot\mathbf t\,d\Gamma,
+# =\int_{\Gamma_t}\mathbf v\cdot\overline{\mathbf t}\,d\Gamma.
+# }
 # ```
+#
+# Here the traction integral includes only unconstrained displacement components.
+# It is the internal virtual work balanced by external virtual work. In the dam,
+# the nonzero prescribed traction is ``\overline{\mathbf t}=-p_{\mathrm{hydro}}\mathbf n``
+# on the upstream boundary. `facet_load!` evaluates this right-hand side.
+# The minus sign in the pressure coupling comes from the stress law, not from the
+# choice of outward normal.
+#
+# ### Step 3: integrate the water balance by parts
+#
+# Start with storage plus net outflow:
 #
 # ```math
-# \int_\Omega w\left(b\nabla\cdot\dot{\mathbf u}+N\dot p\right)\,d\Omega
-# +\int_\Omega\kappa\nabla w\cdot\nabla p\,d\Omega=0.
+# \dot\zeta+\nabla\cdot\mathbf q=0,\qquad
+# \dot\zeta=b\nabla\cdot\dot{\mathbf u}+N\dot p,\qquad
+# \mathbf q=-\kappa\nabla p,\qquad
+# \kappa=\frac{k_{\mathrm{int}}}{\mu_l}.
 # ```
 #
-# A dot means a time derivative; the colon contracts tensor components, as a dot
-# product does for vectors. ``\mathsf C`` is the elastic stiffness tensor encoded
-# by ``\lambda`` and ``\mu``. The pressure boundary term vanishes because ``w=0``
-# on prescribed-pressure faces and normal flux is zero on the remaining faces.
+# A dot denotes a time derivative. Multiply by the pressure test ``w``, integrate,
+# and apply integration by parts **only to the flux divergence**:
+#
+# ```math
+# \begin{aligned}
+# 0&=\int_\Omega w\dot\zeta\,d\Omega
+#   +\int_\Omega w\nabla\cdot\mathbf q\,d\Omega\\
+#  &=\int_\Omega w\dot\zeta\,d\Omega
+#   -\int_\Omega\nabla w\cdot\mathbf q\,d\Omega
+#   +\int_{\partial\Omega}w\mathbf q\cdot\mathbf n\,d\Gamma.
+# \end{aligned}
+# ```
+#
+# Substituting Darcy's law makes the interior transport term positive:
+# ``-\nabla w\cdot\mathbf q=+\kappa\nabla w\cdot\nabla p``. The storage term already
+# contains at most first spatial derivatives, so there is no need to integrate it
+# by parts. On ``\Gamma_p``, ``w=0``; on ``\Gamma_q``, the prescribed flux remains:
+#
+# ```math
+# \boxed{
+# \int_\Omega w\left(b\nabla\cdot\dot{\mathbf u}+N\dot p\right)\,d\Omega
+# +\int_\Omega\kappa\nabla w\cdot\nabla p\,d\Omega
+# =-\int_{\Gamma_q}w\overline q_n\,d\Gamma.
+# }
+# ```
+#
+# The sign convention matters: ``\overline q_n>0`` denotes water leaving the body,
+# so it contributes negatively to the right-hand side. An imposed inflow has the
+# opposite sign. In this example the base and foundation sides have zero normal
+# flux, so ``\overline q_n=0`` and the hydraulic right-hand side vanishes.
+#
+# **A zero test function on a prescribed-pressure boundary does not mean zero flow
+# there.** Upstream and downstream water exchange is determined by the solution.
+# Its boundary integral vanishes in this weak equation because ``w=0`` there,
+# not because the physical flux is zero. The prescribed pressure values still
+# enter the solution through the Dirichlet constraints.
+#
+# ### Step 4: connect boundary terms and material interfaces to the code
+#
+# `ConstraintHandler` imposes the essential conditions on `:u` and `:p`.
+# `facet_load!` assembles the nonzero natural mechanical load. No hydraulic boundary
+# load vector is needed for this example's zero prescribed fluxes. Omitting a boundary
+# load on an unconstrained component implements the corresponding zero natural
+# condition; it does not impose a zero field value.
+#
+# The same integration by parts can be performed separately in concrete and rock.
+# Their shared interface has opposite outward normals on its two sides. With no
+# interface source or applied interface force, continuity of normal flux and traction
+# makes the paired boundary terms cancel for continuous tests. This is why we assemble
+# both materials on one shared mesh, using each cell's own coefficients. We do not
+# differentiate permeability across its jump as if it were a smooth function.
+#
+# The mechanical pressure term is negative, ``-\int b(\nabla\cdot\mathbf v)p``;
+# the deformation-storage term is positive, ``+\int wb\nabla\cdot\dot{\mathbf u}``.
+# These are the origins of the opposite coupling signs in the matrices below.
 #
 # ### One triangle, nine degrees of freedom
 #
@@ -453,7 +588,21 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # constraints are imposed.
 #
 # Write the vector displacement shape functions as ``\mathbf V_i`` and scalar
-# pressure shape functions as ``\phi_j``. The four element blocks are
+# pressure shape functions as ``\phi_j``. Approximate the fields by
+#
+# ```math
+# \mathbf u_h=\sum_j\mathbf V_j U_j,\qquad
+# p_h=\sum_j\phi_j P_j.
+# ```
+#
+# In the Galerkin method, choose each basis function in turn as a test:
+# ``\mathbf v=\mathbf V_i`` for the mechanical rows and ``w=\phi_i`` for the hydraulic
+# rows, with the prescribed-value constraints accounted for. Substitution into the
+# two weak equations gives a finite system for the nodal coefficients ``U_j`` and
+# ``P_j``. For example, the diffusion integral becomes
+# ``\sum_j P_j\int_{\Omega_e}\kappa\nabla\phi_i\cdot\nabla\phi_j\,d\Omega``:
+# the integral is a matrix entry, and ``P_j`` is an unknown coefficient.
+# The four element blocks are
 #
 # ```math
 # \begin{aligned}
@@ -481,16 +630,16 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # Thus ``K_1 X+K_2\dot X=F``: mechanics has no inertial or time-derivative term,
 # whereas fluid content changes with both displacement and pressure. The opposite
 # coupling signs follow directly from stress and storage; they are not arbitrary.
-# `is_beton` selects the coefficients for the current material region.
+# `is_concrete` selects the coefficients for the current material region.
 
 
 """
-    PoroMechanics.element_matrices!(ke1, ke2, is_beton::Bool, m::BiotModel, cv_u, cv_p)
+    PoroMechanics.element_matrices!(ke1, ke2, is_concrete::Bool, m::BiotModel, cv_u, cv_p)
 
 Computes the steady element matrix `ke1` and the storage element matrix `ke2`
 for a P1/P1 triangular element of the Biot model.
 
-`is_beton` selects the concrete parameters (`true`) or the rock ones (`false`).
+`is_concrete` selects the concrete parameters (`true`) or the rock ones (`false`).
 
 Blocks of ke1 (terms independent of Δt):
   ke1[u,u] = K_uu   — elastic stiffness
@@ -501,15 +650,15 @@ Blocks of ke2 (divided by Δt during time integration):
   ke2[p,u] = +K_up^T — hydraulic coupling
   ke2[p,p] = M_pp    — storage compressibility
 """
-function PoroMechanics.element_matrices!(ke1, ke2, is_beton::Bool, m::BiotModel, cv_u, cv_p)
+function PoroMechanics.element_matrices!(ke1, ke2, is_concrete::Bool, m::BiotModel, cv_u, cv_p)
     fill!(ke1, 0.0)
     fill!(ke2, 0.0)
 
-    E  = is_beton ? m.E_b  : m.E_r
-    nu = is_beton ? m.nu_b : m.nu_r
-    k  = is_beton ? m.k_b  : m.k_r
-    b  = is_beton ? m.b_b  : m.b_r
-    N  = is_beton ? m.N_b  : m.N_r
+    E  = is_concrete ? m.E_c  : m.E_r
+    nu = is_concrete ? m.nu_c : m.nu_r
+    k  = is_concrete ? m.k_c  : m.k_r
+    b  = is_concrete ? m.b_c  : m.b_r
+    N  = is_concrete ? m.N_c  : m.N_r
 
     λ, μ = lame_coeffs(E, nu)
     K_l  = k / m.mu_l    # hydraulic conductivity [m²/(Pa·s)]
@@ -646,7 +795,7 @@ function run_biot(;
     grid = togrid(mesh_path)
     @printf("Mesh: %d nodes, %d elements\n", getnnodes(grid), getncells(grid))
 
-    beton_cells = getcellset(grid, "1")   # concrete elements
+    concrete_cells = getcellset(grid, "1")   # concrete elements
 
     ## ── DofHandler : P1 vector (u₁,u₂) + P1 scalar (p) ─────────────────
     ip_geo = Lagrange{RefTriangle, 1}()
@@ -703,8 +852,8 @@ function run_biot(;
     for cell in CellIterator(dh)
         reinit!(cv_u, cell)
         reinit!(cv_p, cell)
-        is_beton = cellid(cell) ∈ beton_cells
-        PoroMechanics.element_matrices!(ke1_buf, ke2_buf, is_beton, m, cv_u, cv_p)
+        is_concrete = cellid(cell) ∈ concrete_cells
+        PoroMechanics.element_matrices!(ke1_buf, ke2_buf, is_concrete, m, cv_u, cv_p)
         assemble!(as1, celldofs(cell), ke1_buf)
         assemble!(as2, celldofs(cell), ke2_buf)
     end
@@ -756,11 +905,11 @@ function run_biot(;
         x = A \ rhs
 
         ## — diagnostics —
-        p_beton_max = -Inf
-        for ci in beton_cells
+        p_concrete_max = -Inf
+        for ci in concrete_cells
             d = celldofs(dh, ci)
             for k in p_range
-                p_beton_max = max(p_beton_max, x[d[k]])
+                p_concrete_max = max(p_concrete_max, x[d[k]])
             end
         end
 
@@ -776,7 +925,7 @@ function run_biot(;
         end
 
         @printf("%4d | %9.4f | %+17.4f | %+11.4f | %+11.4f\n",
-                step, t_step/86400.0, p_beton_max/1e6, u1_max*1e3, u2_max*1e3)
+                step, t_step/86400.0, p_concrete_max/1e6, u1_max*1e3, u2_max*1e3)
     end
 
     println("─"^66)
@@ -917,7 +1066,7 @@ result = run_biot()
 # - **Time resolution:** compare 100 s, 50 s, and 25 s steps, all ending at 2,000 s.
 #   Examine pressure and displacement separately, including profiles rather than
 #   only the printed maxima.
-# - **Permeability:** edit `k_b` in `BiotModel`, reload in a fresh Julia session, and
+# - **Permeability:** edit `k_c` in `BiotModel`, reload in a fresh Julia session, and
 #   repeat the experiment. A tenfold increase divides the homogeneous concrete
 #   time-scale estimate by ten; the coupled dam response still depends on geometry
 #   and on the foundation. `run_biot` currently creates its own `BiotModel`, so
