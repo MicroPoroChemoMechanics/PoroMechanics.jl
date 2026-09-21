@@ -12,6 +12,11 @@
   configured `model` in `run_biot` so material changes need no callback changes.
   Keep the default physical parameters, discretization, and regression reference.
 
+- Expand the Richards 1D example into an introductory tutorial on unsaturated flow,
+  mass conservation, separate retention and mobility curves, finite volumes, and
+  solver controls. Add two diagrams, result interpretation, and refinement exercises;
+  clarify that the initial interior saturation is about 0.778. Preserve the numerical setup.
+
 - Pin the environment that carries the numeric assertions. `Manifest.toml` and
   `test/Manifest.toml` are now committed **as a pair** and instantiated with
   `allow_reresolve: false` on the Julia 1.12 CI jobs, which run every test group. Pkg

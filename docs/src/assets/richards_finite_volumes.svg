@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 660" width="1000" height="660" role="img" aria-labelledby="title description">
+<title id="title">One pressure per node; a mass balance around each node</title><desc id="description">An interior control volume extends halfway to neighboring nodes. Its stored water changes through fluxes at the left and right faces. Shared fluxes have opposite signs in adjacent balances. The model supplies storage and pressure-difference fluxes; VoronoiFVM supplies geometry and assembly.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="658" rx="10" fill="#ffffff" stroke="#ccd8e1"/>
+<text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#193047" text-anchor="start" font-weight="bold">One pressure per node; a mass balance around each node</text>
+<text x="32" y="79" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#536879" text-anchor="start" font-weight="normal">Interior node: control-volume length ℓᵢ = h · endpoint nodes: ℓ = h/2</text>
+<rect x="370" y="151" width="260" height="153" rx="10" fill="#eaf3fb" stroke="#216baf"/>
+<text x="500" y="187" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#216baf" text-anchor="middle" font-weight="bold">Control volume i</text>
+<path d="M95 249L905 249" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#gray)"/>
+<circle cx="240" cy="249" r="7" fill="#193047"/>
+<text x="240" y="278" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#193047" text-anchor="middle" font-weight="normal">pᵢ₋₁</text>
+<circle cx="500" cy="249" r="7" fill="#193047"/>
+<text x="500" y="278" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#193047" text-anchor="middle" font-weight="normal">pᵢ</text>
+<circle cx="760" cy="249" r="7" fill="#193047"/>
+<text x="760" y="278" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#193047" text-anchor="middle" font-weight="normal">pᵢ₊₁</text>
+<path d="M370 210L370 311" fill="none" stroke="#216baf" stroke-width="2"/>
+<text x="370" y="336" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#216baf" text-anchor="middle" font-weight="normal">x(i − 1/2)</text>
+<path d="M630 210L630 311" fill="none" stroke="#216baf" stroke-width="2"/>
+<text x="630" y="336" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#216baf" text-anchor="middle" font-weight="normal">x(i + 1/2)</text>
+<path d="M320 218L418 218" fill="none" stroke="#c65a24" stroke-width="3" marker-end="url(#orange)"/>
+<path d="M580 218L678 218" fill="none" stroke="#c65a24" stroke-width="3" marker-end="url(#orange)"/>
+<text x="335" y="139" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#c65a24" text-anchor="middle" font-weight="normal">W(i − 1/2)</text>
+<text x="665" y="139" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#c65a24" text-anchor="middle" font-weight="normal">W(i + 1/2)</text>
+<text x="500" y="377" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#536879" text-anchor="middle" font-weight="normal">Both fluxes are defined positive toward increasing x.</text>
+<rect x="70" y="409" width="860" height="93" rx="10" fill="#fff3e5" stroke="#c65a24"/>
+<text x="500" y="445" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#c65a24" text-anchor="middle" font-weight="bold">Accumulation + right outflow − left inflow = 0</text>
+<text x="500" y="482" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#193047" text-anchor="middle" font-weight="normal">ℓᵢ [M(new) − M(old)] / Δt + W(right,new) − W(left,new) = 0</text>
+<text x="50" y="548" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#19796d" text-anchor="start" font-weight="bold">Model callbacks</text>
+<text x="50" y="580" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">storage!: M = ρₗ φ Sₗ</text>
+<text x="50" y="612" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">flux!: K(p̄c) (pᵢ − pⱼ)</text>
+<path d="M375 573L475 573" fill="none" stroke="#536879" stroke-width="3" marker-end="url(#gray)"/>
+<text x="515" y="548" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#216baf" text-anchor="start" font-weight="bold">VoronoiFVM</text>
+<text x="515" y="580" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">Adds volume and edge geometry factors</text>
+<text x="515" y="612" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">Assembles and solves the nonlinear balances</text>
+</svg>
