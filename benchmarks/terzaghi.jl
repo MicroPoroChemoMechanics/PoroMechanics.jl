@@ -72,7 +72,7 @@ initial_pressure(m::HomogeneousBiot, F = F_LOAD) =
 """
     terzaghi_pressure(Z, T; nterms = 400)
 
-Excess pore pressure `p/p₀` at normalised depth `Z = (H-y)/H` below the drained surface
+Excess pore pressure `p/p₀` at normalized depth `Z = (H-y)/H` below the drained surface
 and dimensionless time `T = c_v t / H²`.
 
 The series converges slowly for small `T` — the terms decay like `exp(-(2m+1)²π²T/4)` — so
@@ -152,34 +152,8 @@ function run_terzaghi(;
     close!(ch)
     update!(ch, 0.0)
 
-    n_loc = ndofs_per_cell(dh)
-    K1 = allocate_matrix(dh)
-    K2 = allocate_matrix(dh)
-    A = allocate_matrix(dh)
-    as1 = start_assemble(K1)
-    as2 = start_assemble(K2)
-    ke1 = zeros(n_loc, n_loc)
-    ke2 = zeros(n_loc, n_loc)
-
-    for cell in CellIterator(dh)
-        reinit!(cv_u, cell)
-        reinit!(cv_p, cell)
-        biot_element_matrices!(ke1, ke2, m, cv_u, cv_p)
-        assemble!(as1, celldofs(cell), ke1)
-        assemble!(as2, celldofs(cell), ke2)
-    end
-
-    ## Surface load on the top facet
-    f_ext = zeros(ndofs(dh))
-    u_range = dof_range(dh, :u)
-    fe_u = zeros(getnbasefunctions(fv_u))
-    for facet in FacetIterator(dh, getfacetset(grid, "top"))
-        PoroMechanics.facet_load!(fe_u, facet, m, fv_u)
-        dofs = celldofs(facet)
-        for (i, d) in enumerate(u_range)
-            f_ext[dofs[d]] += fe_u[i]
-        end
-    end
+    K1, K2 = assemble_biot_matrices(dh, cv_u, cv_p, m; constraints = ch)
+    f_ext = assemble_biot_load(dh, getfacetset(grid, "top"), fv_u, m)
 
     coords = [node.x for node in grid.nodes]
     y = [c[2] for c in coords]
@@ -190,27 +164,19 @@ function run_terzaghi(;
     ## temporal error; it must be small enough not to mask the spatial error.
     schedule = uniform_schedule(T_probe; T_start = T_start, dT = dT)
 
-    x = zeros(ndofs(dh))
-    apply!(x, ch)
-
     pressures = Vector{Vector{Float64}}()
     probes_left = sort(T_probe)
-    t_prev = 0.0
-    for T in schedule
-        t = t_of_T(T)
-        dt = t - t_prev
-        combine!(A, K1, K2, 1.0 / dt)
-        rhs = copy(f_ext)
-        mul!(rhs, K2, x, 1.0 / dt, 1.0)
-        apply!(A, rhs, ch)
-        x = A \ rhs
-        t_prev = t
-
+    function save_probe(x, t, step)
+        T = schedule[step]
         if !isempty(probes_left) && isapprox(T, probes_left[1]; rtol = 1.0e-9)
-            push!(pressures, [x[p_dof[i]] for i in 1:getnnodes(grid)])
+            push!(pressures, x[p_dof])
             popfirst!(probes_left)
         end
     end
+    solve_biot(K1, K2, ch;
+        inival = zeros(ndofs(dh)), times = vcat(0.0, t_of_T.(schedule)),
+        load = f_ext, on_step = save_probe,
+    )
 
     return m, y, sort(T_probe), pressures
 end
@@ -321,7 +287,7 @@ plt
 # ## Notes
 #
 # - **Equal-order elements** — ``u`` and ``p`` both P1. This is not inf-sup stable in
-#   general, but the Biot storage term ``N > 0`` regularises the pressure block. The error
+#   general, but the Biot storage term ``N > 0`` regularizes the pressure block. The error
 #   is largest at the earliest probe time, where the pressure gradient at the drained
 #   surface is steepest and the mesh resolves it least well.
 # - **The first step sets the initial condition** — the column starts unloaded, and the
@@ -329,4 +295,4 @@ plt
 #   still essentially undrained, so it produces ``p_0`` and not a partly dissipated
 #   pressure. Everything after it is marched with a uniform ``\Delta T``.
 # - **Series truncation** — the reference sum converges slowly at small ``T``; 400 terms
-#   keeps the truncation error far below the discretisation error being measured.
+#   keeps the truncation error far below the discretization error being measured.

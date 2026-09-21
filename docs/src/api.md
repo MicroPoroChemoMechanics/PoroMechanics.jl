@@ -36,6 +36,18 @@ element_matrices!
 facet_load!
 ```
 
+## Linear Biot assembly and time integration
+
+Keep the Ferrite mesh, spaces and constraints explicit, select a material for each
+cell, then assemble once and integrate at the requested times. A step callback
+can record fields or diagnostics without implementing the time loop.
+
+```@docs
+assemble_biot_matrices
+assemble_biot_load
+solve_biot
+```
+
 ## Model introspection
 
 ```@docs

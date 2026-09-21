@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add shared linear Biot matrix and surface-load assembly and a backward Euler
+  solver with variable steps, time-dependent loads and constraints, and a step
+  callback. Use them in the dam example and Terzaghi benchmark while preserving
+  their numerical setup and references.
+
+- Reuse `BiotPoroelastic` materials and `biot_element_matrices!` in the Biot
+  consolidation example instead of duplicating the element assembly. Accept a
+  configured `model` in `run_biot` so material changes need no callback changes.
+  Keep the default physical parameters, discretization, and regression reference.
+
 - Pin the environment that carries the numeric assertions. `Manifest.toml` and
   `test/Manifest.toml` are now committed **as a pair** and instantiated with
   `allow_reresolve: false` on the Julia 1.12 CI jobs, which run every test group. Pkg

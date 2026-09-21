@@ -36,7 +36,7 @@ module PoroMechanics
 using VoronoiFVM: VoronoiFVM
 using Ferrite: Ferrite
 using Tensors: Tensors, SymmetricTensor, ⊡, ⊗, ⋅
-using LinearAlgebra: norm
+using LinearAlgebra: norm, mul!
 using ForwardDiff: ForwardDiff
 
 # ── Public re-exports ──────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_m
 # Backends
 export fvm_system
 export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
+export assemble_biot_matrices, assemble_biot_load, solve_biot
 export FickModel, diffusivity
 export DarcyModel, storativity, mobility
 export RichardsModel, liquid_saturation, liquid_conductivity, intrinsic_permeability
@@ -296,6 +297,8 @@ include("Models/Richards.jl")
 include("Models/Poroplast.jl")
 include("Backends/FVM.jl")
 include("Backends/FEM.jl")
+include("Backends/Biot.jl")
+include("Solvers/LinearBiot.jl")
 include("Backends/Homogenization.jl")
 
 end # module PoroMechanics

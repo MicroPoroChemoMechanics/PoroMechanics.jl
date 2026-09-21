@@ -204,7 +204,9 @@ condensation needs. All three matrices must come from the same `allocate_matrix`
 arithmetic then goes straight through `nzval`.
 """
 function combine!(A, K1, K2, inv_dt)
-    @assert A.colptr == K1.colptr == K2.colptr "matrices must share a sparsity pattern"
+    @assert size(A) == size(K1) == size(K2) &&
+        A.colptr == K1.colptr == K2.colptr &&
+        A.rowval == K1.rowval == K2.rowval "matrices must share a sparsity pattern"
     @. A.nzval = K1.nzval + inv_dt * K2.nzval
     return A
 end

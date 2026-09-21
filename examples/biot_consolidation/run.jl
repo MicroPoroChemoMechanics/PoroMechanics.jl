@@ -341,8 +341,8 @@
 # directory. The documentation displays this example without executing it during
 # its build; run the command above to perform the calculation yourself.
 #
-# PoroMechanics supplies the model interface. This example implements the finite
-# element callbacks `element_matrices!` and `facet_load!`; Ferrite manages shape
+# PoroMechanics supplies the Biot assembly and time integration. This example
+# defines the reservoir traction through `facet_load!`; Ferrite manages shape
 # functions, quadrature, degrees of freedom, constraints, and assembly. There is no
 # VoronoiFVM `flux!` or nonlinear Newton iteration in this linear example.
 
@@ -350,21 +350,19 @@ using PoroMechanics
 using Ferrite
 using FerriteGmsh
 using LinearAlgebra
-using SparseArrays
 using Printf
 
 # ## 4. Define the model and the result
 #
 # `BiotModel <: AbstractPoroModel` groups the material data and reservoir loading.
-# The suffix `_c` refers to concrete; `_r` refers to rock. The FEM field
+# `concrete` and `rock` are reusable `BiotPoroelastic` materials. The FEM field
 # `:u` has two components and `:p` has one. `nspecies` and `species_names` describe
 # these three scalar components in the PoroMechanics interface.
 #
 # The parameter `rho_g = rho_l * g` is the product of liquid density and gravitational
 # acceleration, expressed in Pa/m. The load uses `rho_g` directly.
-# The `rho_l` field documents the density but is not
-# used separately in the assembly: changing `rho_l` alone does not change the load.
-# If you change the fluid, keep viscosity and the product `rho_g` consistent.
+# Each material carries its fluid viscosity `mu_l`; the loading carries `rho_g`.
+# If you change the fluid, update both viscosities and `rho_g` consistently.
 #
 # `BiotSolution` holds the final solution vector and its `DofHandler`. The latter is
 # the map between physical fields, mesh nodes, and positions in the vector; guessing
@@ -372,25 +370,15 @@ using Printf
 
 
 """Parameters of model M7 (Biot poroelasticity, saturated medium)."""
-Base.@kwdef struct BiotModel <: AbstractPoroModel
-    ## concrete (surface "1")
-    E_c     :: Float64 = 1.4e10    # Young's modulus [Pa]
-    nu_c    :: Float64 = 0.15      # Poisson's ratio [-]
-    k_c     :: Float64 = 1.0e-14   # intrinsic permeability [m²]
-    b_c     :: Float64 = 0.4       # Biot coefficient [-]
-    N_c     :: Float64 = 1.0e-10   # storage coefficient [Pa⁻¹]
-    ## rock (surface "2")
-    E_r     :: Float64 = 1.8e10
-    nu_r    :: Float64 = 0.15
-    k_r     :: Float64 = 1.0e-11
-    b_r     :: Float64 = 0.2
-    N_r     :: Float64 = 1.0e-10
-    ## fluid (common)
-    mu_l    :: Float64 = 1.0e-3    # dynamic viscosity [Pa·s]
-    rho_l   :: Float64 = 1000.0    # density [kg/m³]
-    ## hydraulic datum: p_l(y) = ρ_l·g·(H−y)
-    H       :: Float64 = 517.0     # water table elevation [m NGF]
-    rho_g   :: Float64 = 10_000.0  # ρ_l·g [Pa/m]
+Base.@kwdef struct BiotModel{C, R, T, G} <: AbstractPoroModel
+    concrete::C = BiotPoroelastic(;   # surface "1"
+        E = 1.4e10, nu = 0.15, k = 1.0e-14, b = 0.4, N = 1.0e-10, mu_l = 1.0e-3,
+    )
+    rock::R = BiotPoroelastic(;       # surface "2"
+        E = 1.8e10, nu = 0.15, k = 1.0e-11, b = 0.2, N = 1.0e-10, mu_l = 1.0e-3,
+    )
+    H::T = 517.0                    # water table elevation [m NGF]
+    rho_g::G = 10_000.0              # liquid density × gravity [Pa/m]
 end
 
 PoroMechanics.nspecies(::BiotModel) = 3   # u₁, u₂, p
@@ -404,13 +392,6 @@ end
 
 function Base.show(io::IO, r::BiotSolution)
     print(io, "BiotSolution: $(length(r.x)) DOFs — reach them through .x and .dh")
-end
-
-"Lamé coefficients λ, μ in plane strain from (E, ν)."
-function lame_coeffs(E, nu)
-    λ = E * nu / ((1 + nu) * (1 - 2nu))
-    μ = E / (2 * (1 + nu))
-    return λ, μ
 end
 
 "Hydrostatic reservoir pressure at elevation y [Pa]."
@@ -630,81 +611,9 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # Thus ``K_1 X+K_2\dot X=F``: mechanics has no inertial or time-derivative term,
 # whereas fluid content changes with both displacement and pressure. The opposite
 # coupling signs follow directly from stress and storage; they are not arbitrary.
-# `is_concrete` selects the coefficients for the current material region.
-
-
-"""
-    PoroMechanics.element_matrices!(ke1, ke2, is_concrete::Bool, m::BiotModel, cv_u, cv_p)
-
-Computes the steady element matrix `ke1` and the storage element matrix `ke2`
-for a P1/P1 triangular element of the Biot model.
-
-`is_concrete` selects the concrete parameters (`true`) or the rock ones (`false`).
-
-Blocks of ke1 (terms independent of Δt):
-  ke1[u,u] = K_uu   — elastic stiffness
-  ke1[u,p] = −K_up  — mechanical coupling
-  ke1[p,p] = K_pp   — Darcy conductivity
-
-Blocks of ke2 (divided by Δt during time integration):
-  ke2[p,u] = +K_up^T — hydraulic coupling
-  ke2[p,p] = M_pp    — storage compressibility
-"""
-function PoroMechanics.element_matrices!(ke1, ke2, is_concrete::Bool, m::BiotModel, cv_u, cv_p)
-    fill!(ke1, 0.0)
-    fill!(ke2, 0.0)
-
-    E  = is_concrete ? m.E_c  : m.E_r
-    nu = is_concrete ? m.nu_c : m.nu_r
-    k  = is_concrete ? m.k_c  : m.k_r
-    b  = is_concrete ? m.b_c  : m.b_r
-    N  = is_concrete ? m.N_c  : m.N_r
-
-    λ, μ = lame_coeffs(E, nu)
-    K_l  = k / m.mu_l    # hydraulic conductivity [m²/(Pa·s)]
-
-    nu_l = getnbasefunctions(cv_u)   # 6 (P1 × 2 components)
-    np_l = getnbasefunctions(cv_p)   # 3
-
-    for q in 1:getnquadpoints(cv_u)
-        dΩ = getdetJdV(cv_u, q)
-
-        ## Mechanical stiffness K_uu : ∫ ε(δu) : C : ε(u) dΩ
-        for i in 1:nu_l
-            εᵢ = symmetric(shape_gradient(cv_u, q, i))
-            for j in 1:nu_l
-                εⱼ = symmetric(shape_gradient(cv_u, q, j))
-                σⱼ = λ * tr(εⱼ) * one(εⱼ) + 2μ * εⱼ
-                ke1[i, j] += (εᵢ ⊡ σⱼ) * dΩ
-            end
-        end
-
-        ## Biot coupling
-        ## ke1[u,p] = −b ∫ (∇·δu) p_j dΩ
-        ## ke2[p,u] = +b ∫ (∇·u_j) δp dΩ
-        for i in 1:nu_l
-            div_δu = tr(shape_gradient(cv_u, q, i))
-            for j in 1:np_l
-                Np  = shape_value(cv_p, q, j)
-                val = b * div_δu * Np * dΩ
-                ke1[i,          nu_l + j] -= val   # K1[u,p]
-                ke2[nu_l + j,   i       ] += val   # K2[p,u]
-            end
-        end
-
-        ## Darcy K_pp and storage M_pp
-        for i in 1:np_l
-            ∇Npi = shape_gradient(cv_p, q, i)
-            Npi  = shape_value(cv_p, q, i)
-            for j in 1:np_l
-                ∇Npj = shape_gradient(cv_p, q, j)
-                Npj  = shape_value(cv_p, q, j)
-                ke1[nu_l + i, nu_l + j] += K_l * (∇Npi ⋅ ∇Npj) * dΩ   # K1[p,p]
-                ke2[nu_l + i, nu_l + j] += N   * Npi * Npj * dΩ          # K2[p,p]
-            end
-        end
-    end
-end
+# The package function `biot_element_matrices!` implements these four blocks.
+# `assemble_biot_matrices` calls it for each cell, using the material selected by
+# `material_at(cell)`. This example supplies that selector when assembling below.
 
 # ## 6. Apply the reservoir force
 #
@@ -764,7 +673,11 @@ end
 # system. There is one linear solve per time step, with no staggered iteration.
 # The current implementation forms `A` and invokes its factorization at every step.
 # Reusing a factorization for a fixed step and unchanged constraints would be a
-# possible optimization; it is not implemented here.
+# possible optimization; it is not implemented by `solve_biot`.
+#
+# `solve_biot` applies initial boundary values, updates constraints at each supplied
+# time, and calls `report_step` with the converged state. The callback below only
+# prints case-specific diagnostics; it does not assemble or advance the solution.
 #
 # Backward Euler is first-order accurate in time. Its robustness does not remove
 # the need to check time-step and mesh sensitivity, particularly just after the
@@ -772,7 +685,7 @@ end
 
 
 """
-    run_biot(; dt, n_steps, mesh_path)
+    run_biot(; model = BiotModel(), dt, n_steps, mesh_path)
 
 Simulates the consolidation of the Ternay dam by Biot poroelasticity (M7).
 
@@ -780,16 +693,18 @@ Returns `BiotSolution(x, dh)`: the solution vector at the last step and the DofH
 so that results can be post-processed later (extracting p or u per node).
 
 ## Keyword arguments
+- `model`     : materials and reservoir loading (default: `BiotModel()`)
 - `dt`        : time step [s] (default: 100 s)
 - `n_steps`   : number of steps (default: 20 → t_max = 2000 s = 33.3 min)
 - `mesh_path` : path to `ternay.msh` (default: the script's own directory)
 """
 function run_biot(;
+    model     = BiotModel(),
     dt        = 100.0,
     n_steps   = 20,
     mesh_path = joinpath(@__DIR__, "ternay.msh"),
 )
-    m = BiotModel()
+    m = model
 
     ## ── Mesh ─────────────────────────────────────────────────────────────────
     grid = togrid(mesh_path)
@@ -840,47 +755,10 @@ function run_biot(;
     update!(ch, 0.0)
     @printf("Contraintes Dirichlet : %d DDL prescrits\n", length(ch.prescribed_dofs))
 
-    ## ── Global assembly of K1 and K2 ─────────────────────────────────────────
-    K1 = allocate_matrix(dh)
-    K2 = allocate_matrix(dh)
-    as1 = start_assemble(K1)
-    as2 = start_assemble(K2)
-
-    ke1_buf = zeros(n_loc, n_loc)
-    ke2_buf = zeros(n_loc, n_loc)
-
-    for cell in CellIterator(dh)
-        reinit!(cv_u, cell)
-        reinit!(cv_p, cell)
-        is_concrete = cellid(cell) ∈ concrete_cells
-        PoroMechanics.element_matrices!(ke1_buf, ke2_buf, is_concrete, m, cv_u, cv_p)
-        assemble!(as1, celldofs(cell), ke1_buf)
-        assemble!(as2, celldofs(cell), ke2_buf)
-    end
-    println("K1 and K2 assembled.")
-
-    ## ── Surface loading (upstream hydrostatic thrust) ─────────────────────────
-    f_ext    = zeros(n_tot)
-    u_range  = dof_range(dh, :u)
-    nu_facet = getnbasefunctions(fv_u)   # = 6 for a P1 triangle (2 components × 3 nodes)
-    fe_u     = zeros(nu_facet)
-
-    upstream_mec = reduce(union, getfacetset(grid, r) for r in upstream_tags)
-
-    for facet in FacetIterator(dh, upstream_mec)
-        reinit!(fv_u, facet)
-        fill!(fe_u, 0.0)
-        PoroMechanics.facet_load!(fe_u, facet, m, fv_u)
-        dofs = celldofs(facet)
-        for (i, d) in enumerate(u_range)
-            f_ext[dofs[d]] += fe_u[i]
-        end
-    end
-    println("Surface loading assembled.")
-
-    ## ── Initial condition ────────────────────────────────────────────────────
-    x_vec = zeros(n_tot)
-    apply!(x_vec, ch)   # Dirichlet values consistent with t=0
+    ## ── Assemble the constant matrices and reservoir load ────────────────────
+    material_at(cell) = cellid(cell) ∈ concrete_cells ? m.concrete : m.rock
+    K1, K2 = assemble_biot_matrices(dh, cv_u, cv_p, material_at; constraints = ch)
+    f_ext = assemble_biot_load(dh, upstream_hyd, fv_u, m)
 
     ## ── Time loop — implicit Euler ────────────────────────────────────────────
     println("\nM7 Biot 2D — Ternay dam  (Δt = $(dt) s, $(n_steps) steps)")
@@ -888,23 +766,10 @@ function run_biot(;
     println("Step |     t [d] | p_max concrete [MPa] | u₁_max [mm] | u₂_max [mm]")
     println("─"^66)
 
-    x = copy(x_vec)
+    u_range = dof_range(dh, :u)
     p_range = dof_range(dh, :p)
 
-    for step in 1:n_steps
-        t_step = step * dt
-        x_prev = copy(x)
-
-        A   = K1 + (1.0/dt) .* K2
-        rhs = copy(f_ext)
-        mul!(rhs, K2, x_prev, 1.0/dt, 1.0)
-
-        update!(ch, t_step)
-        apply!(A, rhs, ch)
-
-        x = A \ rhs
-
-        ## — diagnostics —
+    function report_step(x, t_step, step)
         p_concrete_max = -Inf
         for ci in concrete_cells
             d = celldofs(dh, ci)
@@ -927,6 +792,11 @@ function run_biot(;
         @printf("%4d | %9.4f | %+17.4f | %+11.4f | %+11.4f\n",
                 step, t_step/86400.0, p_concrete_max/1e6, u1_max*1e3, u2_max*1e3)
     end
+
+    x = solve_biot(K1, K2, ch;
+        inival = zeros(n_tot), times = dt .* (0:n_steps),
+        load = f_ext, on_step = report_step,
+    )
 
     println("─"^66)
     println("Simulation finished.")
@@ -958,8 +828,8 @@ result = run_biot()
 #
 # Compare equal physical times when studying time-step accuracy. Doubling the
 # number of steps without changing `dt` changes the duration, not the resolution.
-# Only the final state is returned; saving a time history requires recording states
-# inside the time loop.
+# Only the final state is returned. To save a time history, store `copy(x)` in
+# the `report_step` callback; the solver reuses its solution buffer.
 #
 # ### Recover values at nodes
 #
@@ -1066,11 +936,17 @@ result = run_biot()
 # - **Time resolution:** compare 100 s, 50 s, and 25 s steps, all ending at 2,000 s.
 #   Examine pressure and displacement separately, including profiles rather than
 #   only the printed maxima.
-# - **Permeability:** edit `k_c` in `BiotModel`, reload in a fresh Julia session, and
-#   repeat the experiment. A tenfold increase divides the homogeneous concrete
-#   time-scale estimate by ten; the coupled dam response still depends on geometry
-#   and on the foundation. `run_biot` currently creates its own `BiotModel`, so
-#   material values are not solver keyword arguments.
+# - **Permeability:** supply a different concrete material without redefining the model:
+#
+#   ```julia
+#   concrete = BiotPoroelastic(;
+#       E = 1.4e10, nu = 0.15, k = 1.0e-13, b = 0.4, N = 1.0e-10, mu_l = 1.0e-3,
+#   )
+#   more_permeable = run_biot(model = BiotModel(; concrete))
+#   ```
+#
+#   This tenfold increase divides the homogeneous concrete time-scale estimate by
+#   ten; the coupled dam response still depends on geometry and on the foundation.
 #
 # The two illustrations can be regenerated with
 # `python3 examples/biot_consolidation/draw_schematics.py`. They describe geometry
