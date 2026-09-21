@@ -21,31 +21,20 @@
 \qquad
 \frac{\partial p}{\partial t}=c_v\frac{\partial^2p}{\partial y^2}.\]</p><p class="math-container">\[S_{\mathrm{eff}}=N+\frac{b^2}{\lambda+2\mu},
 \qquad c_v=\frac{k_{\mathrm{int}}/\mu_l}{S_{\mathrm{eff}}}.\]</p><table><tr><th style="text-align: left">Quantity</th><th style="text-align: left">Unit</th><th style="text-align: left">Physical role</th></tr><tr><td style="text-align: left"><span>$N$</span></td><td style="text-align: left">Pa⁻¹</td><td style="text-align: left">Storage response to pressure at fixed strain</td></tr><tr><td style="text-align: left"><span>$S_{\mathrm{eff}}$</span></td><td style="text-align: left">Pa⁻¹</td><td style="text-align: left">Storage response including the strain allowed by this column&#39;s mechanical conditions</td></tr><tr><td style="text-align: left"><span>$c_v$</span></td><td style="text-align: left">m²/s</td><td style="text-align: left">Diffusivity governing the redistribution of pressure</td></tr></table><p>The extra term <span>$b^2/(\lambda+2\mu)$</span> is the mechanical contribution to effective storage. It follows from the stated column constraints; it is not a universal replacement for <span>$N$</span> under any mechanical boundary conditions. The dam solver retains displacement and pressure as coupled unknowns and does not substitute this scalar estimate for their equations.</p><p><strong>Consolidation connects this diffusion to deformation.</strong> A rapid compressive load on a saturated specimen can first raise pore pressure. As water drains, the excess pressure dissipates, the skeleton carries more of the fixed total load, and the specimen progressively compresses. This delayed deformation associated with drainage is consolidation. Larger permeability speeds up the process; larger effective storage slows it down for a given permeability and viscosity.</p><p>Balancing the time and space derivatives in the diffusion equation gives the characteristic time for a drainage length <span>$L$</span>:</p><p class="math-container">\[t_c\sim\frac{L^2}{c_v}.\]</p><p>This is a time-scale estimate, not an exact time to complete consolidation; numerical factors depend on the boundary conditions and chosen degree of consolidation. Dissipation refers to excess pressure relative to the eventual steady state, whose pressure need not be zero. In the dam example, hydraulic boundary loading also acts alongside the mechanical reservoir force.</p><p>The material values here give <span>$c_v\approx0.0903$</span> m²/s for concrete and <span>$97.9$</span> m²/s for rock. For an illustrative drainage length <span>$L=10$</span> m, the corresponding times are about 1,108 s (18.5 min) and 1.02 s. Doubling <span>$L$</span> multiplies the estimate by four. These estimates explain why rock responds faster; they are <strong>not an analytical solution or a completion time for this heterogeneous two-dimensional dam</strong>.</p><p>The default simulation lasts <span>$20\times100=2\,000$</span> s, or 33.3 min. A 100 s step cannot resolve a process occurring in approximately one second. Implicit integration can remain stable with that step while missing the fast initial rock response.</p><h2 id="3.-How-to-run-the-example"><a class="docs-heading-anchor" href="#3.-How-to-run-the-example">3. How to run the example</a><a id="3.-How-to-run-the-example-1"></a><a class="docs-heading-anchor-permalink" href="#3.-How-to-run-the-example" title="Permalink"></a></h2><p>From the repository root, prepare the examples environment once:</p><pre><code class="language-sh hljs">julia --project=examples -e &#39;using Pkg; Pkg.develop(path=&quot;.&quot;); Pkg.instantiate()&#39;
-julia --project=examples examples/biot_consolidation/run.jl</code></pre><p>Use Julia 1.12 or newer. The script needs Ferrite, FerriteGmsh, and the supplied <code>ternay.msh</code>; run it in the <code>examples</code> environment, which declares these dependencies. The mesh path is relative to this script, so it does not depend on the working directory. The documentation displays this example without executing it during its build; run the command above to perform the calculation yourself.</p><p>PoroMechanics supplies the model interface. This example implements the finite element callbacks <code>element_matrices!</code> and <code>facet_load!</code>; Ferrite manages shape functions, quadrature, degrees of freedom, constraints, and assembly. There is no VoronoiFVM <code>flux!</code> or nonlinear Newton iteration in this linear example.</p><pre><code class="language-julia hljs">using PoroMechanics
+julia --project=examples examples/biot_consolidation/run.jl</code></pre><p>Use Julia 1.12 or newer. The script needs Ferrite, FerriteGmsh, and the supplied <code>ternay.msh</code>; run it in the <code>examples</code> environment, which declares these dependencies. The mesh path is relative to this script, so it does not depend on the working directory. The documentation displays this example without executing it during its build; run the command above to perform the calculation yourself.</p><p>PoroMechanics supplies the Biot assembly and time integration. This example defines the reservoir traction through <code>facet_load!</code>; Ferrite manages shape functions, quadrature, degrees of freedom, constraints, and assembly. There is no VoronoiFVM <code>flux!</code> or nonlinear Newton iteration in this linear example.</p><pre><code class="language-julia hljs">using PoroMechanics
 using Ferrite
 using FerriteGmsh
 using LinearAlgebra
-using SparseArrays
-using Printf</code></pre><h2 id="4.-Define-the-model-and-the-result"><a class="docs-heading-anchor" href="#4.-Define-the-model-and-the-result">4. Define the model and the result</a><a id="4.-Define-the-model-and-the-result-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Define-the-model-and-the-result" title="Permalink"></a></h2><p><code>BiotModel &lt;: AbstractPoroModel</code> groups the material data and reservoir loading. The suffix <code>_c</code> refers to concrete; <code>_r</code> refers to rock. The FEM field <code>:u</code> has two components and <code>:p</code> has one. <code>nspecies</code> and <code>species_names</code> describe these three scalar components in the PoroMechanics interface.</p><p>The parameter <code>rho_g = rho_l * g</code> is the product of liquid density and gravitational acceleration, expressed in Pa/m. The load uses <code>rho_g</code> directly. The <code>rho_l</code> field documents the density but is not used separately in the assembly: changing <code>rho_l</code> alone does not change the load. If you change the fluid, keep viscosity and the product <code>rho_g</code> consistent.</p><p><code>BiotSolution</code> holds the final solution vector and its <code>DofHandler</code>. The latter is the map between physical fields, mesh nodes, and positions in the vector; guessing that all pressures occupy the last third of the vector is unsafe.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;Parameters of model M7 (Biot poroelasticity, saturated medium).&quot;&quot;&quot;
-Base.@kwdef struct BiotModel &lt;: AbstractPoroModel
-    # concrete (surface &quot;1&quot;)
-    E_c     :: Float64 = 1.4e10    # Young&#39;s modulus [Pa]
-    nu_c    :: Float64 = 0.15      # Poisson&#39;s ratio [-]
-    k_c     :: Float64 = 1.0e-14   # intrinsic permeability [m²]
-    b_c     :: Float64 = 0.4       # Biot coefficient [-]
-    N_c     :: Float64 = 1.0e-10   # storage coefficient [Pa⁻¹]
-    # rock (surface &quot;2&quot;)
-    E_r     :: Float64 = 1.8e10
-    nu_r    :: Float64 = 0.15
-    k_r     :: Float64 = 1.0e-11
-    b_r     :: Float64 = 0.2
-    N_r     :: Float64 = 1.0e-10
-    # fluid (common)
-    mu_l    :: Float64 = 1.0e-3    # dynamic viscosity [Pa·s]
-    rho_l   :: Float64 = 1000.0    # density [kg/m³]
-    # hydraulic datum: p_l(y) = ρ_l·g·(H−y)
-    H       :: Float64 = 517.0     # water table elevation [m NGF]
-    rho_g   :: Float64 = 10_000.0  # ρ_l·g [Pa/m]
+using Printf</code></pre><h2 id="4.-Define-the-model-and-the-result"><a class="docs-heading-anchor" href="#4.-Define-the-model-and-the-result">4. Define the model and the result</a><a id="4.-Define-the-model-and-the-result-1"></a><a class="docs-heading-anchor-permalink" href="#4.-Define-the-model-and-the-result" title="Permalink"></a></h2><p><code>BiotModel &lt;: AbstractPoroModel</code> groups the material data and reservoir loading. <code>concrete</code> and <code>rock</code> are reusable <code>BiotPoroelastic</code> materials. The FEM field <code>:u</code> has two components and <code>:p</code> has one. <code>nspecies</code> and <code>species_names</code> describe these three scalar components in the PoroMechanics interface.</p><p>The parameter <code>rho_g = rho_l * g</code> is the product of liquid density and gravitational acceleration, expressed in Pa/m. The load uses <code>rho_g</code> directly. Each material carries its fluid viscosity <code>mu_l</code>; the loading carries <code>rho_g</code>. If you change the fluid, update both viscosities and <code>rho_g</code> consistently.</p><p><code>BiotSolution</code> holds the final solution vector and its <code>DofHandler</code>. The latter is the map between physical fields, mesh nodes, and positions in the vector; guessing that all pressures occupy the last third of the vector is unsafe.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;Parameters of model M7 (Biot poroelasticity, saturated medium).&quot;&quot;&quot;
+Base.@kwdef struct BiotModel{C, R, T, G} &lt;: AbstractPoroModel
+    concrete::C = BiotPoroelastic(;   # surface &quot;1&quot;
+        E = 1.4e10, nu = 0.15, k = 1.0e-14, b = 0.4, N = 1.0e-10, mu_l = 1.0e-3,
+    )
+    rock::R = BiotPoroelastic(;       # surface &quot;2&quot;
+        E = 1.8e10, nu = 0.15, k = 1.0e-11, b = 0.2, N = 1.0e-10, mu_l = 1.0e-3,
+    )
+    H::T = 517.0                    # water table elevation [m NGF]
+    rho_g::G = 10_000.0              # liquid density × gravity [Pa/m]
 end
 
 PoroMechanics.nspecies(::BiotModel) = 3   # u₁, u₂, p
@@ -59,13 +48,6 @@ end
 
 function Base.show(io::IO, r::BiotSolution)
     print(io, &quot;BiotSolution: $(length(r.x)) DOFs — reach them through .x and .dh&quot;)
-end
-
-&quot;Lamé coefficients λ, μ in plane strain from (E, ν).&quot;
-function lame_coeffs(E, nu)
-    λ = E * nu / ((1 + nu) * (1 - 2nu))
-    μ = E / (2 * (1 + nu))
-    return λ, μ
 end
 
 &quot;Hydrostatic reservoir pressure at elevation y [Pa].&quot;
@@ -98,78 +80,7 @@ p_h=\sum_j\phi_j P_j.\]</p><p>In the Galerkin method, choose each basis function
 (K_{pp})_{ij}&amp;=\int_{\Omega_e}\kappa\nabla\phi_i\cdot\nabla\phi_j\,d\Omega,\\
 (M_{pp})_{ij}&amp;=\int_{\Omega_e}N\phi_i\phi_j\,d\Omega.
 \end{aligned}\]</p><p>Their sizes are respectively <span>$6\times6$</span>, <span>$6\times3$</span>, <span>$3\times3$</span>, and <span>$3\times3$</span>. Ferrite evaluates these integrals by <strong>quadrature</strong>, a weighted sum at points inside each cell. <code>shape_value</code> returns a basis function&#39;s value, <code>shape_gradient</code> its spatial gradient, and <code>getdetJdV</code> the geometric integration weight. <code>reinit!</code> updates these quantities for the current cell.</p><p>The implementation stores two matrices, with local unknown order <span>$[\mathbf U;P]$</span>:</p><p class="math-container">\[K_1=\begin{bmatrix}K_{uu}&amp;-K_{up}\\0&amp;K_{pp}\end{bmatrix},\qquad
-K_2=\begin{bmatrix}0&amp;0\\K_{up}^{\mathsf T}&amp;M_{pp}\end{bmatrix}.\]</p><p>Thus <span>$K_1 X+K_2\dot X=F$</span>: mechanics has no inertial or time-derivative term, whereas fluid content changes with both displacement and pressure. The opposite coupling signs follow directly from stress and storage; they are not arbitrary. <code>is_concrete</code> selects the coefficients for the current material region.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
-    PoroMechanics.element_matrices!(ke1, ke2, is_concrete::Bool, m::BiotModel, cv_u, cv_p)
-
-Computes the steady element matrix `ke1` and the storage element matrix `ke2`
-for a P1/P1 triangular element of the Biot model.
-
-`is_concrete` selects the concrete parameters (`true`) or the rock ones (`false`).
-
-Blocks of ke1 (terms independent of Δt):
-  ke1[u,u] = K_uu   — elastic stiffness
-  ke1[u,p] = −K_up  — mechanical coupling
-  ke1[p,p] = K_pp   — Darcy conductivity
-
-Blocks of ke2 (divided by Δt during time integration):
-  ke2[p,u] = +K_up^T — hydraulic coupling
-  ke2[p,p] = M_pp    — storage compressibility
-&quot;&quot;&quot;
-function PoroMechanics.element_matrices!(ke1, ke2, is_concrete::Bool, m::BiotModel, cv_u, cv_p)
-    fill!(ke1, 0.0)
-    fill!(ke2, 0.0)
-
-    E  = is_concrete ? m.E_c  : m.E_r
-    nu = is_concrete ? m.nu_c : m.nu_r
-    k  = is_concrete ? m.k_c  : m.k_r
-    b  = is_concrete ? m.b_c  : m.b_r
-    N  = is_concrete ? m.N_c  : m.N_r
-
-    λ, μ = lame_coeffs(E, nu)
-    K_l  = k / m.mu_l    # hydraulic conductivity [m²/(Pa·s)]
-
-    nu_l = getnbasefunctions(cv_u)   # 6 (P1 × 2 components)
-    np_l = getnbasefunctions(cv_p)   # 3
-
-    for q in 1:getnquadpoints(cv_u)
-        dΩ = getdetJdV(cv_u, q)
-
-        # Mechanical stiffness K_uu : ∫ ε(δu) : C : ε(u) dΩ
-        for i in 1:nu_l
-            εᵢ = symmetric(shape_gradient(cv_u, q, i))
-            for j in 1:nu_l
-                εⱼ = symmetric(shape_gradient(cv_u, q, j))
-                σⱼ = λ * tr(εⱼ) * one(εⱼ) + 2μ * εⱼ
-                ke1[i, j] += (εᵢ ⊡ σⱼ) * dΩ
-            end
-        end
-
-        # Biot coupling
-        # ke1[u,p] = −b ∫ (∇·δu) p_j dΩ
-        # ke2[p,u] = +b ∫ (∇·u_j) δp dΩ
-        for i in 1:nu_l
-            div_δu = tr(shape_gradient(cv_u, q, i))
-            for j in 1:np_l
-                Np  = shape_value(cv_p, q, j)
-                val = b * div_δu * Np * dΩ
-                ke1[i,          nu_l + j] -= val   # K1[u,p]
-                ke2[nu_l + j,   i       ] += val   # K2[p,u]
-            end
-        end
-
-        # Darcy K_pp and storage M_pp
-        for i in 1:np_l
-            ∇Npi = shape_gradient(cv_p, q, i)
-            Npi  = shape_value(cv_p, q, i)
-            for j in 1:np_l
-                ∇Npj = shape_gradient(cv_p, q, j)
-                Npj  = shape_value(cv_p, q, j)
-                ke1[nu_l + i, nu_l + j] += K_l * (∇Npi ⋅ ∇Npj) * dΩ   # K1[p,p]
-                ke2[nu_l + i, nu_l + j] += N   * Npi * Npj * dΩ          # K2[p,p]
-            end
-        end
-    end
-end</code></pre><h2 id="6.-Apply-the-reservoir-force"><a class="docs-heading-anchor" href="#6.-Apply-the-reservoir-force">6. Apply the reservoir force</a><a id="6.-Apply-the-reservoir-force-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Apply-the-reservoir-force" title="Permalink"></a></h2><p>The following callback integrates <span>$\mathbf V_i\cdot\mathbf t$</span> over an upstream facet (an edge in two dimensions). <code>getnormal</code> supplies the outward normal, and <code>spatial_coordinate</code> supplies the elevation used for hydrostatic pressure. Pressure Dirichlet conditions will be added separately: imposing a pore pressure does not automatically apply a mechanical traction.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+K_2=\begin{bmatrix}0&amp;0\\K_{up}^{\mathsf T}&amp;M_{pp}\end{bmatrix}.\]</p><p>Thus <span>$K_1 X+K_2\dot X=F$</span>: mechanics has no inertial or time-derivative term, whereas fluid content changes with both displacement and pressure. The opposite coupling signs follow directly from stress and storage; they are not arbitrary. The package function <code>biot_element_matrices!</code> implements these four blocks. <code>assemble_biot_matrices</code> calls it for each cell, using the material selected by <code>material_at(cell)</code>. This example supplies that selector when assembling below.</p><h2 id="6.-Apply-the-reservoir-force"><a class="docs-heading-anchor" href="#6.-Apply-the-reservoir-force">6. Apply the reservoir force</a><a id="6.-Apply-the-reservoir-force-1"></a><a class="docs-heading-anchor-permalink" href="#6.-Apply-the-reservoir-force" title="Permalink"></a></h2><p>The following callback integrates <span>$\mathbf V_i\cdot\mathbf t$</span> over an upstream facet (an edge in two dimensions). <code>getnormal</code> supplies the outward normal, and <code>spatial_coordinate</code> supplies the elevation used for hydrostatic pressure. Pressure Dirichlet conditions will be added separately: imposing a pore pressure does not automatically apply a mechanical traction.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
     PoroMechanics.facet_load!(fe, facet, m::BiotModel, fv_u)
 
 Adds the hydrostatic thrust  t = −p_hydro(y)·n  on the upstream face.
@@ -190,8 +101,8 @@ function PoroMechanics.facet_load!(fe, facet, m::BiotModel, fv_u)
     end
 end</code></pre><h2 id="7.-Assemble-and-advance-in-time"><a class="docs-heading-anchor" href="#7.-Assemble-and-advance-in-time">7. Assemble and advance in time</a><a id="7.-Assemble-and-advance-in-time-1"></a><a class="docs-heading-anchor-permalink" href="#7.-Assemble-and-advance-in-time" title="Permalink"></a></h2><p>The solver first reads the mesh and creates a <code>DofHandler</code> for <code>:u</code> and <code>:p</code>. A <code>ConstraintHandler</code> records prescribed values. Cell contributions are added to global sparse matrices through <code>assemble!</code>, using <code>celldofs</code> to find their positions. The matrices <span>$K_1$</span> and <span>$K_2$</span> are assembled once because the material laws and geometry are constant.</p><p><strong>Backward Euler</strong> replaces <span>$\dot X$</span> at the new time by <span>$(X^{n+1}-X^n)/\Delta t$</span>. Rearranging gives the actual linear system in the code:</p><p class="math-container">\[\underbrace{\left(K_1+\frac{K_2}{\Delta t}\right)}_{A}X^{n+1}
 =\underbrace{F+\frac{K_2}{\Delta t}X^n}_{\mathrm{rhs}}.\]</p><p>Its second block row is worth reading explicitly:</p><p class="math-container">\[K_{up}^{\mathsf T}\frac{\mathbf U^{n+1}-\mathbf U^n}{\Delta t}
-+M_{pp}\frac{P^{n+1}-P^n}{\Delta t}+K_{pp}P^{n+1}=0.\]</p><p>This is precisely “deformation storage + pressure storage + flow = zero”. <code>apply!(A, rhs, ch)</code> enforces the boundary values; <code>A \ rhs</code> solves the coupled system. There is one linear solve per time step, with no staggered iteration. The current implementation forms <code>A</code> and invokes its factorization at every step. Reusing a factorization for a fixed step and unchanged constraints would be a possible optimization; it is not implemented here.</p><p>Backward Euler is first-order accurate in time. Its robustness does not remove the need to check time-step and mesh sensitivity, particularly just after the sudden change in loading.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
-    run_biot(; dt, n_steps, mesh_path)
++M_{pp}\frac{P^{n+1}-P^n}{\Delta t}+K_{pp}P^{n+1}=0.\]</p><p>This is precisely “deformation storage + pressure storage + flow = zero”. <code>apply!(A, rhs, ch)</code> enforces the boundary values; <code>A \ rhs</code> solves the coupled system. There is one linear solve per time step, with no staggered iteration. The current implementation forms <code>A</code> and invokes its factorization at every step. Reusing a factorization for a fixed step and unchanged constraints would be a possible optimization; it is not implemented by <code>solve_biot</code>.</p><p><code>solve_biot</code> applies initial boundary values, updates constraints at each supplied time, and calls <code>report_step</code> with the converged state. The callback below only prints case-specific diagnostics; it does not assemble or advance the solution.</p><p>Backward Euler is first-order accurate in time. Its robustness does not remove the need to check time-step and mesh sensitivity, particularly just after the sudden change in loading.</p><pre><code class="language-julia hljs">&quot;&quot;&quot;
+    run_biot(; model = BiotModel(), dt, n_steps, mesh_path)
 
 Simulates the consolidation of the Ternay dam by Biot poroelasticity (M7).
 
@@ -199,16 +110,18 @@ Returns `BiotSolution(x, dh)`: the solution vector at the last step and the DofH
 so that results can be post-processed later (extracting p or u per node).
 
 # Keyword arguments
+- `model`     : materials and reservoir loading (default: `BiotModel()`)
 - `dt`        : time step [s] (default: 100 s)
 - `n_steps`   : number of steps (default: 20 → t_max = 2000 s = 33.3 min)
 - `mesh_path` : path to `ternay.msh` (default: the script&#39;s own directory)
 &quot;&quot;&quot;
 function run_biot(;
+    model     = BiotModel(),
     dt        = 100.0,
     n_steps   = 20,
     mesh_path = joinpath(@__DIR__, &quot;ternay.msh&quot;),
 )
-    m = BiotModel()
+    m = model
 
     # ── Mesh ─────────────────────────────────────────────────────────────────
     grid = togrid(mesh_path)
@@ -259,47 +172,10 @@ function run_biot(;
     update!(ch, 0.0)
     @printf(&quot;Contraintes Dirichlet : %d DDL prescrits\n&quot;, length(ch.prescribed_dofs))
 
-    # ── Global assembly of K1 and K2 ─────────────────────────────────────────
-    K1 = allocate_matrix(dh)
-    K2 = allocate_matrix(dh)
-    as1 = start_assemble(K1)
-    as2 = start_assemble(K2)
-
-    ke1_buf = zeros(n_loc, n_loc)
-    ke2_buf = zeros(n_loc, n_loc)
-
-    for cell in CellIterator(dh)
-        reinit!(cv_u, cell)
-        reinit!(cv_p, cell)
-        is_concrete = cellid(cell) ∈ concrete_cells
-        PoroMechanics.element_matrices!(ke1_buf, ke2_buf, is_concrete, m, cv_u, cv_p)
-        assemble!(as1, celldofs(cell), ke1_buf)
-        assemble!(as2, celldofs(cell), ke2_buf)
-    end
-    println(&quot;K1 and K2 assembled.&quot;)
-
-    # ── Surface loading (upstream hydrostatic thrust) ─────────────────────────
-    f_ext    = zeros(n_tot)
-    u_range  = dof_range(dh, :u)
-    nu_facet = getnbasefunctions(fv_u)   # = 6 for a P1 triangle (2 components × 3 nodes)
-    fe_u     = zeros(nu_facet)
-
-    upstream_mec = reduce(union, getfacetset(grid, r) for r in upstream_tags)
-
-    for facet in FacetIterator(dh, upstream_mec)
-        reinit!(fv_u, facet)
-        fill!(fe_u, 0.0)
-        PoroMechanics.facet_load!(fe_u, facet, m, fv_u)
-        dofs = celldofs(facet)
-        for (i, d) in enumerate(u_range)
-            f_ext[dofs[d]] += fe_u[i]
-        end
-    end
-    println(&quot;Surface loading assembled.&quot;)
-
-    # ── Initial condition ────────────────────────────────────────────────────
-    x_vec = zeros(n_tot)
-    apply!(x_vec, ch)   # Dirichlet values consistent with t=0
+    # ── Assemble the constant matrices and reservoir load ────────────────────
+    material_at(cell) = cellid(cell) ∈ concrete_cells ? m.concrete : m.rock
+    K1, K2 = assemble_biot_matrices(dh, cv_u, cv_p, material_at; constraints = ch)
+    f_ext = assemble_biot_load(dh, upstream_hyd, fv_u, m)
 
     # ── Time loop — implicit Euler ────────────────────────────────────────────
     println(&quot;\nM7 Biot 2D — Ternay dam  (Δt = $(dt) s, $(n_steps) steps)&quot;)
@@ -307,23 +183,10 @@ function run_biot(;
     println(&quot;Step |     t [d] | p_max concrete [MPa] | u₁_max [mm] | u₂_max [mm]&quot;)
     println(&quot;─&quot;^66)
 
-    x = copy(x_vec)
+    u_range = dof_range(dh, :u)
     p_range = dof_range(dh, :p)
 
-    for step in 1:n_steps
-        t_step = step * dt
-        x_prev = copy(x)
-
-        A   = K1 + (1.0/dt) .* K2
-        rhs = copy(f_ext)
-        mul!(rhs, K2, x_prev, 1.0/dt, 1.0)
-
-        update!(ch, t_step)
-        apply!(A, rhs, ch)
-
-        x = A \ rhs
-
-        # — diagnostics —
+    function report_step(x, t_step, step)
         p_concrete_max = -Inf
         for ci in concrete_cells
             d = celldofs(dh, ci)
@@ -347,17 +210,25 @@ function run_biot(;
                 step, t_step/86400.0, p_concrete_max/1e6, u1_max*1e3, u2_max*1e3)
     end
 
+    x = solve_biot(K1, K2, ch;
+        inival = zeros(n_tot), times = dt .* (0:n_steps),
+        load = f_ext, on_step = report_step,
+    )
+
     println(&quot;─&quot;^66)
     println(&quot;Simulation finished.&quot;)
 
     return BiotSolution(x, dh)
 end</code></pre><h2 id="8.-Run-and-interpret-the-result"><a class="docs-heading-anchor" href="#8.-Run-and-interpret-the-result">8. Run and interpret the result</a><a id="8.-Run-and-interpret-the-result-1"></a><a class="docs-heading-anchor-permalink" href="#8.-Run-and-interpret-the-result" title="Permalink"></a></h2><p>The following line runs the default case and retains the last state.</p><pre><code class="language-julia hljs">result = run_biot()</code></pre><p>The printed table reports time in <strong>days</strong>, maximum concrete pressure in <strong>MPa</strong>, and maximum absolute displacement components in <strong>mm</strong>, over both materials. These last two numbers are magnitudes, not signed displacements at one common location. The maximum pressure may lie on a prescribed boundary and therefore change very little even while the interior field evolves. It cannot by itself establish that consolidation has finished.</p><p>For an interactive session, start <code>julia --project=examples</code> from the repository root, then run:</p><pre><code class="language-julia hljs">include(&quot;examples/biot_consolidation/run.jl&quot;)  # also runs the default case
 fine_time = run_biot(dt=50.0, n_steps=40)     # same final time: 2,000 s
-longer = run_biot(dt=100.0, n_steps=200)      # longer duration: 20,000 s</code></pre><p>Compare equal physical times when studying time-step accuracy. Doubling the number of steps without changing <code>dt</code> changes the duration, not the resolution. Only the final state is returned; saving a time history requires recording states inside the time loop.</p><h3 id="Recover-values-at-nodes"><a class="docs-heading-anchor" href="#Recover-values-at-nodes">Recover values at nodes</a><a id="Recover-values-at-nodes-1"></a><a class="docs-heading-anchor-permalink" href="#Recover-values-at-nodes" title="Permalink"></a></h3><p>Do not reshape <code>.x</code> into three columns: the <code>DofHandler</code> controls the ordering. Use <code>node_dof_maps</code> from PoroMechanics instead. Each map contains the global index of a field component at each mesh node:</p><pre><code class="language-julia hljs">grid = result.dh.grid
+longer = run_biot(dt=100.0, n_steps=200)      # longer duration: 20,000 s</code></pre><p>Compare equal physical times when studying time-step accuracy. Doubling the number of steps without changing <code>dt</code> changes the duration, not the resolution. Only the final state is returned. To save a time history, store <code>copy(x)</code> in the <code>report_step</code> callback; the solver reuses its solution buffer.</p><h3 id="Recover-values-at-nodes"><a class="docs-heading-anchor" href="#Recover-values-at-nodes">Recover values at nodes</a><a id="Recover-values-at-nodes-1"></a><a class="docs-heading-anchor-permalink" href="#Recover-values-at-nodes" title="Permalink"></a></h3><p>Do not reshape <code>.x</code> into three columns: the <code>DofHandler</code> controls the ordering. Use <code>node_dof_maps</code> from PoroMechanics instead. Each map contains the global index of a field component at each mesh node:</p><pre><code class="language-julia hljs">grid = result.dh.grid
 p_dofs = node_dof_maps(result.dh, grid, :p).p
 u1_dofs = node_dof_maps(result.dh, grid, (:u, 1)).u
 u2_dofs = node_dof_maps(result.dh, grid, (:u, 2)).u
 pressure_MPa = result.x[p_dofs] ./ 1e6
 horizontal_mm = result.x[u1_dofs] .* 1e3
 vertical_mm = result.x[u2_dofs] .* 1e3</code></pre><p>Request the two components of <code>:u</code> separately, as above. The resulting arrays follow mesh-node order and can be used to plot pressure contours and signed displacement fields. For a first time-step comparison on this unchanged mesh:</p><pre><code class="language-julia hljs">maximum(abs.(fine_time.x[p_dofs] - result.x[p_dofs]))  # pressure difference [Pa]
-maximum(abs.(fine_time.x[u1_dofs] - result.x[u1_dofs])) # displacement difference [m]</code></pre><p>A single difference is not an error estimate against an exact solution. Repeat with a smaller step to look for a consistent trend, and compare displacement and pressure separately because their units differ.</p><h3 id="What-should-we-expect-physically?"><a class="docs-heading-anchor" href="#What-should-we-expect-physically?">What should we expect physically?</a><a id="What-should-we-expect-physically?-1"></a><a class="docs-heading-anchor-permalink" href="#What-should-we-expect-physically?" title="Permalink"></a></h3><p>The reservoir pushes inward on the upstream face and supplies pressure to its pores. The much more permeable foundation redistributes pressure faster than the concrete. Water exchange and deformation influence one another during this transient. An interior point can show a more complicated response than monotonic pressure decay: both hydraulic boundary loading and mechanical loading are present.</p><p>At steady state the storage derivative vanishes and</p><p class="math-container">\[\nabla\cdot\left(\frac{k_{\mathrm{int}}}{\mu_l}\nabla p\right)=0.\]</p><p>Within each constant-permeability material this reduces to Laplace&#39;s equation; across the interface the different permeabilities must still be respected. The imposed upstream pressure persists, so the steady state generally has <strong>nonzero pore pressure and continuing seepage</strong>. “Consolidated” does not mean “all pore pressures are zero”. The displacement is the equilibrium response to the external loading and that remaining pressure field.</p><h2 id="9.-Numerical-limitations-and-checks"><a class="docs-heading-anchor" href="#9.-Numerical-limitations-and-checks">9. Numerical limitations and checks</a><a id="9.-Numerical-limitations-and-checks-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Numerical-limitations-and-checks" title="Permalink"></a></h2><p>This is an <strong>equal-order P1/P1</strong> mixed discretization without an added pressure stabilization term. Positive storage <span>$N$</span> helps regularize the pressure equations, but does not guarantee freedom from spurious pressure oscillations. Small time steps, low permeability, and nearly incompressible or undrained limits can expose mixed-element stability problems. Ferrite&#39;s <a href="https://ferrite-fem.github.io/Ferrite.jl/stable/tutorials/incompressible_elasticity/">mixed elasticity tutorial</a> explains the related inf-sup issue and the role of interpolation spaces; its pressure variable is an elastic constraint variable, whereas ours is pore pressure.</p><p>A completed linear solve or a passing regression test is not a convergence study. Before interpreting a changed parameter set quantitatively:</p><ol><li>Refine the time step at a fixed final time; inspect the early response as well as the final state. The default step under-resolves the fast rock time scale.</li><li>Refine the mesh while preserving physical tags. Inspect pressure profiles near the interface and drained faces for alternating nodal oscillations. A smaller step alone does not fix a spatial stability problem.</li><li>Check prescribed values and supports. Verify the balance between fluid-content change and boundary outflow, and between applied forces and support reactions, with suitable post-processing. These balance diagnostics are not printed by the current script. Residual rows at prescribed pressure nodes represent boundary exchange and should not be interpreted as zero-flux conditions.</li><li>Assess the modeling assumptions before comparing with measurements: this case has no self-weight initialization, gravitational body-flow term, cracking, unsaturated flow, or site-specific parameter calibration.</li></ol><p>The regression suite checks reproducibility against a stored solution. Run it from the repository root with <code>julia --project -e &#39;using Pkg; Pkg.test(test_args=[&quot;regression&quot;])&#39;</code>. It complements, rather than establishes, physical validation and discretization convergence. MOOSE&#39;s <a href="https://mooseframework.inl.gov/modules/porous_flow/tests/poro_elasticity/poro_elasticity_tests.html">poroelasticity verification examples</a> provide additional examples of checking storage and deformation against analytical solutions, using the alternative notation <span>$1/M$</span> for our <span>$N$</span>.</p><h2 id="10.-Short-exercises"><a class="docs-heading-anchor" href="#10.-Short-exercises">10. Short exercises</a><a id="10.-Short-exercises-1"></a><a class="docs-heading-anchor-permalink" href="#10.-Short-exercises" title="Permalink"></a></h2><ul><li><strong>Pressure and units:</strong> compute the upstream pressure at <span>$y=500$</span> m. You should obtain <span>$170\,000$</span> Pa = <span>$0.17$</span> MPa. Explain why the applied traction points inward.</li><li><strong>Coupling sign:</strong> for concrete, take an undrained volumetric strain increment of <span>$-10^{-5}$</span>. Using the local storage relation gives <span>$dp=40\,000$</span> Pa. Explain why this is an illustrative local calculation, not a predicted dam profile.</li><li><strong>Constraints and drainage:</strong> can a specimen have fixed bulk volume while still exchanging water? Write the reduced mass balance and identify the storage term that remains. Does fixing the base of a dam impose that condition everywhere?</li><li><strong>Storage versus diffusivity:</strong> check the units of <span>$S_{\mathrm{eff}}$</span> and <span>$c_v$</span>. At fixed permeability, viscosity, and drainage length, what happens to <span>$c_v$</span> and <span>$t_c$</span> if the effective storage doubles?</li><li><strong>Drainage length:</strong> use <span>$L=20$</span> m in the time-scale estimate. Why is the estimate four times larger than at 10 m even though material coefficients are unchanged?</li><li><strong>Time resolution:</strong> compare 100 s, 50 s, and 25 s steps, all ending at 2,000 s. Examine pressure and displacement separately, including profiles rather than only the printed maxima.</li><li><strong>Permeability:</strong> edit <code>k_c</code> in <code>BiotModel</code>, reload in a fresh Julia session, and repeat the experiment. A tenfold increase divides the homogeneous concrete time-scale estimate by ten; the coupled dam response still depends on geometry and on the foundation. <code>run_biot</code> currently creates its own <code>BiotModel</code>, so material values are not solver keyword arguments.</li></ul><p>The two illustrations can be regenerated with <code>python3 examples/biot_consolidation/draw_schematics.py</code>. They describe geometry and coupling, not numerical results.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../nonisothermal_drying/">« Non-isothermal drying</a><a class="docs-footer-nextpage" href="../../validation/terzaghi/">Terzaghi consolidation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Sunday 20 September 2026 07:40">Sunday 20 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+maximum(abs.(fine_time.x[u1_dofs] - result.x[u1_dofs])) # displacement difference [m]</code></pre><p>A single difference is not an error estimate against an exact solution. Repeat with a smaller step to look for a consistent trend, and compare displacement and pressure separately because their units differ.</p><h3 id="What-should-we-expect-physically?"><a class="docs-heading-anchor" href="#What-should-we-expect-physically?">What should we expect physically?</a><a id="What-should-we-expect-physically?-1"></a><a class="docs-heading-anchor-permalink" href="#What-should-we-expect-physically?" title="Permalink"></a></h3><p>The reservoir pushes inward on the upstream face and supplies pressure to its pores. The much more permeable foundation redistributes pressure faster than the concrete. Water exchange and deformation influence one another during this transient. An interior point can show a more complicated response than monotonic pressure decay: both hydraulic boundary loading and mechanical loading are present.</p><p>At steady state the storage derivative vanishes and</p><p class="math-container">\[\nabla\cdot\left(\frac{k_{\mathrm{int}}}{\mu_l}\nabla p\right)=0.\]</p><p>Within each constant-permeability material this reduces to Laplace&#39;s equation; across the interface the different permeabilities must still be respected. The imposed upstream pressure persists, so the steady state generally has <strong>nonzero pore pressure and continuing seepage</strong>. “Consolidated” does not mean “all pore pressures are zero”. The displacement is the equilibrium response to the external loading and that remaining pressure field.</p><h2 id="9.-Numerical-limitations-and-checks"><a class="docs-heading-anchor" href="#9.-Numerical-limitations-and-checks">9. Numerical limitations and checks</a><a id="9.-Numerical-limitations-and-checks-1"></a><a class="docs-heading-anchor-permalink" href="#9.-Numerical-limitations-and-checks" title="Permalink"></a></h2><p>This is an <strong>equal-order P1/P1</strong> mixed discretization without an added pressure stabilization term. Positive storage <span>$N$</span> helps regularize the pressure equations, but does not guarantee freedom from spurious pressure oscillations. Small time steps, low permeability, and nearly incompressible or undrained limits can expose mixed-element stability problems. Ferrite&#39;s <a href="https://ferrite-fem.github.io/Ferrite.jl/stable/tutorials/incompressible_elasticity/">mixed elasticity tutorial</a> explains the related inf-sup issue and the role of interpolation spaces; its pressure variable is an elastic constraint variable, whereas ours is pore pressure.</p><p>A completed linear solve or a passing regression test is not a convergence study. Before interpreting a changed parameter set quantitatively:</p><ol><li>Refine the time step at a fixed final time; inspect the early response as well as the final state. The default step under-resolves the fast rock time scale.</li><li>Refine the mesh while preserving physical tags. Inspect pressure profiles near the interface and drained faces for alternating nodal oscillations. A smaller step alone does not fix a spatial stability problem.</li><li>Check prescribed values and supports. Verify the balance between fluid-content change and boundary outflow, and between applied forces and support reactions, with suitable post-processing. These balance diagnostics are not printed by the current script. Residual rows at prescribed pressure nodes represent boundary exchange and should not be interpreted as zero-flux conditions.</li><li>Assess the modeling assumptions before comparing with measurements: this case has no self-weight initialization, gravitational body-flow term, cracking, unsaturated flow, or site-specific parameter calibration.</li></ol><p>The regression suite checks reproducibility against a stored solution. Run it from the repository root with <code>julia --project -e &#39;using Pkg; Pkg.test(test_args=[&quot;regression&quot;])&#39;</code>. It complements, rather than establishes, physical validation and discretization convergence. MOOSE&#39;s <a href="https://mooseframework.inl.gov/modules/porous_flow/tests/poro_elasticity/poro_elasticity_tests.html">poroelasticity verification examples</a> provide additional examples of checking storage and deformation against analytical solutions, using the alternative notation <span>$1/M$</span> for our <span>$N$</span>.</p><h2 id="10.-Short-exercises"><a class="docs-heading-anchor" href="#10.-Short-exercises">10. Short exercises</a><a id="10.-Short-exercises-1"></a><a class="docs-heading-anchor-permalink" href="#10.-Short-exercises" title="Permalink"></a></h2><ul><li><p><strong>Pressure and units:</strong> compute the upstream pressure at <span>$y=500$</span> m. You should obtain <span>$170\,000$</span> Pa = <span>$0.17$</span> MPa. Explain why the applied traction points inward.</p></li><li><p><strong>Coupling sign:</strong> for concrete, take an undrained volumetric strain increment of <span>$-10^{-5}$</span>. Using the local storage relation gives <span>$dp=40\,000$</span> Pa. Explain why this is an illustrative local calculation, not a predicted dam profile.</p></li><li><p><strong>Constraints and drainage:</strong> can a specimen have fixed bulk volume while still exchanging water? Write the reduced mass balance and identify the storage term that remains. Does fixing the base of a dam impose that condition everywhere?</p></li><li><p><strong>Storage versus diffusivity:</strong> check the units of <span>$S_{\mathrm{eff}}$</span> and <span>$c_v$</span>. At fixed permeability, viscosity, and drainage length, what happens to <span>$c_v$</span> and <span>$t_c$</span> if the effective storage doubles?</p></li><li><p><strong>Drainage length:</strong> use <span>$L=20$</span> m in the time-scale estimate. Why is the estimate four times larger than at 10 m even though material coefficients are unchanged?</p></li><li><p><strong>Time resolution:</strong> compare 100 s, 50 s, and 25 s steps, all ending at 2,000 s. Examine pressure and displacement separately, including profiles rather than only the printed maxima.</p></li><li><p><strong>Permeability:</strong> supply a different concrete material without redefining the model:</p><pre><code class="language-julia hljs">concrete = BiotPoroelastic(;
+    E = 1.4e10, nu = 0.15, k = 1.0e-13, b = 0.4, N = 1.0e-10, mu_l = 1.0e-3,
+)
+more_permeable = run_biot(model = BiotModel(; concrete))</code></pre><p>This tenfold increase divides the homogeneous concrete time-scale estimate by ten; the coupled dam response still depends on geometry and on the foundation.</p></li></ul><p>The two illustrations can be regenerated with <code>python3 examples/biot_consolidation/draw_schematics.py</code>. They describe geometry and coupling, not numerical results.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../nonisothermal_drying/">« Non-isothermal drying</a><a class="docs-footer-nextpage" href="../../validation/terzaghi/">Terzaghi consolidation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Monday 21 September 2026 16:51">Monday 21 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
