@@ -369,7 +369,7 @@
 # the mesh. The material constants, constitutive choices, and boundary data belong to
 # our `DryingModel`.
 #
-# | Mathematical role | Method implemented below | What the method writes into `f` |
+# | Mathematical role | Method provided by the package | What the method writes into `f` |
 # |:---|:---|:---|
 # | Stored quantities ``B(\mathbf u)`` | `PoroMechanics.storage!` | Water mass, air mass, entropy per bulk volume |
 # | Edge transport | `PoroMechanics.flux!` | Flux expressions before geometric factors |
@@ -385,117 +385,45 @@ using VoronoiFVM
 using ExtendableGrids
 using Printf
 
-# ### 6.1 Store material data, then declare the unknowns
+# ### 6.1 Configure materials and the experiment
 #
-# A Julia `struct` groups named fields. `DryingMaterial` groups the properties of one
-# material; `DryingModel` contains the two materials and the problem data. The notation
-# `DryingModel <: AbstractPoroModel` declares that our type participates in the
-# PoroMechanics model interface. `Base.@kwdef` lets us construct it using named arguments
-# with defaults, for example `DryingModel(; T_ini = 323.0)`.
+# `DryingMaterial`, `DryingParameters`, and `DryingModel` are supplied by
+# PoroMechanics. The material laws and balance callbacks can be reused with another
+# mesh or loading. The factory below supplies the clay/rock recipe, the radii,
+# initial values and boundary data of this experiment.
 #
-# The type parameters `{T, R, K}` allow ordinary floating-point numbers or numbers that
-# carry derivatives. `promote` brings numerical inputs to a compatible type.
-# ForwardDiff uses derivative-carrying numbers to obtain the local Jacobian needed by
-# Newton's method. Do not force such intermediate quantities back to `Float64` inside
-# a constitutive law.
+# `materials[region]` selects the material. `parameters` holds the common fluid and
+# thermal coefficients. The geometry and initial state remain separate case data.
+# All coefficients retain their numeric types for automatic differentiation.
 
-"""
-Parameters of one material for model M6 (non-isothermal drying).
-Two instances are embedded in `DryingModel`: clay (mat1) and rock (mat2).
-"""
-struct DryingMaterial{T, R, K}
-    phi::T             # porosity [-]
-    k_int::T           # intrinsic permeability [m²]
-    lam_s::T           # solid thermal conductivity [W/(m·K)]
-    C_s::T             # volumetric heat capacity [J/(m³·K)]
-    retention::R       # S_l(p_c), regularized near saturation
-    rel_perm::K        # k_rl(p_c)
-end
-
-## Promote rather than require a single type: differentiating with respect to one
-## coefficient makes that field a `Dual` while the others stay `Float64`.
-function DryingMaterial(phi, k_int, lam_s, C_s, retention, rel_perm)
-    return DryingMaterial(promote(phi, k_int, lam_s, C_s)..., retention, rel_perm)
-end
-
-"""
-    DryingModel
-
-Model M6 — thermo-hydric drying of an unsaturated porous medium, 2 materials.
-
-**Primary unknowns:** liquid pressure `p_l` [Pa], dry air pressure `p_a` [Pa],
-temperature `T` [K].
-
-**Geometry:** axisymmetric, radius `r_in ≤ r ≤ r_out`, with the clay buffer between `r_in`
-and `r_int` and the host rock beyond.
-
-**Boundary conditions:**
-- `r = r_in`  : Neumann heat flux `Q(t)` [W/m²] (radioactive canister), no water or air flux
-- `r = r_out` : Dirichlet `p_l`, `p_a`, `T` (initial values of the rock)
-"""
-Base.@kwdef struct DryingModel{T, M1, M2} <: AbstractPoroModel
-    ## ── Parameters common to both materials ───────────────────────────────────
-    rho_l::T   = 1000.0       # liquid density [kg/m³]
-    mu_l::T    = 1.0e-3       # liquid viscosity [Pa·s]
-    mu_g::T    = 1.8e-5       # gas viscosity [Pa·s]
-    M_vsR::T   = 0.00216      # water molar mass / R [kg·K/J]
-    M_asR::T   = 0.00346      # air molar mass / R [kg·K/J]
-    p_l0::T    = 1.0e5        # reference liquid pressure [Pa]
-    p_v0::T    = 2460.0       # saturated vapor pressure at T₀ [Pa]
-    p_a0::T    = 97540.0      # reference air pressure [Pa]
-    T_0::T     = 293.0        # reference temperature [K]
-    D_av0::T   = 0.00248      # air-vapor diffusion at T₀ [m²/s]
-    lam_l::T   = 0.6          # liquid thermal conductivity [W/(m·K)]
-    lam_g::T   = 0.026        # gas thermal conductivity [W/(m·K)]
-    C_pl::T    = 4180.0       # liquid specific heat [J/(kg·K)]
-    C_pv::T    = 1800.0       # vapor specific heat [J/(kg·K)]
-    C_pa::T    = 1000.0       # dry air specific heat [J/(kg·K)]
-    L_0::T     = 2.45e6       # latent heat of vaporization [J/kg]
-    alpha_T::T = 0.003        # thermal variation coeff. of S_l [1/K]
-    H_a::T     = 1.0e10       # Henry constant of air in water [Pa] (Olivella et al., 1994)
-
-    ## ── Geometry (axisymmetric) ────────────────────────────────────────────────
-    r_in::T  = 0.425          # canister radius [m]
-    r_int::T = 1.225          # clay / rock interface [m]
-    r_out::T = 10.0           # outer radius, where the rock is held at its initial state [m]
-
-    ## ── Materials ──────────────────────────────────────────────────────────────
-    ## The exponents are the published values, not recomputed from m: the fitted n of
-    ## 1.06383 differs from 1/(1-0.06) = 1.0638297… in the last digits, and the
-    ## three-argument `VanGenuchten` keeps them as given.
-    mat1::M1 = DryingMaterial(                                        # compacted clay
-        0.30, 1.0e-20, 1.12, 2.3e6,
-        ExponentialCutoff(VanGenuchten(1.5e6, 1.06383, 0.06), 1.0e6),
-        PowerLawKrl(3.0e6, 2.0, 0.5),
+function drying_case(;
+    geometry = (; r_in = 0.425, r_int = 1.225, r_out = 10.0),
+    initial = (; clay = (-7.611655e7, 9.225595e4, 323.0),
+                 rock = (4.905e6, 4.891671e6, 323.0)),
+    parameters = DryingParameters(),
+    materials = (
+        DryingMaterial(0.30, 1.0e-20, 1.12, 2.3e6,
+            ExponentialCutoff(VanGenuchten(1.5e6, 1.06383, 0.06), 1.0e6),
+            PowerLawKrl(3.0e6, 2.0, 0.5)),
+        DryingMaterial(0.05, 1.0e-19, 1.62, 2.0e6,
+            ExponentialCutoff(VanGenuchten(10.0e6, 1.7, 0.4117), 2.0e5),
+            PowerLawKrl(10.0e6, 2.0, 1.0)),
+    ),
+    heat_flux = _heat_flux,
+    heat_times = _t_F,
+)
+    model = DryingModel(; materials, parameters,
+        dirichlet = ntuple(i -> ((2, initial.rock[i]),), 3),
+        heat_flux = ((1, heat_flux),),
     )
-    mat2::M2 = DryingMaterial(                                        # host rock
-        0.05, 1.0e-19, 1.62, 2.0e6,
-        ExponentialCutoff(VanGenuchten(10.0e6, 1.7, 0.4117), 2.0e5),
-        PowerLawKrl(10.0e6, 2.0, 1.0),
-    )
-
-    ## ── Initial conditions (reference case, fields 1-5) ───────────────────────
-    p_l_ini1::T = -7.611655e7  # p_l in the clay zone [Pa]
-    p_a_ini1::T =  9.225595e4  # p_a in the clay zone [Pa]
-    p_l_ini2::T =  4.905e6     # p_l in the rock zone [Pa]
-    p_a_ini2::T =  4.891671e6  # p_a in the rock zone [Pa]
-    T_ini::T    =  323.0       # initial temperature (zones 1 and 2) [K]
+    return (; model, geometry, initial, heat_times)
 end
 
-PoroMechanics.nspecies(::DryingModel)      = 3
-
-## Promote rather than require a single type: differentiating with respect to one parameter
-## makes that field a `Dual` while the rest stay `Float64`, which is what `@kwdef` alone
-## cannot express.
-function DryingModel(rho_l, mu_l, mu_g, M_vsR, M_asR, p_l0, p_v0, p_a0, T_0, D_av0, lam_l, lam_g, C_pl, C_pv, C_pa, L_0, alpha_T, H_a, r_in, r_int, r_out, mat1, mat2, p_l_ini1, p_a_ini1, p_l_ini2, p_a_ini2, T_ini)
-    scalars = promote(rho_l, mu_l, mu_g, M_vsR, M_asR, p_l0, p_v0, p_a0, T_0, D_av0, lam_l, lam_g, C_pl, C_pv, C_pa, L_0, alpha_T, H_a, r_in, r_int, r_out, p_l_ini1, p_a_ini1, p_l_ini2, p_a_ini2, T_ini)
-    return DryingModel(scalars[1:21]..., mat1, mat2, scalars[22:end]...)
-end
-PoroMechanics.species_names(::DryingModel) = [:p_l, :p_a, :T]
-
-## Indices of the unknowns (VoronoiFVM species)
-const U_PL  = 1
-const U_PA  = 2
+# The fitted retention exponent 1.06383 is kept as published, rather than
+# recomputed from 0.06. This preserves the original constitutive curve.
+# Rows of the solution are liquid pressure, dry-air pressure and temperature.
+const U_PL = 1
+const U_PA = 2
 const U_TEM = 3
 
 # ### 6.2 Reuse constitutive laws
@@ -504,7 +432,7 @@ const U_TEM = 3
 # them. `U_PL`, `U_PA`, and `U_TEM` are integer row indices; Julia arrays start at 1.
 #
 # `VanGenuchten`, `ExponentialCutoff`, and `PowerLawKrl` already live in PoroMechanics.
-# The short helpers below select the law stored in each material and evaluate it. A new
+# `saturation(material, pc)` evaluates the law stored in that material. A new
 # reusable law belongs in `src/Constitutive/`; an example only chooses its parameters.
 #
 # `node.region` and `edge.region` identify a **material** region. At the shared interface,
@@ -512,37 +440,15 @@ const U_TEM = 3
 # material solely by the coordinate of that shared node would assign the same law to
 # both sides and give the wrong stored mass.
 
-_Sl(mat::DryingMaterial, pc) = saturation(mat.retention, pc)
-_dSl(mat::DryingMaterial, pc) = dsaturation_dpc(mat.retention, pc)
-_krl(mat::DryingMaterial, pc) = relative_permeability(mat.rel_perm, pc)
-_krg(sl) = gas_relative_permeability(sl)
-
-## Material of a cell region: 1 is the clay, 2 the rock. A node on the interface belongs to
-## both, and VoronoiFVM calls `storage!` once for each side, with that side's region.
-_mat(m::DryingModel, region) = region == 1 ? m.mat1 : m.mat2
-
-## Mass fraction of air dissolved in the liquid, from Henry's law. M_a/M_w is read off the
-## two M/R coefficients, since R cancels.
-_dissolved_air(m::DryingModel, pa) = pa / m.H_a * m.M_asR / m.M_vsR
-
 # ### 6.3 Calculate vapor pressure from the unknown state
 #
-# `_p_vapor` implements the Kelvin relation from section 2. The local vapor pressure is
+# `vapor_pressure` implements the Kelvin relation from section 2. The local vapor pressure is
 # recomputed whenever Newton changes either liquid pressure or temperature. It is not
 # an independently prescribed concentration. The exponential and logarithm also explain
 # why positive temperature and consistent SI units matter.
 
-"""
-Vapor pressure p_v(p_l, T) — modified Kelvin equation.
-"""
-function _p_vapor(m::DryingModel, pl::Real, T::Real)
-    θ = T - m.T_0
-    return m.p_v0 * exp(m.M_vsR / T * (
-        (pl - m.p_l0) / m.rho_l
-        + m.L_0 * θ / m.T_0
-        + (m.C_pl - m.C_pv) * (θ - T * log(T / m.T_0))
-    ))
-end
+# For example, `vapor_pressure(model, p_l, T)` evaluates this relation using
+# `model.parameters`. Its implementation lives in `src/Constitutive/Drying.jl`.
 
 # ### 6.4 Evaluate the capillary contribution
 #
@@ -560,32 +466,11 @@ end
 # interval; it does not make the integral disappear.
 #
 # The thermal shift requires ``1-\alpha_T(T-T_0)>0``. For the default parameters this
-# means ``T<626.33`` K. The guard in `_dSsdT` is not a valid extension of the complete
+# means ``T<626.33`` K. The integral helper's guard is not a valid extension of the complete
 # model beyond that limit, since other functions still use the same denominator.
 
-const _gauss_a = (0.93246951420, 0.66120938646, 0.23861918608)
-const _gauss_w = (0.17132449237, 0.36076157304, 0.46791393457)
-
-function _dSsdT(m::DryingModel, mat::DryingMaterial, pc::Real, θ::Real)
-    at = 1.0 - m.alpha_T * θ
-    at <= 0 && return 0.0
-    pc0 = pc / at
-    return _dSl(mat, pc0) * pc0 * m.alpha_T / at
-end
-
-function _compute_dUsdT(m::DryingModel, mat::DryingMaterial, pc::Real, θ::Real)
-    ## The regularized retention curve also varies for pc < 0; integrate with the
-    ## signed interval there as well, consistently with storage and its Jacobian.
-    h  = pc / 2.0
-    dU = 0.0
-    for j in 1:3
-        dU += _gauss_w[j] * (
-            _dSsdT(m, mat, h * (1.0 + _gauss_a[j]), θ) +
-            _dSsdT(m, mat, h * (1.0 - _gauss_a[j]), θ)
-        )
-    end
-    return dU * h
-end
+# PoroMechanics evaluates this signed integral with the same six-point rule
+# as the original example, including the regularized branch at negative pressure.
 
 # ### 6.5 Convert a heat table into a boundary flux
 #
@@ -625,8 +510,8 @@ end
 #
 # A **callback** is a function that the solver calls when assembling its equations.
 # PoroMechanics passes five arguments: an output buffer `f`, local unknowns `u`, a node
-# or edge, the model `m`, and optional extra data. `::Any` here means that the extra data
-# argument is unused. The trailing `!` announces that the function modifies its output.
+# or edge, the model `m`, and optional extra data. This model does not use the extra data
+# argument. The trailing `!` announces that the function modifies its output.
 #
 # ### 7.1 `storage!`: what is present at a node?
 #
@@ -638,45 +523,8 @@ end
 # these inventories itself. `storage!` must return neither their time derivatives nor
 # an inventory already multiplied by a control-volume size.
 
-"""
-Storage term at a node.
-
-- `f[U_PL]`  = M_l + M_v        — total water mass (liquid + vapor)
-- `f[U_PA]`  = M_a + M_ad       — dry air mass (gaseous + dissolved in the liquid)
-- `f[U_TEM]` = S                 — volumetric entropy
-"""
-function PoroMechanics.storage!(f, u, node, m::DryingModel, ::Any)
-    mat = _mat(m, node.region)
-    φ   = mat.phi
-    Cs  = mat.C_s
-
-    pl  = u[U_PL];  pa = u[U_PA];  T = u[U_TEM]
-    θ   = T - m.T_0
-    pv  = _p_vapor(m, pl, T)
-    pg  = pv + pa
-    pc  = pg - pl
-    at  = 1.0 - m.alpha_T * θ
-    pc0 = pc / at
-    sl  = _Sl(mat, pc0);  sg = 1.0 - sl
-
-    ρv  = pv * m.M_vsR / T
-    ρa  = pa * m.M_asR / T
-    Ml  = m.rho_l * φ * sl
-    Mv  = ρv * φ * sg
-    Ma  = ρa * φ * sg
-    Mad = Ml * _dissolved_air(m, pa)
-
-    s_l = m.C_pl * log(T / m.T_0)
-    s_v = m.C_pv * log(T / m.T_0) - log(pv / m.p_v0) / m.M_vsR + m.L_0 / m.T_0
-    s_a = m.C_pa * log(T / m.T_0) - log(pa / m.p_a0) / m.M_asR
-    dU  = _compute_dUsdT(m, mat, pc, θ)
-
-    ## Dissolved air is given the entropy of gaseous air: the heat of dissolution is neglected.
-    f[U_PL]  = Ml + Mv
-    f[U_PA]  = Ma + Mad
-    f[U_TEM] = Cs * log(T / m.T_0) - φ * dU + Ml * s_l + Mv * s_v + (Ma + Mad) * s_a
-    return nothing
-end
+# The package's `storage!` implementation evaluates these quantities for
+# `drying_material(model, node.region)`; the example supplies no storage callback.
 
 # ### 7.2 `flux!`: what crosses an edge?
 #
@@ -690,86 +538,8 @@ end
 # the liquid comes. This is the purpose of `Wl >= 0 ? ... : ...`. Every final assignment
 # combines the appropriate phase fluxes into a component or entropy flux.
 
-"""
-Numerical flux on an edge.
-
-Convention VoronoiFVM : `f[s] = K·(u₁ - u₂)` ↔ `W = f[s]/(x₂ - x₁)`.
-
-- `f[U_PL]`  = W_l + W_v         — total water flux (Darcy + Fick)
-- `f[U_PA]`  = W_a + W_ad        — dry air flux (gaseous + dissolved, carried by the liquid)
-- `f[U_TEM]` = J_s                — entropy flux = Q/T + s_l·W_l + s_v·W_v + s_a·(W_a + W_ad)
-"""
-function PoroMechanics.flux!(f, u, edge, m::DryingModel, ::Any)
-    mat = _mat(m, edge.region)
-    φ   = mat.phi
-    ki  = mat.k_int
-    λs  = mat.lam_s
-
-    pl1, pl2 = u[U_PL,  1], u[U_PL,  2]
-    pa1, pa2 = u[U_PA,  1], u[U_PA,  2]
-    T1,  T2  = u[U_TEM, 1], u[U_TEM, 2]
-    plm = (pl1 + pl2) / 2.0
-    pam = (pa1 + pa2) / 2.0
-    Tm  = (T1  + T2 ) / 2.0
-
-    θm   = Tm - m.T_0
-    at   = 1.0 - m.alpha_T * θm
-    pvm  = _p_vapor(m, plm, Tm)
-    pgm  = pvm + pam
-    pcm  = pgm - plm
-    pc0m = pcm / at
-    slm  = _Sl(mat, pc0m);  sgm = 1.0 - slm
-
-    ρvm = pvm * m.M_vsR / Tm
-    ρam = pam * m.M_asR / Tm
-    ρgm = ρvm + ρam
-    cvm = ρvm / ρgm;  cam = 1.0 - cvm
-
-    ## Darcy conductivities
-    Kl  = m.rho_l * ki / m.mu_l * _krl(mat, pc0m)
-    krg = _krg(slm)
-    KDv = ρvm * ki / m.mu_g * krg
-    KDa = ρam * ki / m.mu_g * krg
-
-    ## Fick diffusion — Millington-Quirk tortuosity
-    τ    = φ^(1.0 / 3.0) * max(sgm, 0.0)^(7.0 / 3.0)
-    Dav  = m.D_av0 * (m.p_v0 + m.p_a0) / pgm * (Tm / m.T_0)^1.88
-    Def  = φ * sgm * τ * Dav
-    KFv  = ρgm * Def;  KFa = KFv
-    bar  = Def * cvm * cam / Tm
-    KDv += bar * (m.M_asR - m.M_vsR)
-    KDa += bar * (m.M_vsR - m.M_asR)
-
-    ## Thermal conductivity — Johansen geometric mean
-    KTH = λs^(1.0 - φ) * m.lam_l^(φ * slm) * m.lam_g^(φ * sgm)
-
-    ## Pressures and mass fractions at the nodes
-    pv1 = _p_vapor(m, pl1, T1);  pg1 = pv1 + pa1
-    pv2 = _p_vapor(m, pl2, T2);  pg2 = pv2 + pa2
-    ρg1 = pv1 * m.M_vsR / T1 + pa1 * m.M_asR / T1
-    ρg2 = pv2 * m.M_vsR / T2 + pa2 * m.M_asR / T2
-    cv1 = pv1 * m.M_vsR / T1 / ρg1;  ca1 = 1.0 - cv1
-    cv2 = pv2 * m.M_vsR / T2 / ρg2;  ca2 = 1.0 - cv2
-
-    ## Elementary fluxes
-    Wl = Kl  * (pl1 - pl2)
-    Wv = KDv * (pg1 - pg2) + KFv * (cv1 - cv2)
-    Wa = KDa * (pg1 - pg2) + KFa * (ca1 - ca2)
-
-    ## Dissolved air travels with the liquid, taken from the upstream node
-    Wad = (Wl >= 0 ? _dissolved_air(m, pa1) : _dissolved_air(m, pa2)) * Wl
-
-    ## Entropy flux
-    s_lm = m.C_pl * log(Tm / m.T_0)
-    s_vm = m.C_pv * log(Tm / m.T_0) - log(pvm / m.p_v0) / m.M_vsR + m.L_0 / m.T_0
-    s_am = m.C_pa * log(Tm / m.T_0) - log(pam / m.p_a0) / m.M_asR
-    Js   = KTH / Tm * (T1 - T2) + s_lm * Wl + s_vm * Wv + s_am * (Wa + Wad)
-
-    f[U_PL]  = Wl + Wv
-    f[U_PA]  = Wa + Wad
-    f[U_TEM] = Js
-    return nothing
-end
+# The shared `flux!` implementation performs this calculation. The case changes
+# its material coefficients and boundary data, while retaining the same balances.
 
 # ### 7.3 `bcondition!`: connect the domain to its surroundings
 #
@@ -783,27 +553,8 @@ end
 # limits the denominator during a trial evaluation; it does not make an otherwise
 # unphysical Newton state valid.
 
-"""
-Boundary conditions:
-- Region 1 (r = r_in)  : Neumann heat flux `Q(t) / T_node`, at the current time of the solver
-- Region 2 (r = r_out) : Dirichlet `p_l`, `p_a`, `T` (initial rock values)
-"""
-function PoroMechanics.bcondition!(f, u, bnode, m::DryingModel, ::Any)
-    ## Outer radius: Dirichlet, initial values of the rock
-    boundary_dirichlet!(f, u, bnode; species = U_PL,  region = 2, value = m.p_l_ini2)
-    boundary_dirichlet!(f, u, bnode; species = U_PA,  region = 2, value = m.p_a_ini2)
-    boundary_dirichlet!(f, u, bnode; species = U_TEM, region = 2, value = m.T_ini)
-
-    ## Canister surface: incoming entropy flux = Q / T
-    ## VoronoiFVM convention: boundary_neumann!(value = v) does f[s] -= v,
-    ## so v > 0 is an incoming entropy source in accumulation + outflow = 0.
-    if bnode.region == 1
-        Q = _heat_flux(bnode.time)
-        boundary_neumann!(f, u, bnode; species = U_TEM, region = 1,
-                          value = Q / max(u[U_TEM], 200.0))
-    end
-    return nothing
-end
+# `drying_case` supplies three outer Dirichlet tuples and one incoming heat-flux
+# tuple. The package's `bcondition!` evaluates this data at the current time.
 
 # ## 8. Inspect the material laws before running the simulation
 #
@@ -815,7 +566,8 @@ end
 
 using Plots
 
-m0 = DryingModel()
+case = drying_case()
+m0 = case.model
 
 pc_clay = range(1.0e4, 2.0e8; length = 300)
 pc_rock = range(1.0e4, 1.0e7; length = 300)
@@ -824,14 +576,14 @@ p_ret = plot(;
     xlabel = "p_c0 [Pa]", ylabel = "S_l [-]", title = "Retention curves",
     xscale = :log10, legend = :topright, size = (560, 320),
 )
-plot!(p_ret, pc_clay, [_Sl(m0.mat1, pc) for pc in pc_clay]; lw = 2, color = :steelblue, label = "Clay (mat1)")
-plot!(p_ret, pc_rock, [_Sl(m0.mat2, pc) for pc in pc_rock]; lw = 2, color = :darkorange, label = "Rock (mat2)")
+plot!(p_ret, pc_clay, [saturation(drying_material(m0, 1), pc) for pc in pc_clay]; lw = 2, color = :steelblue, label = "Clay (mat1)")
+plot!(p_ret, pc_rock, [saturation(drying_material(m0, 2), pc) for pc in pc_rock]; lw = 2, color = :darkorange, label = "Rock (mat2)")
 p_ret
 
 # The Kelvin equation must return `p_v0` at the reference state — a cheap consistency
 # check on the coefficients.
 
-@printf("p_v(p_l0, T_0) = %.2f Pa  (expected %.2f Pa)\n", _p_vapor(m0, m0.p_l0, m0.T_0), m0.p_v0)
+@printf("p_v(p_l0, T_0) = %.2f Pa  (expected %.2f Pa)\n", vapor_pressure(m0, m0.parameters.p_l0, m0.parameters.T_0), m0.parameters.p_v0)
 
 # The heat flux imposed at the canister surface follows radioactive decay.
 
@@ -848,12 +600,12 @@ plot(
 #
 # `run_drying` below puts the pieces together. Follow these operations in order:
 #
-# 1. Construct `DryingModel()` and a radial mesh. There are 25 uniform clay cells by
+# 1. Obtain a configured model from `drying_case()` and build a radial mesh. There are 25 uniform clay cells by
 #    default, followed by gradually larger rock cells. A cell is the interval between
 #    adjacent nodes; 25 clay cells therefore require 26 clay nodes.
 # 2. Call `circular_symmetric!` and assign `CellRegions`. Material-region labels are
 #    distinct from boundary-region labels, even though both use the integers 1 and 2.
-# 3. Call `fvm_system` to connect our callbacks, then `unknowns(sys)` to allocate a
+# 3. Call `fvm_system` to connect the model callbacks, then `unknowns(sys)` to allocate a
 #    matrix of size ``3\times N``. Column ``i`` holds ``(p_l,p_a,T)`` at radius ``r_i``.
 # 4. Fill the initial matrix and impose values consistent with the outer boundary.
 #    The single interface node receives the rock initial values. The neighboring clay
@@ -895,16 +647,17 @@ plot(
 # The solver starts with 100 s and permits steps up to one year. If a Newton solve fails,
 # it can retry with a smaller step. However, reducing the time step cannot repair a
 # jump in a constitutive law or an invalid model state. Every segment must reach its
-# requested end time and actually change the solution. Extra stops at heat-flux changes
+# requested end time. Extra stops at heat-flux changes
 # keep a time step from straddling a discontinuous boundary input.
 
 """
-    run_drying(; n_clay = 25, h_rock_max = 0.35, n_years = 100, verbose = false)
+    run_drying(; case = drying_case(), n_clay = 25, h_rock_max = 0.35, n_years = 100, verbose = false)
 
 Solve the non-isothermal drying problem and return `(model, r_all, results)`, where
 `results` is a vector of tuples `(t [s], u [n_species × n_nodes])`.
 
 ## Arguments
+- `case`       : model, geometry, initial states and heat-flux breakpoints
 - `n_clay`     : number of cells across the clay buffer `[r_in, r_int]`
 - `h_rock_max` : largest cell in the rock, which is meshed with geometrically growing cells
 - `n_years`    : simulated duration [years]
@@ -915,15 +668,16 @@ Solve the non-isothermal drying problem and return `(model, r_all, results)`, wh
 - `r_all`   : radial positions of the nodes [m]
 - `results` : `[(t₁, u₁), …, (tₙ, uₙ)]`
 """
-function run_drying(; n_clay = 25, h_rock_max = 0.35, n_years = 100, verbose = false)
+function run_drying(; case = drying_case(), n_clay = 25, h_rock_max = 0.35, n_years = 100, verbose = false)
 
-    m = DryingModel()
+    m = case.model
+    geometry, initial = case.geometry, case.initial
 
     ## ── Axisymmetric two-material grid ────────────────────────────────────────
     ## Uniform cells in the clay; in the rock, cells grow from the clay cell size.
-    h_clay = (m.r_int - m.r_in) / n_clay
-    r_clay = collect(range(m.r_in, m.r_int; length = n_clay + 1))
-    r_rock = geomspace(m.r_int, m.r_out, h_clay, h_rock_max)
+    h_clay = (geometry.r_int - geometry.r_in) / n_clay
+    r_clay = collect(range(geometry.r_in, geometry.r_int; length = n_clay + 1))
+    r_rock = geomspace(geometry.r_int, geometry.r_out, h_clay, h_rock_max)
     r_all  = vcat(r_clay, r_rock[2:end])
     grid   = simplexgrid(r_all)
     circular_symmetric!(grid)
@@ -935,19 +689,10 @@ function run_drying(; n_clay = 25, h_rock_max = 0.35, n_years = 100, verbose = f
     ## ── Initial state ─────────────────────────────────────────────────────────
     inival = unknowns(sys)
     for i in eachindex(r_all)
-        if r_all[i] < m.r_int
-            inival[U_PL, i] = m.p_l_ini1
-            inival[U_PA, i] = m.p_a_ini1
-        else
-            inival[U_PL, i] = m.p_l_ini2
-            inival[U_PA, i] = m.p_a_ini2
-        end
-        inival[U_TEM, i] = m.T_ini
+        inival[:, i] .= r_all[i] < geometry.r_int ? initial.clay : initial.rock
     end
-    ## IC/BC consistency on the right
-    inival[U_PL,  end] = m.p_l_ini2
-    inival[U_PA,  end] = m.p_a_ini2
-    inival[U_TEM, end] = m.T_ini
+    ## The outer Dirichlet data is the rock initial state.
+    inival[:, end] .= initial.rock
 
     ## ── Output times ──────────────────────────────────────────────────────────
     yr    = 3.1536e7   # 1 year [s]
@@ -981,19 +726,17 @@ function run_drying(; n_clay = 25, h_rock_max = 0.35, n_years = 100, verbose = f
 
         ## Land on every heat-flux change; otherwise time-step rejection can approach a
         ## discontinuity indefinitely. The output times remain independent of these stops.
-        tstops = vcat(t0, filter(t -> t0 < t < t1, _t_F), t1)
+        tstops = vcat(t0, filter(t -> t0 < t < t1, case.heat_times), t1)
+        ctrl.Δt = min(1.0e2, minimum(diff(tstops)))
         seg   = solve(sys; inival = u_cur, times = tstops, control = ctrl)
         u_new = seg[:, :, end]
 
-        ## A singular Newton matrix makes the linear solver return a zero update with only a
-        ## warning, and Newton then reports convergence on a state that never moves. With
-        ## heat injected at the canister, a segment that changes nothing is that failure.
+        ## Verify completion even when the solver handles failures internally.
         seg.t[end] == t1 || error("segment $(k - 1) stopped at t = $(seg.t[end]) s before $t1 s")
-        u_new == u_cur && error("segment $(k - 1) left the solution unchanged: the linear solver failed")
 
         if verbose
-            Q_val   = _heat_flux(t1)
-            dT_max  = maximum(u_new[U_TEM, :]) - m.T_ini
+            Q_val   = PoroMechanics.dirichlet_value(only(m.heat_flux)[2], t1)
+            dT_max  = maximum(u_new[U_TEM, :]) - initial.clay[3]
             du_max  = maximum(abs.(u_new .- u_cur))
             @printf("  seg %2d [%.2e → %.2e s] : Q(t1)=%5.0f W/m²  ΔT_max=%+7.3f K  Δu=%g\n",
                     k - 1, t0, t1, Q_val, dT_max, du_max)
@@ -1018,29 +761,18 @@ end
 # keeps saved states independent of later updates.
 
 """
-    liquid_saturation(m, u, i, region) -> S_l
-
-Liquid saturation at node `i` of the state `u`, on the side of `region`. At the interface the
-capillary pressure is continuous but the saturation is not: each material has its own curve.
-"""
-function liquid_saturation(m::DryingModel, u, i, region)
-    pl, pa, T = u[U_PL, i], u[U_PA, i], u[U_TEM, i]
-    pc0 = (_p_vapor(m, pl, T) + pa - pl) / (1 - m.alpha_T * (T - m.T_0))
-    return _Sl(_mat(m, region), pc0)
-end
-
-"""
 Print a summary table at the two points where the reference deck samples its output: the
 middle of the clay buffer and the clay / rock interface.
 """
-function print_summary(m::DryingModel, r_all::Vector, results)
+function print_summary(case, r_all::Vector, results)
+    m, geometry = case.model, case.geometry
     yr    = 3.1536e7
-    i_mid = argmin(abs.(r_all .- (m.r_in + m.r_int) / 2))
-    i_int = argmin(abs.(r_all .- m.r_int))
+    i_mid = argmin(abs.(r_all .- (geometry.r_in + geometry.r_int) / 2))
+    i_int = argmin(abs.(r_all .- geometry.r_int))
 
     println("\nNon-isothermal drying, axisymmetric (VoronoiFVM.jl)")
     @printf("Grid: %d nodes | canister r = %.3f m | interface r = %.3f m | outer r = %.1f m\n\n",
-            length(r_all), m.r_in, m.r_int, m.r_out)
+            length(r_all), geometry.r_in, geometry.r_int, geometry.r_out)
 
     println("t (yr) | T[canister] (K) | T[r=$(round(r_all[i_mid]; digits = 3))] (K) | S_l[r=$(round(r_all[i_mid]; digits = 3))] | S_l[interface, clay] | p_l[interface] (Pa)")
     for (t, u) in results
@@ -1049,9 +781,6 @@ function print_summary(m::DryingModel, r_all::Vector, results)
                 liquid_saturation(m, u, i_mid, 1), liquid_saturation(m, u, i_int, 1), u[U_PL, i_int])
     end
 
-    ## The canister injects heat for the whole run, so its temperature must have risen.
-    maximum(u[U_TEM, 1] for (_, u) in results) > m.T_ini + 1 ||
-        error("the canister temperature never rose above its initial value: nothing was computed")
     return nothing
 end
 
@@ -1063,8 +792,8 @@ end
 # With the default mesh, the selected middle node lies at 0.841 m, rather than exactly
 # at the geometric midpoint 0.825 m.
 
-m, r_all, results = run_drying(; verbose = get(ENV, "DRYING_VERBOSE", "") == "1")
-print_summary(m, r_all, results)
+m, r_all, results = run_drying(; case, verbose = get(ENV, "DRYING_VERBOSE", "") == "1")
+print_summary(case, r_all, results)
 
 # ### 10.2 Temperature profiles
 #
@@ -1075,7 +804,7 @@ print_summary(m, r_all, results)
 # the two materials conduct heat differently.
 
 colors = [:steelblue, :darkorange, :crimson, :green]
-r_zoom = (m.r_in, 3.0)
+r_zoom = (case.geometry.r_in, 3.0)
 
 p_T = plot(; xlabel = "r [m]", ylabel = "T [K]", title = "Temperature profiles", legend = :topright, xlims = r_zoom)
 p_sl = plot(; xlabel = "r [m]", ylabel = "S_l [-]", title = "Saturation profiles", legend = :bottomright, xlims = r_zoom)
@@ -1084,14 +813,14 @@ for (k, t_tgt) in enumerate([1yr, 10yr, 40yr, 100yr])
     idx = argmin(abs.([r[1] for r in results] .- t_tgt))
     u = results[idx][2]
     T_prof = u[U_TEM, :]
-    sl_prof = [liquid_saturation(m, u, i, r_all[i] <= m.r_int ? 1 : 2) for i in eachindex(r_all)]
+    sl_prof = [liquid_saturation(m, u, i, r_all[i] <= case.geometry.r_int ? 1 : 2) for i in eachindex(r_all)]
     yrs = round(Int, t_tgt / yr)
     plot!(p_T, r_all, T_prof; lw = 2, color = colors[k], label = "t = $yrs yr")
     plot!(p_sl, r_all, sl_prof; lw = 2, color = colors[k], label = "t = $yrs yr")
 end
 
-vline!(p_T, [m.r_int]; lw = 1, ls = :dash, color = :black, label = "interface")
-vline!(p_sl, [m.r_int]; lw = 1, ls = :dash, color = :black, label = "interface")
+vline!(p_T, [case.geometry.r_int]; lw = 1, ls = :dash, color = :black, label = "interface")
+vline!(p_sl, [case.geometry.r_int]; lw = 1, ls = :dash, color = :black, label = "interface")
 p_T
 
 # ### 10.3 Saturation profiles: drying and rewetting can coexist
@@ -1148,7 +877,7 @@ p_sl
 # p_liquid_MPa = u_final[U_PL, :] ./ 1.0e6        # a radial pressure profile
 #
 # # The two sides of the same material interface:
-# i_int = argmin(abs.(r_all .- m.r_int))
+# i_int = argmin(abs.(r_all .- case.geometry.r_int))
 # Sl_clay = liquid_saturation(m, u_final, i_int, 1)
 # Sl_rock = liquid_saturation(m, u_final, i_int, 2)
 #
@@ -1169,20 +898,27 @@ p_sl
 # m_short, radii_short, snapshots_short = run_drying(
 #     n_clay = 12, h_rock_max = 0.7, n_years = 1, verbose = true,
 # )
-# print_summary(m_short, radii_short, snapshots_short)
+# print_summary(drying_case(), radii_short, snapshots_short)
 # ```
 #
 # This is a new calculation with fewer cells and a shorter duration. It does not
 # recompute the global plot objects `p_T` and `p_sl`; plot the returned arrays if you
 # want figures for this particular run. `include` itself always executes the default
 # case, so use one Julia session for several experiments rather than repeatedly including
-# the file and redefining its types.
+# the file.
 #
-# The function exposes mesh size, duration, and output verbosity. To explore physical
-# parameters, edit the defaults in `DryingModel` or the construction `m = DryingModel()`
-# inside `run_drying`, then restart Julia and rerun the file. Creating a separate
-# `DryingModel(; ...)` at the prompt does not change the model constructed inside that
-# function. Numerical controls live in its `SolverControl` block.
+# Pass a configured case to explore physical parameters without editing the balances:
+#
+# ```julia
+# custom_case = drying_case(parameters = DryingParameters(mu_l = 1.2e-3))
+# custom_model, radii, snapshots = run_drying(case = custom_case, n_years = 1)
+# print_summary(custom_case, radii, snapshots)
+# ```
+#
+# `drying_case` also accepts `materials`, `geometry`, `initial`, `heat_flux`, and
+# `heat_times`. Supply the breakpoints of a new heat history through `heat_times` so
+# that integration stops at its discontinuities. Numerical controls live in the
+# `SolverControl` block of `run_drying`.
 #
 # ### Learn to distinguish three kinds of checks
 #

@@ -47,6 +47,7 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
 
         # ── The transport models the package ships ────────────────────────────────
         include("models.jl")
+        include("drying.jl")
         include("biot.jl")
 
         # ── Surface complexation, shared by the three chloride examples ───────────

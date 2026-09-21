@@ -13,12 +13,9 @@
 #     times).  Transient solutions are therefore interpolated at fixed fractions
 #     of the final time rather than recorded step by step.
 #
-#  2. Each example is included in its own module.  Several of them define
-#     top-level helpers under the same names — `_Sl` and `_krl` exist in both
-#     `richards_1d/run.jl` and `nonisothermal_drying/run.jl` — and the examples install
-#     methods on the shared `PoroMechanics` interface.  Module isolation keeps
-#     the helpers apart; the interface methods dispatch on distinct model types
-#     and coexist safely.
+#  2. Each example is included in its own module. Case helpers, constants and
+#     result arrays can share names without overwriting another example's state.
+#     Models supplied by the package are reused across these isolated cases.
 
 using Printf: @printf
 using LinearAlgebra: BLAS

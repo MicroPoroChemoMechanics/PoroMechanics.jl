@@ -48,6 +48,26 @@ assemble_biot_load
 solve_biot
 ```
 
+## Non-isothermal drying
+
+Configure the material laws, shared fluid properties and boundary values, then
+pass the model and your grid to `fvm_system`. Each cell region indexes `materials`.
+The three rows contain liquid pressure, dry-air pressure and temperature; the
+balances store water mass, dry-air mass and entropy.
+
+```@docs
+DryingMaterial
+DryingParameters
+DryingModel
+drying_material
+vapor_pressure
+```
+
+The [drying tutorial](examples/nonisothermal_drying.md) supplies a clay/rock case.
+Its `drying_case` factory keeps geometry, initial conditions and heating history
+explicit, and `run_drying(case = custom_case)` runs a modified experiment without
+redefining any balance callback.
+
 ## Model introspection
 
 ```@docs
@@ -231,8 +251,16 @@ mobility
 
 ```@docs
 RichardsModel
-liquid_saturation
 liquid_conductivity
+```
+
+### Saturation from a solution
+
+For Richards flow, saturation follows from the liquid pressure. For drying, it
+also depends on the air pressure, temperature and material region.
+
+```@docs
+liquid_saturation
 ```
 
 ## Materials

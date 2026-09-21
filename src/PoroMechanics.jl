@@ -51,6 +51,7 @@ export saturation, dsaturation_dpc
 export AbstractRelativePermeability, Mualem, PowerLawKrl, GardnerKrl, TabulatedKrl
 export relative_permeability, gas_relative_permeability
 export AbstractTortuosity, OhJang, tortuosity
+export DryingMaterial, DryingParameters, DryingModel, drying_material, vapor_pressure
 export AbstractPoroelastic, BiotPoroelastic
 export lame, shear_modulus, bulk_modulus, oedometric_modulus, biot_modulus
 export compaction_coefficient, storage_coefficient, consolidation_coefficient
@@ -92,6 +93,7 @@ export homogenize_to_stress, homogenized_tangent, cell_states
 include("Constitutive/Retention.jl")
 include("Constitutive/RelativePermeability.jl")
 include("Constitutive/Tortuosity.jl")
+include("Constitutive/Drying.jl")
 
 """
     AbstractPoroModel
@@ -294,6 +296,7 @@ include("Materials/DruckerPrager.jl")
 include("Models/Fickian.jl")
 include("Models/Darcy.jl")
 include("Models/Richards.jl")
+include("Models/Drying.jl")
 include("Models/Poroplast.jl")
 include("Backends/FVM.jl")
 include("Backends/FEM.jl")

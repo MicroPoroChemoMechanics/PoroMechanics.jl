@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Extract the non-isothermal drying material laws and water/air/entropy balances
+  into `DryingMaterial`, `DryingParameters`, and `DryingModel`. Select materials by
+  cell region and supply boundary values as data. Keep geometry, initial states,
+  heating history and solver controls in the example, with a configurable
+  `drying_case` passed to `run_drying`. Allow unheated equilibrium runs and cap
+  the first time step to the requested interval. Preserve the numerical reference.
+
 - Add shared linear Biot matrix and surface-load assembly and a backward Euler
   solver with variable steps, time-dependent loads and constraints, and a step
   callback. Use them in the dam example and Terzaghi benchmark while preserving
