@@ -21,10 +21,17 @@
 #
 # The page answers four questions in turn:
 #
-# 1. how to make a transient solve differentiable;
-# 2. whether the derivative it returns is right;
-# 3. which parameters the measurements can determine at all;
-# 4. how well they are determined, and what limits that.
+# 1. how the physical experiment becomes a discrete forward model;
+# 2. how to differentiate that model and check its sensitivities;
+# 3. which parameters the measurements can determine;
+# 4. how to calibrate them and assess uncertainty and numerical bias.
+#
+# Basic derivatives and matrix algebra are enough to follow the derivations below.
+# The dual-number examples introduce automatic differentiation from first principles.
+# Run the whole script from the repository root with Julia 1.12 or newer:
+# `julia --project=examples examples/fickian_identification/run.jl`, after preparing
+# the examples environment. It prints sensitivity, calibration, and refinement
+# tables and creates a plot of the fitted profiles.
 
 using PoroMechanics
 using VoronoiFVM
@@ -37,7 +44,78 @@ using Random
 using Printf
 using Plots
 
-# ## What automatic differentiation does
+# ## 1. Define the experiment and the forward equation
+#
+# ![Diffusion specimen, sampling depths, and observation ages](../assets/identification_geometry.svg)
+#
+# *Sampling locations are shown along a homogeneous specimen. The drawing describes
+# the experiment; it is not a simulated concentration profile.*
+#
+# A saturated, homogeneous specimen is initially free of tracer. Its left face
+# contacts a reservoir with constant concentration ``c_{\mathrm{in}}``. The right
+# face is sealed. Water does not advect: solute moves only by diffusion, with no
+# reaction, sorption, or change of porosity. The unknown ``c`` [mol/m³] is solute
+# concentration per unit **pore-solution volume**. Stored solute per bulk volume is
+# ``\phi c``. This distinction matters when deciding whether porosity is identifiable.
+#
+# | Location or quantity | Condition or value | Meaning |
+# |:--|:--|:--|
+# | ``x=0``, region 1 | ``c=c_{\mathrm{in}}`` for ``t>0`` | Prescribed inlet concentration |
+# | ``x=L``, region 2 | ``j=0`` | Sealed end; no solute crosses it |
+# | Interior, ``t=0`` | ``c=0`` | No initial tracer |
+# | ``L`` | 1 m | Finite specimen length |
+# | ``\phi`` | 0.30 | Fixed, uniform pore-volume fraction |
+# | Reference ``D`` | ``10^{-10}`` m²/s | Diffusivity used to generate synthetic data |
+# | Reference ``c_{\mathrm{in}}`` | 1 mol/m³ | Reservoir value used to generate data |
+#
+# Define solute flux ``j`` [mol/(m²·s)] per unit bulk cross-sectional area, positive
+# toward increasing ``x``. For any slice ``[a,b]`` of constant area ``A``, conservation
+# and Fick's law give
+#
+# ```math
+# \frac{d}{dt}\int_a^b\phi c\,A\,dx=A j(a,t)-A j(b,t),\qquad
+# j=-\phi D\partial_xc.
+# ```
+#
+# Dividing by area and shrinking the slice yields
+#
+# ```math
+# \boxed{\phi\partial_t c-\partial_x(\phi D\partial_xc)=0.}
+# ```
+#
+# For constant ``\phi`` and ``D``, this reduces to ``\partial_t c=D\partial_{xx}c``.
+# In this package's convention, the coefficient multiplying the concentration
+# gradient in the bulk-area flux is ``\phi D``; a reported experimental diffusion
+# coefficient must use the same convention before being compared with ``D``.
+# The initially decreasing concentration gives ``j>0``: tracer enters from the left.
+#
+# ### From a continuous profile to twelve predicted measurements
+#
+# On a uniform grid with ``N`` intervals, spacing ``h=L/N``, and control-volume
+# length ``\ell_i``, integrate the balance around node ``i``:
+#
+# ```math
+# \ell_i\phi\dot c_i+j_{i+1/2}-j_{i-1/2}=0,\qquad
+# j_{i+1/2}=-\phi D\frac{c_{i+1}-c_i}{h}.
+# ```
+#
+# Inside the grid ``\ell_i=h``, giving
+# ``\dot c_i=D(c_{i-1}-2c_i+c_{i+1})/h^2``; endpoint volumes have length ``h/2``.
+# The inlet value is imposed, while the sealed endpoint has zero external flux.
+# The `FickModel` storage callback supplies ``\phi c`` and its flux callback supplies
+# ``\phi D(c_i-c_j)``. VoronoiFVM supplies geometric factors and assembles the
+# spatial system. OrdinaryDiffEq advances that system in time below.
+#
+# A **measurement operator** then samples the computed profile. Six depths at two
+# ages give a vector of 12 predictions, ordered first by age and then by depth.
+# Here `simulate` selects the nearest node to each requested depth. All six depths
+# coincide with nodes on the 100-, 200-, and 400-interval grids used on this page,
+# so this selection introduces no location error in the reported refinement study.
+# For arbitrary depths, interpolate explicitly. For concentrations averaged over
+# ground slices, average the simulation over the same slices: a point value and a
+# slice average are different observables.
+#
+# ## 2. Understand automatic differentiation
 #
 # There are three ways to get the derivative of a computed result with respect to a parameter.
 #
@@ -48,8 +126,8 @@ using Plots
 #   for a result that comes out of a mesh, a Newton loop and a thousand time steps.
 # - **Automatic differentiation** applies the rules of differentiation to every elementary
 #   operation the computation performs, as it performs them. The result is the exact
-#   derivative of the computation as programmed, up to rounding, and there is no step to
-#   choose.
+#   derivative along the executed differentiable operations, up to rounding, with no
+#   finite-difference step to choose. Mesh and time-integration errors still remain.
 #
 # `ForwardDiff` implements the *forward mode* with **dual numbers**. A dual number carries a
 # value and a derivative, written ``a + a'\varepsilon`` with the rule
@@ -136,13 +214,21 @@ ForwardDiff.derivative(x -> x^2 * exp(x), 2.0)
 # |---|---|---|
 # | cost | about one computation per **parameter**, carried together | about one computation per **output** |
 # | suited to | few parameters | many parameters and one scalar output, such as a cost function |
-# | memory | that of the computation | the whole history of the computation must be stored |
+# | memory | state plus propagated partial derivatives | intermediates stored or recomputed |
 #
 # With two parameters, the forward mode is the right choice. The reverse mode would pay off
 # if, say, ``D`` were identified cell by cell, with hundreds of parameters for a single cost
 # ``\Phi``.
 
-# ## The measurements
+# Adaptive step selection and stopping tests can change the executed path. Therefore,
+# differentiating a numerical solve does not by itself certify the sensitivity of
+# the continuous PDE. We check derivatives numerically and later refine the spatial
+# model; time tolerances also need checking if greater precision is required.
+# All intermediate arrays must accept the parameter's numeric type. Explicitly
+# converting a dual number to `Float64` would break this propagation; see the
+# [ForwardDiff limitations](https://juliadiff.org/ForwardDiff.jl/v1.3/user/limitations/).
+#
+# ## 3. Generate and interpret the measurements
 #
 # Six depths are sampled at two ages, about eight months and about three years.
 #
@@ -157,8 +243,22 @@ ForwardDiff.derivative(x -> x^2 * exp(x), 2.0)
 # exactly, which would hide the discretization error. Analytical data keep that error visible,
 # and it matters in the last section.
 #
-# A measurement noise with a standard deviation of 0.005 mol/m³, half a percent of
-# ``c_\text{in}``, is added.
+# This complementary-error-function solution is exact on a **semi-infinite** domain
+# ``x\ge0`` with zero initial concentration and a constant inlet. The fitted model
+# uses a finite domain with a sealed end. They agree to high accuracy at the sampled
+# depths only while the far boundary has negligible influence. At the latest age,
+# ``\sqrt{Dt}=0.10`` m and ``L/(2\sqrt{Dt})=5``; the semi-infinite concentration at
+# 1 m is only ``\operatorname{erfc}(5)c_{\mathrm{in}}\approx1.5\times10^{-12}``
+# mol/m³. This supports using the analytical profile here, but it is not a general
+# identity between the two boundary-value problems. A shorter specimen, later age,
+# or much larger diffusivity would require revisiting the reference solution.
+#
+# Independent Gaussian measurement noise with standard deviation 0.005 mol/m³,
+# half a percent of ``c_{\mathrm{in}}``, is added using a fixed random seed. The two
+# ages are ``2\times10^7`` s (about 231 days) and ``10^8`` s (about 1,157 days).
+# At the deepest, earliest point the expected concentration is smaller than the
+# noise, so a noisy observation can be negative. That is possible under this
+# additive measurement model even though the underlying concentration is nonnegative.
 
 const D_TRUE = 1.0e-10    # diffusion coefficient used to generate the data [m²/s]
 const C_IN_TRUE = 1.0     # inlet concentration used to generate the data [mol/m³]
@@ -177,7 +277,7 @@ c_exact = [analytical(D_TRUE, C_IN_TRUE, x, t) for t in T_OBS for x in X_OBS]
 c_obs = c_exact .+ SIGMA .* randn(length(c_exact))
 nothing #hide
 
-# ## 1. Differentiating a transient solve
+# ## 4. Build a differentiable transient solve
 #
 # To differentiate with respect to ``D`` and ``c_\text{in}``, those two numbers are replaced by
 # dual numbers. Everything computed from them must then be able to hold dual numbers as well:
@@ -186,7 +286,8 @@ nothing #hide
 #   dual ``D`` is accepted as is;
 # - the unknowns: `fvm_system(...; valuetype = T)` builds a system whose values have type `T`.
 #
-# The usual call, `solve(sys; inival, times, control)`, does **not** work here. VoronoiFVM
+# In the dependency setup documented here, the usual VoronoiFVM call
+# `solve(sys; inival, times, control)` does **not** support this parameter-dual path. VoronoiFVM
 # chooses each time step from the change ``\Delta u`` of the previous one (see
 # [Getting Started](../quickstart.md)). That change is a dual number, so the next step and then
 # the time itself become dual numbers too. VoronoiFVM stores the time in a `Float64` field,
@@ -236,17 +337,20 @@ function simulate(D, c_in; phi = PHI, N = 100)
 end
 nothing #hide
 
-# The parameters are **scaled** so that both are of order one: ``\theta_1 = D / 10^{-10}``
-# m²/s and ``\theta_2 = c_\text{in}`` in mol/m³. Unscaled, the two columns of the Jacobian would
-# differ by a factor of ``10^{10}``. Its condition number would then measure the choice of
-# units, not the information in the data, and the damping of Levenberg–Marquardt would act
-# on one parameter only.
+# The parameters are **dimensionless and scaled** to be of order one:
+# ``\theta_1=D/D_*`` and ``\theta_2=c_{\mathrm{in}}/c_*``, where
+# ``D_*=10^{-10}`` m²/s and ``c_*=1`` mol/m³. The code uses concentrations numerically
+# in mol/m³, so multiplying the second component by the numerical scale 1 is implicit.
+# Without scaling, the two sensitivity columns carry very different numerical
+# scales because of the units. A raw condition number would then be dominated by
+# that choice. Scaling gives interpretable parameter directions and step sizes;
+# the diagonal damping used below provides additional curvature scaling.
 
 simulate(θ::AbstractVector; kwargs...) = simulate(θ[1] * 1.0e-10, θ[2]; kwargs...)
 θ_true = [D_TRUE / 1.0e-10, C_IN_TRUE]
 nothing #hide
 
-# ## 2. Is the derivative right?
+# ## 5. Check the derivatives
 #
 # The Jacobian from `ForwardDiff` is compared with central differences,
 # ``\big(c(\theta + h e_k) - c(\theta - h e_k)\big)/2h``. Differences cost two extra solves
@@ -270,10 +374,12 @@ for (i, (t, x)) in enumerate((t, x) for t in T_OBS for x in X_OBS)
     )
 end
 
-# The two agree to about five significant digits, which is the precision of the differences.
-# That precision is set by the solver tolerances and by ``h``. The agreement is worst at
-# ``x = 0.30`` m at the first age. There the concentration is only about ``10^{-5}``, and the
-# differences are lost in the tolerance of the solver.
+# Read the columns together: agreement should be assessed in both absolute and
+# relative terms. At 0.30 m at the first age, the analytical concentration is only
+# about ``2\times10^{-6}`` mol/m³, so relative derivative errors can be large even when
+# absolute errors are small. Finite-difference accuracy depends on both ``h`` and
+# solver tolerances. Repeat with several ``h`` values to seek an agreement plateau;
+# ever smaller differences eventually amplify numerical error.
 #
 # The second column also has an exact answer. The problem is linear in ``c_\text{in}``: doubling
 # the inlet concentration doubles the whole profile, so
@@ -283,24 +389,30 @@ end
 c_sim = simulate(θ_true)
 @printf("max |∂c/∂c_in − c / c_in| = %.1e\n", maximum(abs.(J_ad[:, 2] .- c_sim)))
 
-# The gap is a few ``10^{-8}``, which is the relative tolerance given to the time integration.
+# The printed gap is an absolute sensitivity discrepancy. It is affected by time
+# integration and adaptive control; it is not itself the solver relative tolerance.
+# Tightening tolerances should be checked before interpreting very small differences.
 
-# ## 3. Which parameters can the measurements determine?
+# ## 6. Ask which parameters the measurements can determine
 #
 # A parameter is determined by the data only if changing it changes the simulated
-# measurements. This is read from the Jacobian: a column of zeros, or a column that is a
-# combination of the others, marks a parameter, or a combination of parameters, that no amount
-# of such data can fix. Its singular values measure this. A singular value close to zero means
-# a direction in parameter space along which the measurements do not move.
+# measurements. Locally, this is read from the Jacobian: a zero column or a linear
+# combination of other columns signals a parameter direction that these measurements
+# cannot distinguish to first order. Its singular values quantify this sensitivity.
+# A singular value close to zero means
+# a direction in scaled parameter space along which predictions barely move to
+# first order. Full column rank establishes local sensitivity, not global uniqueness.
 #
 # The porosity is added as a third parameter to see what happens.
 
 J_phi = ForwardDiff.jacobian(θ -> simulate(θ[1] * 1.0e-10, θ[2]; phi = θ[3] * PHI), [θ_true; 1.0])
 s = svdvals(J_phi)
 @printf("singular values for (D, c_in, φ): %.3e  %.3e  %.3e\n", s...)
-@printf("largest |∂c/∂φ|: %.1e\n", maximum(abs.(J_phi[:, 3])))
+@printf("largest |∂c/∂(φ/PHI)|: %.1e\n", maximum(abs.(J_phi[:, 3])))
 
-# The third singular value is zero to rounding, and so is the whole ``\varphi`` column. The
+# The third singular value and the porosity column should be numerically tiny.
+# That column differentiates with respect to ``\theta_3=\phi/\mathrm{PHI}``, so it
+# equals ``\mathrm{PHI}\,\partial c/\partial\phi``; the conclusion is unchanged. The
 # porosity multiplies both the storage and the flux, ``\varphi\,\partial c/\partial t =
 # \nabla\cdot(D\varphi\nabla c)``, so it cancels from the equation: **no measurement of
 # concentration in the pore solution can determine it.** It would take a measurement of the
@@ -309,24 +421,63 @@ s = svdvals(J_phi)
 # Two other limits do not show in this Jacobian but follow from the solution:
 #
 # - ``D`` and ``t`` only appear as the product ``D t``. An error on the age of a sample is
-#   therefore an error of the same relative size on ``D``.
+#   therefore compensated, to first order, by an opposite relative error on ``D``
+#   when all ages share that scale error.
 # - ``D`` and ``c_\text{in}`` are separated by the *shape* of the profile, not by its level.
 #   A single measurement cannot do it: a high concentration can mean a large inlet value or a
-#   fast diffusion. Several depths are needed.
+#   fast diffusion. Several suitably chosen depths or ages are needed. Points only
+#   at the inlet constrain its concentration but carry no information about ``D``.
 #
 # With ``\varphi`` set aside, the Jacobian for ``(D, c_\text{in})`` is well conditioned:
 
 @printf("condition number of J for (D, c_in): %.1f\n", cond(J_ad))
 
-# ## 4. Calibration
+# ## 7. Derive and run the calibration step
 #
-# Levenberg–Marquardt interpolates between two methods. With a small damping ``\lambda``, it
-# takes the Gauss–Newton step, which solves ``(J^\top J)\,\delta = -J^\top r`` and is fast
-# near the solution. With a large ``\lambda``, it takes a short step down the gradient, which
-# is safe far from the solution. The damping is lowered after every successful step and raised
-# after every failed one. A step that would make a parameter negative is treated as failed,
-# since a negative diffusion coefficient has no meaning. The same method is used on a
-# constitutive model in [Parameter identification](../demos/parameter_identification.md).
+# ![Forward solve, residuals, Jacobian, and parameter update](../assets/identification_workflow.svg)
+#
+# *The loop reuses the same physical model at each trial parameter pair. Its
+# sensitivities also support the later identifiability and uncertainty checks.*
+#
+# Set ``r_i(\theta)=c_i^{\mathrm{sim}}(\theta)-c_i^{\mathrm{obs}}``. Equal independent
+# noise variance makes ordinary least squares appropriate. With different known
+# standard deviations, use ``r_i/\sigma_i`` and scale the Jacobian rows likewise;
+# correlated errors require a corresponding covariance weighting.
+#
+# Linearize around the current estimate:
+# ``r(\theta+\delta)\approx r(\theta)+J\delta``. Minimizing the squared length of
+# this approximation gives the **Gauss–Newton normal equations**
+#
+# ```math
+# J^{\mathsf T}J\delta=-J^{\mathsf T}r.
+# ```
+#
+# Levenberg–Marquardt adds damping to control the trial step. The implementation
+# below uses diagonal scaling, specifically
+#
+# ```math
+# \left[H+\lambda\operatorname{diag}(H_{11},H_{22})\right]\delta=-g,
+# \qquad H=J^{\mathsf T}J,\quad g=J^{\mathsf T}r.
+# ```
+#
+# This is not ``H+\lambda I``. For large ``\lambda`` the step approaches
+# ``-\operatorname{diag}(H)^{-1}g/\lambda``, a scaled negative-gradient direction.
+# Small damping approaches Gauss–Newton. The code accepts a trial only if both
+# parameters remain positive and the actual residual sum decreases. Success divides
+# damping by three; failure multiplies it by five before another trial. Thus the
+# small-step argument does not guarantee that an arbitrary trial will succeed.
+#
+# The printed history stores ``\sum r_i^2=2\Phi``; the factor two changes neither
+# the minimizer nor the step. The starting diffusivity is three times the true value
+# and the starting inlet concentration is 40% too low.
+#
+# This compact solver is suitable for the two sensitive parameters shown here.
+# A zero-sensitivity parameter such as porosity would leave a zero diagonal entry;
+# this damping cannot repair that lack of information. The solver stops after a
+# small cost change, a failed set of trials, or the iteration limit, without a
+# separate convergence-status object. Inspect the cost history and residuals before
+# treating its returned parameters as a successful calibration. A related material
+# example is in [Parameter identification](../demos/parameter_identification.md).
 
 function levenberg_marquardt(f, θ; λ = 1.0e-3, maxiter = 40)
     r = f(θ)
@@ -367,10 +518,11 @@ for (k, c) in enumerate(history)
     @printf("  %2d        %.6e\n", k - 1, c)
 end
 
-# ## 5. How well are they determined?
+# ## 8. Interpret parameter uncertainty and the fitted profiles
 #
-# If the residuals are pure measurement noise, the covariance of the identified parameters
-# follows from the same Jacobian:
+# Near a well-determined optimum, linearize the predictions using the fitted
+# Jacobian. With independent, zero-mean, equal-variance noise and negligible model
+# error, the local covariance estimate of the **scaled** parameters is:
 #
 # ```math
 # \Sigma = \hat\sigma^2 \left(J^\top J\right)^{-1},
@@ -380,7 +532,16 @@ end
 #
 # with ``n`` measurements and ``p`` parameters. The square roots of its diagonal are the
 # standard errors, and ``\Sigma_{12}/\sqrt{\Sigma_{11}\Sigma_{22}}`` is the correlation
-# between the two estimates.
+# between the two estimates. Here ``n=12``, ``p=2``, and ``n-p=10`` residual degrees
+# of freedom. To recover physical parameter covariance, use
+# ``\Sigma_{\mathrm{physical}}=B\Sigma B^{\mathsf T}`` with
+# ``B=\operatorname{diag}(D_*,c_*)``. The printed standard error for ``D`` therefore
+# multiplies the scaled value by ``10^{-10}`` m²/s.
+#
+# A standard error is a local estimate of sampling variability, not a guaranteed
+# error bound or automatically a 95% confidence interval. Model mismatch, boundary
+# uncertainty, and discretization bias are not included. Poor rank or severe
+# nonlinearity can make this approximation unreliable.
 
 J_fit = ForwardDiff.jacobian(simulate, θ_fit)
 σ²_hat = sum(abs2, r_fit) / (length(c_obs) - length(θ_fit))
@@ -397,11 +558,15 @@ println("parameter        true          start         identified     standard er
 # Starting three times too high, ``D`` is recovered to 1.6 %, and ``c_\text{in}`` to 0.1 %.
 # The estimated noise matches the one that was added. Both identified values lie within
 # 1.3 standard errors of the values used to generate the data, as expected when the
-# residuals are noise. The standard errors come out of the same derivatives as the
-# calibration, so they cost nothing more.
+# residuals are noise. These figures describe the seeded run and can shift with
+# dependency versions. The uncertainty calculation requires one additional Jacobian
+# evaluation at the fitted parameters, performed explicitly above.
 #
 # The correlation is negative: a slightly larger ``D`` spreads the profile, and a slightly
 # smaller ``c_\text{in}`` brings its level back down, so the two errors partly compensate.
+# The plot shows the starting profiles as dotted curves and fitted profiles as solid
+# curves. The vertical bars are ``\pm2\,\mathrm{SIGMA}`` measurement-noise bars, not
+# confidence bands for the fitted model or its parameters.
 
 x, tsol_fit = solve_profiles(θ_fit[1] * 1.0e-10, θ_fit[2])
 _, tsol_start = solve_profiles(θ_start[1] * 1.0e-10, θ_start[2])
@@ -419,16 +584,18 @@ for (n, (t, color)) in enumerate(zip(T_OBS, (:steelblue, :darkorange)))
 end
 p
 
-# ## 6. Discretization error is not noise
+# ## 9. Separate numerical bias from measurement noise
 #
 # The standard errors above account for measurement noise, and for nothing else. The fitted
 # model also carries a discretization error, which biases the identified values whatever
 # the quality of the data.
 #
 # To isolate it, the model is fitted to the **exact** analytical values, without noise, on
-# three grids. Any difference between the identified and the true parameters is then due to
-# the discretization alone. Gauss–Newton, started from the calibrated values, converges in a
-# few steps.
+# three grids. The remaining parameter difference combines spatial and temporal
+# errors, optimizer termination error, and the finite-domain approximation to the
+# semi-infinite reference. Here the far-boundary effect is negligible at the sampled
+# points; the refinement trend tests whether spatial error dominates the others.
+# Gauss–Newton starts from the calibrated values.
 
 function fit_exact(N; θ = copy(θ_fit))
     f = θ -> simulate(θ; N) .- c_exact
@@ -449,7 +616,9 @@ end
 @printf("\nrelative standard error on D from the noisy calibration: %.1e\n", standard_error[1] / θ_fit[1])
 
 # The bias is divided by about four each time the grid is refined by two: the scheme is
-# second order in ``h``, and so is the error it puts into the identified parameters.
+# second order in ``h`` in this regime, and the parameter bias follows that trend.
+# This interpretation depends on keeping observation points aligned and time and
+# optimization errors small; it need not persist under unlimited mesh refinement.
 #
 # On the default grid, the bias on ``D`` is small compared with the standard error caused by
 # the noise, so the grid is fine enough *for these measurements*. More precise measurements
@@ -457,16 +626,28 @@ end
 # until the bias is small compared with the standard error. A standard error smaller than the
 # discretization bias gives a false sense of precision.
 #
-# ## Key points
+# ## 10. Checks and short exercises
 #
-# - **The inverse problem needs the derivative of the solve.** `ForwardDiff` provides it
-#   exactly, in one run carrying dual numbers, without choosing a finite-difference step.
-# - **Transient solves are differentiated through `ODEProblem`.** VoronoiFVM's own time
-#   stepping turns the time into a dual number and fails. OrdinaryDiffEq does the time
-#   stepping instead, with VoronoiFVM still in charge of the discretization.
-# - **The Jacobian tells what the data can determine** before any fit is attempted. Here it
-#   shows that the porosity cancels from the equation and cannot be identified from
-#   concentrations.
-# - **The same Jacobian gives the uncertainty** of the identified values, but only the part
-#   caused by measurement noise. The discretization bias has to be checked separately, by
-#   refining the grid.
+# - **Units and storage:** at ``\phi=0.30`` and ``c=1`` mol/m³, one cubic meter of
+#   material stores 0.30 mol. Explain why measuring that amount can reveal porosity
+#   even when measuring pore-solution concentration alone cannot in this model.
+# - **Parameter scaling:** a fitted ``\theta_1=1.02`` means
+#   ``D=1.02\times10^{-10}`` m²/s. A scaled standard error of 0.01 means
+#   ``10^{-12}`` m²/s. Verify the corresponding covariance transformation.
+# - **Identifiability:** retain only the first measurement row of `J_ad`. Its rank
+#   is at most one, so it cannot locally determine two parameters. Compare with
+#   rows spanning several depths and both ages; consider their sensitivity relative
+#   to noise, not just whether a singular value is mathematically nonzero.
+# - **Derivative checks:** vary the central-difference step over several decades,
+#   and tighten `abstol` and `reltol` in `solve_profiles`. Compare absolute errors at
+#   low-concentration points and repeat the linearity check for ``c_{\mathrm{in}}``.
+# - **Numerical bias:** compare the 100-, 200-, and 400-interval fits at the same
+#   depths and ages. Halving the mesh spacing should reduce the leading spatial
+#   bias by about four until other errors dominate. A small least-squares residual
+#   by itself does not establish accuracy of the identified diffusivity.
+# - **Experimental assumptions:** what changes if the inlet varies with time, the
+#   solute binds to the solid, or measurements are slice averages? Adjust the forward
+#   model and measurement operator before interpreting the fitted ``D`` physically.
+#
+# The conceptual illustrations can be regenerated with
+# `python3 examples/fickian_identification/draw_schematics.py`.
