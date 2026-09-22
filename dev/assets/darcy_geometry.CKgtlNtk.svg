@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 660" width="1000" height="660" role="img" aria-labelledby="title description">
+<title id="title">A pressure ramp drives flow through a saturated column</title><desc id="description">A one-meter column connects a zero-pressure bottom reservoir to a ramped top reservoir. The coordinate points upward and pressure-driven flow downward. Gravity is omitted; for a vertical interpretation pressure is excess over hydrostatic equilibrium.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="658" rx="10" fill="#ffffff" stroke="#ccd8e1"/>
+<text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#193047" text-anchor="start" font-weight="bold">A pressure ramp drives flow through a saturated column</text>
+<text x="32" y="80" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#536879" text-anchor="start" font-weight="normal">One pressure unknown · constant storage · no explicit gravity term</text>
+<rect x="140" y="130" width="285" height="65" rx="10" fill="#e3f2ff" stroke="#216baf"/>
+<text x="282" y="157" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#216baf" text-anchor="middle" font-weight="bold">Top reservoir: region 2</text>
+<text x="282" y="182" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#216baf" text-anchor="middle" font-weight="normal">p = p_top r(t)</text>
+<rect x="177" y="195" width="210" height="265" rx="10" fill="#e4eeec" stroke="#19796d"/>
+<text x="282" y="281" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#19796d" text-anchor="middle" font-weight="bold">Saturated</text>
+<text x="282" y="317" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#19796d" text-anchor="middle" font-weight="normal">porous column</text>
+<text x="282" y="354" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#19796d" text-anchor="middle" font-weight="normal">L = 1 m</text>
+<rect x="140" y="460" width="285" height="65" rx="10" fill="#e3f2ff" stroke="#216baf"/>
+<text x="282" y="488" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#216baf" text-anchor="middle" font-weight="bold">Bottom reservoir: region 1</text>
+<text x="282" y="514" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#216baf" text-anchor="middle" font-weight="normal">p = 0</text>
+<path d="M100 457L100 200" fill="none" stroke="#536879" stroke-width="3" marker-end="url(#gray)"/>
+<text x="88" y="222" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#536879" text-anchor="end" font-weight="normal">x = L</text>
+<text x="88" y="451" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#536879" text-anchor="end" font-weight="normal">x = 0</text>
+<path d="M440 237L440 428" fill="none" stroke="#216baf" stroke-width="4" marker-end="url(#blue)"/>
+<text x="455" y="331" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#216baf" text-anchor="start" font-weight="normal">q &lt; 0</text>
+<text x="575" y="139" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#193047" text-anchor="start" font-weight="bold">Top pressure / p_top</text>
+<path d="M590 390L945 390" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#gray)"/>
+<path d="M590 390L590 185" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#gray)"/>
+<path d="M590 390L760 210" fill="none" stroke="#c65a24" stroke-width="4"/>
+<path d="M760 210L929 210" fill="none" stroke="#c65a24" stroke-width="4"/>
+<text x="575" y="218" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="end" font-weight="normal">1</text>
+<text x="590" y="419" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">0</text>
+<text x="760" y="419" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">10 s = t_c</text>
+<text x="936" y="419" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">t</text>
+<text x="585" y="470" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#193047" text-anchor="start" font-weight="normal">Initial pressure: p(x, 0) = 0</text>
+<text x="585" y="506" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#536879" text-anchor="start" font-weight="normal">Both endpoints prescribe pressure.</text>
+<rect x="32" y="555" width="936" height="77" rx="10" fill="#fff3e5" stroke="#c65a24"/>
+<text x="500" y="585" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#c65a24" text-anchor="middle" font-weight="bold">Vertical interpretation: p is excess above hydrostatic pressure.</text>
+<text x="500" y="616" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#193047" text-anchor="middle" font-weight="normal">Steady state: linear pressure, constant downward flow; q = −10⁻⁴ m/s.</text>
+</svg>
