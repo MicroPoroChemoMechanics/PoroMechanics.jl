@@ -1,6 +1,58 @@
-# PoroMechanics.jl
+```@raw html
+---
+# https://vitepress.dev/reference/default-theme-home-page
+layout: home
 
-*Reactive transport and poromechanics of porous media.*
+hero:
+  name: "PoroMechanics.jl"
+  text: "Porous media, coupled"
+  tagline: Flow, solute and reactive transport, cement chemistry and poromechanics — on finite volume and finite element backends, differentiable with respect to material parameters.
+  image:
+    src: /logo.png
+    alt: PoroMechanics
+  actions:
+    - theme: brand
+      text: Get started
+      link: /quickstart
+    - theme: alt
+      text: Examples
+      link: /examples/fickian_diffusion
+    - theme: alt
+      text: Validation
+      link: /validation/terzaghi
+    - theme: alt
+      text: View on GitHub
+      link: https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl
+
+features:
+  - icon: 🚀
+    title: Getting started
+    details: Install the package, then write and run a first transport model from its governing equation to its profile.
+    link: /quickstart
+  - icon: 💧
+    title: Examples
+    details: One worked problem per physics — Fick diffusion, Darcy flow, Richards infiltration, non-isothermal drying, Biot consolidation — each with its equations, its data and its reference solution.
+    link: /examples/fickian_diffusion
+  - icon: 📐
+    title: Validation
+    details: Terzaghi, Mandel, Cryer, De Leeuw and Gardner against their closed forms, and the Bil reference cases against published numerics.
+    link: /validation/terzaghi
+  - icon: 🧩
+    title: Writing a model
+    details: What a physics model is here — a struct of material parameters, and the five callbacks multiple dispatch selects on it.
+    link: /demos/writing_a_model
+  - icon: 🧪
+    title: Reactive transport
+    details: Nernst-Planck transport under electroneutrality, and equilibrium chemistry delegated to ChemistryLab.jl.
+    link: /demos/reactive_transport
+  - icon: 📖
+    title: API reference
+    details: Every exported name — interfaces and backends, physics models, constitutive laws, plasticity.
+    link: /api
+---
+```
+
+## What it does
 
 PoroMechanics.jl simulates coupled phenomena in porous media — flow, solute and reactive
 transport, cement chemistry, and poromechanics — on two numerical backends: finite volumes
@@ -86,12 +138,3 @@ that solve chemical equilibria need `ChemistryLab.jl`, `DynamicQuantities.jl` an
 `OptimaSolver.jl`. ChemistryLab and DynamicQuantities are optional dependencies;
 loading them activates the equilibrium adapter. `using OptimaSolver` enables
 ChemistryLab's certified solver. Pure ionic transport requires none of them.
-
-## Where to go next
-
-| Section | For |
-| :--- | :--- |
-| [Getting Started](quickstart.md) | writing and running a first model, end to end |
-| [Examples](examples/fickian_diffusion.md) | one worked problem per physics, with its equations, data and reference solution |
-| [API](api.md) | every exported name |
-| [References](references.md) | the literature the models are built from |

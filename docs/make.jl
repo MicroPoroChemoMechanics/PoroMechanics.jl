@@ -1,6 +1,11 @@
 using PoroMechanics
 using Documenter
 using DocumenterCitations
+# VitePress renders the site from the Markdown that Documenter emits, and typesets
+# every formula at build time into static SVG, so no MathJax bundle is ever fetched
+# by the reader's browser. The TeX extensions it loads — mhchem included — are
+# declared in `docs/src/.vitepress/mathjax-plugin.ts`, not in a `mathengine` here.
+using DocumenterVitepress
 using Literate
 
 include("pages.jl")
@@ -109,38 +114,130 @@ DocMeta.setdocmeta!(
 
 ENV["GKSwstype"] = "100"   # headless GR backend — prevents Plots from hanging in doc builds
 
+# ── Stopgap: citations render as their own struct name ───────────────────────
+#
+# GUARDED, so one file serves both versions of DocumenterCitations.
+#
+# 1.5 wraps every expanded citation in a `CitationSiteNode`, whose only purpose
+# is to give the citation an HTML anchor the bibliography can link back to. Its
+# docstring calls it "transparent in any output format other than HTML", and both
+# the LaTeX writer and MDFlatten implement it as "render my children".
+#
+# DocumenterVitepress 0.3.6 ships a DocumenterCitations extension, but it covers
+# `BibliographyNode` only. With no method for `CitationSiteNode` the writer falls
+# through to its generic branch, which prints `Markdown.plain(element)` — so every
+# citation on the site comes out as the literal text
+# `DocumenterCitations.CitationSiteNode("biot1941-cite-1")`.
+#
+# Its `[compat]` reads `DocumenterCitations = "1.4"`, which Julia expands to
+# `^1.4`, so 1.5 is what the docs environment resolves and this method is what
+# keeps the bibliography readable. On 1.4 the name does not exist and the block
+# is skipped: referring to it unconditionally is an `UndefVarError` raised before
+# the first page is built. Remove once DocumenterVitepress covers the node.
+if isdefined(DocumenterCitations, :CitationSiteNode)
+    function DocumenterVitepress.render(
+            io::IO,
+            mime::MIME"text/plain",
+            node::Documenter.MarkdownAST.Node,
+            ::DocumenterCitations.CitationSiteNode,
+            page,
+            doc;
+            kwargs...,
+        )
+        return DocumenterVitepress.render(
+            io, mime, node, node.children, page, doc; kwargs...,
+        )
+    end
+end
+
+# ── Stopgap: heading anchors that contain LaTeX ──────────────────────────────
+#
+# DocumenterVitepress builds each heading as `## <text> {#<slug>}`, where the slug
+# is Documenter's anchor label passed through its own `sanitized_anchor_label` —
+# whose comment says "vitepress doesn't like special markdown characters in the id
+# slug", but which strips only `[ ] ( ) *`.
+#
+# A heading such as `### Why a radial balance contains a factor of ``r``` yields
+# the slug `Why-a-radial-balance-contains-a-factor-of-r` — harmless — but one
+# carrying a LaTeX command does not: VitePress's `{#...}` parser rejects the
+# backslash and the braces and treats the whole suffix as *text*, so the heading
+# renders with `{#...}` visible, the formula is dropped, and the same garbage
+# lands in the "On this page" outline.
+#
+# `%` is in the set for a harder reason, and it is the one that was measured here.
+# Two headings on this site end in a percentage — "approached to 1 %" in
+# `bbm_bil` and "where the 3 % went" in `bil_richards` — and a slug ending in a
+# bare `%` is not a valid URI escape. VitePress calls `decodeURI` on every link
+# target it renders, so the whole build dies with `[vitepress] URI malformed`,
+# naming the file but not the line, and nothing is emitted at all.
+#
+# Stripping those characters from the slug is safe here: nothing links to those
+# anchors, and this narrows to headings, leaving docstring anchors — which
+# legitimately carry braces, are emitted as raw `<a id=…>` and *are* linked to —
+# untouched. Remove once `sanitized_anchor_label` covers these characters.
+function DocumenterVitepress.render(
+        io::IO,
+        mime::MIME"text/plain",
+        node::Documenter.MarkdownAST.Node,
+        header::Documenter.AnchoredHeader,
+        page,
+        doc;
+        kwargs...,
+    )
+    anchor = header.anchor
+    label = DocumenterVitepress.sanitized_anchor_label(anchor)
+    id = replace(replace(label, r"[\\{}%]" => ""), " " => "-")
+    heading = first(node.children)
+    println(io)
+    print(io, "#"^(heading.element.level), " ")
+    heading_iob = IOBuffer()
+    DocumenterVitepress.render(heading_iob, mime, node, heading.children, page, doc; kwargs...)
+    print(io, rstrip(String(take!(heading_iob))))
+    print(io, " {#$(id)}")
+    if haskey(kwargs, :inventory)
+        item = DocumenterVitepress.InventoryItem(
+            name = anchor.id,
+            domain = "std",
+            role = "label",
+            dispname = DocumenterVitepress._get_inventory_dispname(
+                anchor.id, Documenter.MDFlatten.mdflatten(anchor.node)
+            ),
+            priority = -1,
+            uri = DocumenterVitepress._get_inventory_uri(doc, page, id),
+        )
+        push!(kwargs[:inventory], item)
+    end
+    println(io)
+    return nothing
+end
+
 makedocs(;
     modules = [PoroMechanics],
     authors = "Anthony Soive and Jean-François Barthélémy",
     sitename = "PoroMechanics.jl",
-    format = Documenter.HTML(;
-        # MathJax3(config) merges only at the top level: any :tex given here replaces
-        # Documenter's whole default, so inlineMath and tags have to be repeated.
-        mathengine = Documenter.MathJax3(
-            Dict(
-                :loader => Dict("load" => ["[tex]/mhchem"]),
-                :tex => Dict(
-                    "inlineMath" => [["\$", "\$"], ["\\(", "\\)"]],
-                    "tags" => "ams",
-                    "packages" => ["base", "ams", "autoload", "mhchem"],
-                ),
-            )
-        ),
-        canonical = "https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl",
-        repolink = "https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl",
-        edit_link = "main",
-        assets = ["assets/favicon.ico", "assets/custom.css"],
-        prettyurls = (get(ENV, "CI", nothing) == "true"),
-        collapselevel = 1,
-        size_threshold_warn = 200_000,
+    # The favicon and the logo are picked up automatically from `docs/src/assets`,
+    # and the sidebar is derived from `pages`, so neither needs declaring here.
+    # `prettyurls`, `collapselevel` and `size_threshold_warn` are HTMLWriter
+    # settings with no counterpart: VitePress always writes pretty URLs, the
+    # sidebar collapse is decided in `config.mts`, and there is no page-size limit.
+    format = DocumenterVitepress.MarkdownVitepress(;
+        repo = "https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl",
+        devbranch = "main",
+        devurl = "dev",
+        deploy_url = "https://MicroPoroChemoMechanics.github.io/PoroMechanics.jl",
+        description = "Reactive transport and poromechanics of porous media, in Julia",
     ),
     pages = pages,
     plugins = [bib],
     warnonly = [:docs_block, :missing_docs],
 )
 
-deploydocs(;
+# DocumenterVitepress writes a real directory per version rather than the symlinks
+# Documenter used, so it needs its own `deploydocs`, pointed at the built site.
+DocumenterVitepress.deploydocs(;
     repo = "github.com/MicroPoroChemoMechanics/PoroMechanics.jl.git",
+    target = joinpath(@__DIR__, "build"),
+    branch = "gh-pages",
     devbranch = "main",
     push_preview = false,
 )

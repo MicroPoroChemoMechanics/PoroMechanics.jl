@@ -23,11 +23,24 @@ jobs:
         contents: write
         statuses: write
     steps:
-      # 1. Checkout the repository
+      # 1. Checkout the repository, with full history so `git tag` is complete:
+      # DocumenterVitepress decides whether a tagged build also becomes `stable`
+      # by looking for a higher release tag, and a shallow checkout sees none.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
+      - uses: julia-actions/cache@v3
+      # Node itself comes from NodeJS_20_jll, which the Julia depot cache above
+      # already covers; this caches only what `npm install` fetches for the
+      # VitePress build, keyed on the manifest that determines it.
+      - uses: actions/cache@v4
+        with:
+          path: docs/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('docs/package.json') }}
+          restore-keys: ${{ runner.os }}-npm-
       # MeanFieldHomogenization depends on TensND, which depends on SymPy.jl.
       # SymPy is therefore resolved into docs/Manifest.toml, which makes
       # MeanFieldHomogenizationSymPyExt a *triggered* extension: Julia

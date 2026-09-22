@@ -16,6 +16,11 @@ LocalPreferences.toml
 # Documentation
 /docs/build/
 /docs/site/
+# DocumenterVitepress runs `npm install` in `docs/` before handing the emitted
+# markdown to VitePress. `docs/package.json` is committed — it carries the mhchem
+# font extension the default template lacks — but what npm resolves from it is not.
+/docs/node_modules/
+/docs/package-lock.json
 
 # Local scratch
 /local
@@ -57,3 +62,8 @@ docs/src/examples/
 docs/src/validation/
 
 docs/src/demos/
+
+# `docs/src/.vitepress/` and `docs/src/components/` are NOT generated: they hold the
+# VitePress config and theme, and are tracked. Only the four files that differ from
+# DocumenterVitepress's own templates live there — everything else it substitutes in.
+

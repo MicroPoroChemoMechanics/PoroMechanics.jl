@@ -1,6 +1,7 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
 ExtendableGrids = "cfc395e8-590f-11e8-1f13-43a2532b2fa8"
 Ferrite = "c061ca5d-56c9-439f-9c0e-210fe06d3992"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -19,7 +20,13 @@ VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
 
 [compat]
 Documenter = "1"
+# DocumenterVitepress's own `[compat]` reads `DocumenterCitations = "1.4"`, which
+# Julia expands to `^1.4`, so this environment resolves 1.5 — the version whose
+# `CitationSiteNode` its writer has no method for. The `render` stopgap in
+# `make.jl` covers it, and is guarded so a resolve that lands back on 1.4 still
+# works. Do not pin this to "1.4" to dodge it: that ceiling belongs upstream.
 DocumenterCitations = "1"
+DocumenterVitepress = "0.3"
 ExtendableGrids = "1"
 Ferrite = "1"
 Literate = "2"
