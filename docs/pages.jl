@@ -29,6 +29,11 @@ pages = [
         "Parameter identification" => "demos/parameter_identification.md",
         "Differentiating a solve"  => "demos/solver_sensitivity.md",
     ],
-    "API" => "api.md",
+    "API" => [
+        "Interfaces and backends" => "api.md",
+        "Physics models and solvers" => "api/models.md",
+        "Constitutive laws" => "api/constitutive.md",
+        "Plasticity and material models" => "api/materials.md",
+    ],
     "References" => "references.md",
 ]

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Split the API reference into interfaces, physics models, constitutive laws and
+  plasticity pages. This fixes the documentation build exceeding Documenter's
+  200 KiB HTML page limit while preserving every API entry and the size checks.
+
 - Move `NernstPlanck` and `EquilibratedTransport` from the chloride examples into
   the package. Load the certified ChemistryLab adapter through an optional
   extension; keep cement recipes and prototype surface/mineral laws in examples.
