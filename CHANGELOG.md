@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Move `NernstPlanck` and `EquilibratedTransport` from the chloride examples into
+  the package. Load the certified ChemistryLab adapter through an optional
+  extension; keep cement recipes and prototype surface/mineral laws in examples.
+  Make ionic material data explicit, validate its dimensions, and retain parameter
+  derivatives in the current diagnostic. Preserve the transport equations and
+  equilibrium certification checks, with a new reactive-transport tutorial.
+
 - Extract the non-isothermal drying material laws and water/air/entropy balances
   into `DryingMaterial`, `DryingParameters`, and `DryingModel`. Select materials by
   cell region and supply boundary values as data. Keep geometry, initial states,

@@ -2,7 +2,7 @@
 
 julia_version = "1.12.7"
 manifest_format = "2.0"
-project_hash = "fae0341e44c9c9d5b281072326862f9a833055d1"
+project_hash = "8e94f585e6174da22796842454565ae729ae70e3"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -1082,6 +1082,13 @@ deps = ["Ferrite", "ForwardDiff", "LinearAlgebra", "Tensors", "VoronoiFVM"]
 path = "."
 uuid = "94bcc773-f804-4bb8-b95f-e7382a05e63d"
 version = "0.1.0"
+
+    [deps.PoroMechanics.extensions]
+    PoroMechanicsChemistryLabExt = ["ChemistryLab", "DynamicQuantities"]
+
+    [deps.PoroMechanics.weakdeps]
+    ChemistryLab = "f346e401-14f9-407c-a0e2-c4f64a3e574a"
+    DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
 [[deps.PreallocationTools]]
 deps = ["Adapt", "ArrayInterface", "PrecompileTools", "SciMLPublic"]

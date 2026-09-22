@@ -2,7 +2,7 @@
 # Run from the repository root:
 # julia +1.12 --project=examples examples/chloride_ingress/repro_equilibrated_transport.jl
 using LinearAlgebra
-include("equilibrated_transport.jl")
+using PoroMechanics, ChemistryLab, DynamicQuantities, ForwardDiff, OptimaSolver
 include("element_balance.jl")
 
 function opc_equilibrated_case(; chloride = 1.0)

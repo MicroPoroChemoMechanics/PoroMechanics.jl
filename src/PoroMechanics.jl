@@ -69,6 +69,11 @@ export DruckerPrager, DruckerPragerState, drucker_prager_return, BiotPlastic, po
 export friction_coefficient, dilatancy_coefficient, cohesion_intercept, apex_pressure
 export mean_pressure, deviatoric_tolerance, equivalent_stress, bbm_moduli, log_mean, step_shear_modulus, trial_stress, suction_stress_increment, hardening_modulus, elastoplastic_tangent, algorithmic_tangent, ContinuumTangent, ExplicitPredictor
 
+# Reactive transport
+export NernstPlanck, nions, ipot, effective_diffusivity, net_charge, edge_current
+export ComponentSet, ncomp, EquilibratedTransport, equilibrated_transport
+export component_totals, equilibrium_state, speciate, LocalEquilibriumError
+
 # Backends
 export fvm_system
 export biot_element_matrices!, radial_element_matrices!, node_dof_maps, combine!
@@ -297,6 +302,9 @@ include("Models/Fickian.jl")
 include("Models/Darcy.jl")
 include("Models/Richards.jl")
 include("Models/Drying.jl")
+include("Backends/TransportBoundary.jl")
+include("Models/NernstPlanck.jl")
+include("Models/EquilibratedTransport.jl")
 include("Models/Poroplast.jl")
 include("Backends/FVM.jl")
 include("Backends/FEM.jl")

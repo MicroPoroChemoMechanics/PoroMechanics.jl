@@ -17,12 +17,21 @@ using LinearAlgebra: norm
 using ForwardDiff
 import OrdinaryDiffEq
 
-module _NP
-    include(joinpath(@__DIR__, "..", "..", "examples", "chloride_ingress", "nernst_planck.jl"))
-end
-
 @testset "Nernst-Planck with zero current" begin
-    NP = _NP
+    NP = PoroMechanics
+    @testset "configuration and differentiable current diagnostic" begin
+        @test_throws DimensionMismatch NernstPlanck(; phi = 0.3, D = (1.0e-9,), z = (-1, 1))
+        @test_throws ArgumentError NernstPlanck(; phi = 0.0, D = (1.0e-9,), z = (-1,))
+        @test_throws ArgumentError NernstPlanck(; phi = 0.3, D = (-1.0e-9,), z = (-1,))
+        @test_throws DimensionMismatch NernstPlanck(; phi = 0.3, D = (1.0e-9,), z = (-1,), dirichlet = ((),))
+        current = function (D_Cl, D_Na = 1.0e-9)
+            model = NernstPlanck(; phi = 0.3, D = (D_Cl, D_Na), z = (-1, 1))
+            u = [2.0 1.0; 2.0 1.0; 0.0 0.0]
+            return only(first(edge_current(model, u, 0.5)))
+        end
+        @test ForwardDiff.derivative(current, 2.0e-9) ≈ -2.0
+        @test ForwardDiff.derivative(d -> current(2.0e-9, d), 1.0e-9) ≈ 2.0
+    end
     grid = simplexgrid(range(0, 0.05; length = 41))
     dx = 0.05 / 40
     ctrl = VoronoiFVM.SolverControl(;

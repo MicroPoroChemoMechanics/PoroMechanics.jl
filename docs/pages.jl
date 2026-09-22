@@ -24,6 +24,7 @@ pages = [
         "Thick-walled cylinder — homogenised moduli" => "validation/mfh_thick_cylinder.md",
     ],
     "Writing a model" => "demos/writing_a_model.md",
+    "Reactive transport" => "demos/reactive_transport.md",
     "Differentiability" => [
         "Parameter identification" => "demos/parameter_identification.md",
         "Differentiating a solve"  => "demos/solver_sensitivity.md",

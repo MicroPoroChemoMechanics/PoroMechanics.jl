@@ -1,6 +1,8 @@
 module _EquilibratedTransportTests
 using Test, LinearAlgebra, ForwardDiff, ChemistryLab, DynamicQuantities
 using VoronoiFVM, ExtendableGrids
+using PoroMechanics
+import PoroMechanics: equilibrium_state
 include("../../examples/chloride_ingress/repro_equilibrated_transport.jl")
 
 # An uncertified solve is injected only to make the rejection path deterministic.
@@ -14,7 +16,13 @@ function equilibrium_state(
 end
 
 @testset "Equilibrium-coupled transport" begin
+    @test Base.get_extension(PoroMechanics, :PoroMechanicsChemistryLabExt) !== nothing
     m, totals = opc_equilibrated_case()
+    @test parentmodule(typeof(m)) === PoroMechanics
+    @test PoroMechanics.nspecies(m) == length(totals)
+    stored = similar(totals)
+    storage!(stored, totals, nothing, m, nothing)
+    @test stored == totals # Inventories are already per unit bulk volume.
     cmp = m.components
     A = Float64.(m.system.SM.A)
     original = A * ustrip.(us"mol", m.initial_state.n)

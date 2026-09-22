@@ -68,6 +68,32 @@ Its `drying_case` factory keeps geometry, initial conditions and heating history
 explicit, and `run_drying(case = custom_case)` runs a modified experiment without
 redefining any balance callback.
 
+## Reactive transport
+
+[`NernstPlanck`](@ref) transports ion concentrations and an electric potential.
+[`EquilibratedTransport`](@ref) transports conserved component totals and obtains
+local aqueous concentrations from ChemistryLab. These are distinct formulations:
+the equilibrium-coupled model currently omits electromigration.
+See [Reactive transport](demos/reactive_transport.md) for units, boundary data and
+optional chemistry setup.
+
+```@docs
+NernstPlanck
+nions
+ipot
+effective_diffusivity
+net_charge
+edge_current
+ComponentSet
+ncomp
+EquilibratedTransport
+equilibrated_transport
+component_totals
+equilibrium_state
+speciate
+LocalEquilibriumError
+```
+
 ## Model introspection
 
 ```@docs

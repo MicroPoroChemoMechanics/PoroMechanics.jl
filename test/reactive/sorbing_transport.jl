@@ -14,7 +14,7 @@ using ForwardDiff
 module _ST
     const HERE = joinpath(@__DIR__, "..", "..", "examples", "chloride_ingress")
     include(joinpath(HERE, "dlm.jl"))
-    include(joinpath(HERE, "nernst_planck.jl"))
+    using PoroMechanics
     include(joinpath(HERE, "sorbing_transport.jl"))
 end
 

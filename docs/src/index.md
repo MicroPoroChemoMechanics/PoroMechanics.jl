@@ -61,9 +61,11 @@ which owns the databases, the speciation and the Gibbs minimization. The rest is
 follow it upstream, leaving this package to describe transport and mechanics and to call
 ChemistryLab.jl for everything chemical.
 
-The clearest sign that the code currently sits in the wrong repository: the double layer
-model exists here in three near-identical variants, one per example family. A single
-implementation, in ChemistryLab.jl, is where it should live.
+The transport models `NernstPlanck` and `EquilibratedTransport` now live in the package.
+The optional ChemistryLab extension translates conserved totals and certified equilibrium
+results; it implements no equilibrium solver. The double-layer and AFm prototypes remain
+in the examples pending migration of their chemical laws to ChemistryLab.
+See [Reactive transport](demos/reactive_transport.md).
 
 ## Backends
 
@@ -80,8 +82,10 @@ Pkg.add("PoroMechanics")
 ```
 
 The examples additionally need `ExtendableGrids` for their grids, and the reactive ones
-need `ChemistryLab.jl` and `OptimaSolver.jl`; none of the three is a dependency of the
-package itself.
+that solve chemical equilibria need `ChemistryLab.jl`, `DynamicQuantities.jl` and
+`OptimaSolver.jl`. ChemistryLab and DynamicQuantities are optional dependencies;
+loading them activates the equilibrium adapter. `using OptimaSolver` enables
+ChemistryLab's certified solver. Pure ionic transport requires none of them.
 
 ## Where to go next
 

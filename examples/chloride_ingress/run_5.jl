@@ -57,7 +57,6 @@ using Printf
 ## difference between them is the scheme, not the initial condition. Its entry point is
 ## guarded, so including it defines without running.
 include("run_4.jl")
-include("nernst_planck.jl")
 include("sorbing_transport.jl")
 include("afm_exchange.jl")
 
