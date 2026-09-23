@@ -1,8 +1,8 @@
 name = "PoroMechanics"
 uuid = "94bcc773-f804-4bb8-b95f-e7382a05e63d"
+license = "MIT"
 version = "0.1.0"
 authors = ["Anthony Soive and Jean-François Barthélémy"]
-license = "MIT"
 
 [deps]
 Ferrite = "c061ca5d-56c9-439f-9c0e-210fe06d3992"
@@ -19,7 +19,7 @@ DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 PoroMechanicsChemistryLabExt = ["ChemistryLab", "DynamicQuantities"]
 
 [compat]
-ChemistryLab = "0.15.2"
+ChemistryLab = "0.15.2, 0.18"
 DynamicQuantities = "1"
 Ferrite = "1"
 ForwardDiff = "0.10, 1"
