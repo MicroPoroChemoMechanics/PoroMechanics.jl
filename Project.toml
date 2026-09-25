@@ -19,7 +19,7 @@ DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 PoroMechanicsChemistryLabExt = ["ChemistryLab", "DynamicQuantities"]
 
 [compat]
-ChemistryLab = "0.15.2, 0.22"
+ChemistryLab = "0.15.2, 0.18, 0.22"
 DynamicQuantities = "1"
 Ferrite = "1"
 ForwardDiff = "0.10, 1"
