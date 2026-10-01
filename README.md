@@ -50,17 +50,19 @@ written by hand: the finite volume callbacks are differentiated automatically wi
 | Coupled mechanics | [Ferrite.jl](https://github.com/Ferrite-FEM/Ferrite.jl) |
 
 Not all of that is installable yet, and the distinction is worth stating plainly. Fick
-diffusion, transient Darcy flow, Richards' equation, the retention and
-relative-permeability laws, the Oh-Jang tortuosity, Biot poroelasticity, Drucker-Prager and
-Barcelona Basic plasticity, and the homogenization backend live in `src/` and come with the
-package. Nernst-Planck transport, non-isothermal drying and the whole reactive-transport
-chain are **worked examples** under `examples/`, with different validation levels listed
-below. They are not part of the exported model API.
-They move into `src/Models/` as they mature.
+diffusion, transient Darcy flow, Richards' equation, Nernst-Planck transport, non-isothermal
+drying, the retention, relative-permeability and tortuosity laws, Biot poroelasticity,
+Drucker-Prager and Barcelona Basic plasticity, and the homogenization backend live in `src/`
+and come with the package. Transport at local chemical equilibrium (`EquilibratedTransport`)
+is in `src/` too, but it needs ChemistryLab.jl and is loaded as a package extension only
+when ChemistryLab and DynamicQuantities are. The reactive chloride chain — operator
+splitting, Friedel's salt, surface complexation — remains a set of **worked examples** under
+`examples/`, with the validation levels listed below. It is not part of the exported model
+API, and moves into `src/Models/` as it matures.
 
-That is also why the chemistry stack is not a dependency of this package: nothing in `src/`
-calls it. `ChemistryLab.jl` and `OptimaSolver.jl` are dependencies of `examples/` and of the
-test suite, where they are actually used.
+That is also why the chemistry stack is not a dependency of this package: ChemistryLab.jl
+is a weak dependency, behind that extension, and `OptimaSolver.jl` is a dependency of
+`examples/` and of the test suite only, where they are actually used.
 
 The examples and tests use ChemistryLab **0.28.2** with OptimaSolver **0.7.4**, both
 from the General registry. ChemistryLab no longer ships its thermodynamic databases: the
@@ -123,9 +125,9 @@ which owns the databases, the speciation and the Gibbs minimization. The rest is
 follow it upstream, leaving this package to describe transport and mechanics and to call
 ChemistryLab.jl for everything chemical.
 
-The clearest sign that the code currently sits in the wrong repository: the double layer
-model exists here in three near-identical variants, one per example family. A single
-implementation, in ChemistryLab.jl, is where it should live.
+The clearest sign that part of the code still sits in the wrong repository is the double
+layer model. It now has a single implementation, `examples/chloride_ingress/dlm.jl`, shared
+by the chloride examples, but that implementation belongs in ChemistryLab.jl.
 
 ## Installation
 
