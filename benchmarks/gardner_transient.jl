@@ -6,15 +6,15 @@
 # interaction between the two.
 #
 # This case closes that gap. The column starts at the steady profile for one infiltration
-# rate, the rate is stepped at ``t = 0``, and the approach to the new steady state is
+# rate, the rate is stepped at $t = 0$, and the approach to the new steady state is
 # compared against an exact solution.
 #
 # ## Why an exact transient solution exists
 #
-# Richards' equation is nonlinear twice over: through ``k_{rl}(p_c)`` in the flux and
-# through ``S_l(p_c)`` in the storage. Gardner's exponential law removes **both** at once
-# when the two curves share their exponent. Writing ``K^* = \exp(\alpha p_l)``, the water
-# content is ``\theta = \phi S_l = \phi K^*`` and the conductivity is ``K_s K^*``, so
+# Richards' equation is nonlinear twice over: through $k_{rl}(p_c)$ in the flux and
+# through $S_l(p_c)$ in the storage. Gardner's exponential law removes **both** at once
+# when the two curves share their exponent. Writing $K^* = \exp(\alpha p_l)$, the water
+# content is $\theta = \phi S_l = \phi K^*$ and the conductivity is $K_s K^*$, so
 #
 # ```math
 # \phi\,\frac{\partial K^*}{\partial t}
@@ -23,15 +23,15 @@
 # ```
 #
 # — a **linear** advection–diffusion equation, with
-# ``D = K_s/(\alpha\phi)`` and drift ``\beta D``, ``\beta = \alpha\rho_l g``. The
+# $D = K_s/(\alpha\phi)$ and drift $\beta D$, $\beta = \alpha\rho_l g$. The
 # nonlinearity has not been approximated away; it has been absorbed exactly by the change of
 # variable, which is why this is a verification and not a comparison.
 #
 # ## Reference solution
 #
-# The steady profile for a flux ``q`` is the one the companion benchmark validates,
-# ``K^*_q(z) = (1+Q)e^{-\beta z} - Q`` with ``Q = q/(K_s\rho_l g)``. Stepping from ``q_A``
-# to ``q_B`` and writing ``w = K^* - K^*_{q_B}`` for the departure from the *final* state
+# The steady profile for a flux $q$ is the one the companion benchmark validates,
+# $K^*_q(z) = (1+Q)e^{-\beta z} - Q$ with $Q = q/(K_s\rho_l g)$. Stepping from $q_A$
+# to $q_B$ and writing $w = K^* - K^*_{q_B}$ for the departure from the *final* state
 # leaves a homogeneous problem,
 #
 # ```math
@@ -50,8 +50,8 @@
 # \qquad \mu = \sqrt{\tfrac{\beta^2}{4} + \tfrac{s}{D}}
 # ```
 #
-# Both limits can be checked by hand and are checked in the test: ``s\tilde w \to w(z,0)``
-# as ``s \to \infty``, and ``s\tilde w \to 0`` as ``s \to 0``, the latter cancelling exactly
+# Both limits can be checked by hand and are checked in the test: $s\tilde w \to w(z,0)$
+# as $s \to \infty$, and $s\tilde w \to 0$ as $s \to 0$, the latter cancelling exactly
 # between the two terms.
 
 include("richards_common.jl")
@@ -279,7 +279,7 @@ end
 
 # ## Notes
 #
-# - **The nonlinearity is removed exactly, not approximated.** ``K^* = \exp(\alpha p_l)``
+# - **The nonlinearity is removed exactly, not approximated.** $K^* = \exp(\alpha p_l)$
 #   linearises both the flux and the storage term at once, provided the retention and
 #   permeability curves share their exponent — which is why `GardnerColumn` uses the same
 #   `α` for both.

@@ -119,7 +119,7 @@ end
 # ```
 #
 # — an acknowledged compromise in `vfvm_geometryitems.jl`. In a stationary solve nothing
-# notices. In a transient one, the step-size update involves the change ``\Delta u`` of the
+# notices. In a transient one, the step-size update involves the change $\Delta u$ of the
 # previous step, which is a `Dual`. The next step and then the time become `Dual`s, and a
 # `Dual` time cannot be stored in a node whose fields are `Float64`. Measured with
 # VoronoiFVM 3.5.2 on the Fick model, the first step passes and the second stops with
@@ -210,12 +210,12 @@ for i in eachindex(θ_fe)
     @printf("  %-9s   %+.9e            %+.9e\n", fe_names[i], grad_fe[i], grad_fe_fd[i])
 end
 
-# Agreement to about ``5\times10^{-10}``, through a path that has no closed form and through
+# Agreement to about $5\times10^{-10}$, through a path that has no closed form and through
 # two nested Newton solves.
 #
-# The signs are the physics: a larger ``\kappa`` is a softer elastic law, so the sample
-# reaches a given compaction at a lower stress; a larger ``\lambda(0)`` is a flatter virgin
-# compression line, likewise; a larger void ratio stiffens both ``K = \bar p(1+e_0)/\kappa``
+# The signs are the physics: a larger $\kappa$ is a softer elastic law, so the sample
+# reaches a given compaction at a lower stress; a larger $\lambda(0)$ is a flatter virgin
+# compression line, likewise; a larger void ratio stiffens both $K = \bar p(1+e_0)/\kappa$
 # and the hardening, so the stress rises.
 
 # ## What it took
@@ -259,11 +259,11 @@ end
 # \qquad M_n = \tfrac{\pi}{2}(2n+1)
 # ```
 #
-# with ``Z`` the normalised depth and ``T = c\,t/H^2``. The Biot coefficient enters twice,
-# through the undrained pressure ``p_0 = F b/(M_o N + b^2)`` and through the consolidation
-# coefficient ``c = (k/\mu_l)/(N + b^2/M_o)``, and the two pull against each other. For this
-# material ``M_o N \approx 1.1\times10^{-3}`` against ``b^2 = 1``, so ``p_0 \approx F/b``
-# falls as ``b`` rises while ``c \approx (k/\mu_l)M_o/b^2`` falls with it, slowing the
+# with $Z$ the normalised depth and $T = c\,t/H^2$. The Biot coefficient enters twice,
+# through the undrained pressure $p_0 = F b/(M_o N + b^2)$ and through the consolidation
+# coefficient $c = (k/\mu_l)/(N + b^2/M_o)$, and the two pull against each other. For this
+# material $M_o N \approx 1.1\times10^{-3}$ against $b^2 = 1$, so $p_0 \approx F/b$
+# falls as $b$ rises while $c \approx (k/\mu_l)M_o/b^2$ falls with it, slowing the
 # dissipation: a smaller starting pressure that decays more slowly. Which term wins at a
 # given time is not something to settle by inspection — which is the point of being able to
 # differentiate the code.
@@ -414,7 +414,7 @@ for i in eachindex(θ_biot)
     )
 end
 
-# At ``T = 0.1`` the initial-pressure term wins and ``\partial p/\partial b`` is negative.
+# At $T = 0.1$ the initial-pressure term wins and $\partial p/\partial b$ is negative.
 #
 # The gap against the closed form is a few parts in a thousand, the same order as the error
 # in the pressure itself. Refining the discretisation shows it is exactly that:

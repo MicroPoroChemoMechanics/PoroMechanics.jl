@@ -19,21 +19,21 @@
 # *The reservoir is on the right. Arrows indicate the direction of water entry,
 # not computed velocities. The pore-volume fractions use the initial interior state.*
 #
-# The coordinate ``x`` increases from left to right along ``0\le x\le L``, with
-# ``L=0.20`` m. There is one unknown, the **liquid pressure** ``p_l(x,t)`` [Pa].
-# Gas occupies the rest of the pores, but its pressure ``p_g=10^5`` Pa is prescribed
+# The coordinate $x$ increases from left to right along $0\le x\le L$, with
+# $L=0.20$ m. There is one unknown, the **liquid pressure** $p_l(x,t)$ [Pa].
+# Gas occupies the rest of the pores, but its pressure $p_g=10^5$ Pa is prescribed
 # and uniform. This is the Richards approximation: solve only the liquid balance
 # while assuming that gas pressure equilibrates sufficiently quickly. The code does
 # not solve a gas mass balance or predict trapped-gas compression.
 #
 # | Quantity | Definition | Unit |
 # |:--|:--|:--|
-# | Porosity ``\phi`` | Pore volume divided by total material volume | — |
-# | Liquid saturation ``S_l`` | Liquid volume divided by pore volume | — |
-# | Volumetric water content ``\theta=\phi S_l`` | Liquid volume divided by total material volume | — |
-# | Capillary pressure ``p_c=p_g-p_l`` | Gas pressure minus liquid pressure | Pa |
+# | Porosity $\phi$ | Pore volume divided by total material volume | — |
+# | Liquid saturation $S_l$ | Liquid volume divided by pore volume | — |
+# | Volumetric water content $\theta=\phi S_l$ | Liquid volume divided by total material volume | — |
+# | Capillary pressure $p_c=p_g-p_l$ | Gas pressure minus liquid pressure | Pa |
 #
-# For example, ``\phi=0.30`` and ``S_l=0.80`` mean that one cubic meter of material
+# For example, $\phi=0.30$ and $S_l=0.80$ mean that one cubic meter of material
 # contains 0.24 m³ of liquid, 0.06 m³ of gas, and 0.70 m³ of solid. Saturation and
 # porosity are different fractions: full saturation means that all **pores** contain
 # water, not that the solid has disappeared.
@@ -42,9 +42,9 @@
 #
 # | Location | Condition | Physical meaning |
 # |:--|:--|:--|
-# | Left, ``x=0`` (region 1) | ``W_l=0`` | No liquid crosses the left end |
-# | Right, ``x=L`` (region 2) | ``p_l=p_g`` | A water supply maintains ``p_c=0`` and ``S_l=1`` |
-# | Interior at ``t=0`` | ``p_l=-7.611930\times10^7`` Pa | Uniform initial suction |
+# | Left, $x=0$ (region 1) | $W_l=0$ | No liquid crosses the left end |
+# | Right, $x=L$ (region 2) | $p_l=p_g$ | A water supply maintains $p_c=0$ and $S_l=1$ |
+# | Interior at $t=0$ | $p_l=-7.611930\times10^7$ Pa | Uniform initial suction |
 #
 # The left condition is a zero-flux or **Neumann** condition. The right condition is
 # a prescribed-value or **Dirichlet** condition: the reservoir fixes pressure, not
@@ -55,7 +55,7 @@
 # creates a steep initial pressure gradient near the reservoir.
 #
 # **The initial material is unsaturated, not empty of water.** The retention law
-# below gives ``S_{l,0}\approx0.77752``, so about 77.8% of its pore volume already
+# below gives $S_{l,0}\approx0.77752$, so about 77.8% of its pore volume already
 # contains liquid. The older shorthand “dry state” would be misleading here.
 # Negative modeled liquid pressure represents capillary suction in this pressure
 # convention; it does not imply negative saturation or negative water mass.
@@ -64,19 +64,19 @@
 #
 # ### A fixed material volume
 #
-# Take a slice of length ``dx`` and cross-sectional area ``A``. Its water mass is
-# ``\rho_l\phi S_l A\,dx``. The density ``\rho_l`` and porosity ``\phi`` are constant
-# in this example. Define ``W_l`` as mass flux per unit cross-sectional area,
-# positive toward increasing ``x``. Its units are kg/(m²·s).
+# Take a slice of length $dx$ and cross-sectional area $A$. Its water mass is
+# $\rho_l\phi S_l A\,dx$. The density $\rho_l$ and porosity $\phi$ are constant
+# in this example. Define $W_l$ as mass flux per unit cross-sectional area,
+# positive toward increasing $x$. Its units are kg/(m²·s).
 #
-# For any fixed interval ``[a,b]``, conservation without sources is
+# For any fixed interval $[a,b]$, conservation without sources is
 #
 # ```math
 # \frac{d}{dt}\int_a^b\rho_l\phi S_l\,A\,dx
 # =A W_l(a,t)-A W_l(b,t).
 # ```
 #
-# This is “accumulation = inflow minus outflow”. Divide by constant ``A``, apply the
+# This is “accumulation = inflow minus outflow”. Divide by constant $A$, apply the
 # fundamental theorem of calculus, and require the identity for every interval:
 #
 # ```math
@@ -85,7 +85,7 @@
 # ```
 #
 # Unlike the deforming volume in Biot poroelasticity, this material volume is fixed
-# by assumption. There is no ``b\dot\varepsilon_v`` term. Water storage changes only
+# by assumption. There is no $b\dot\varepsilon_v$ term. Water storage changes only
 # because liquid replaces gas in the pores; neither liquid compressibility nor
 # changes of porosity are included.
 #
@@ -99,18 +99,18 @@
 # \qquad K_l(p_c)=\frac{\rho_l k_{\mathrm{int}}k_{rl}(p_c)}{\mu_l}.
 # ```
 #
-# Here ``g_x`` is the signed component of gravitational acceleration along the
-# coordinate, ``k_{\mathrm{int}}`` [m²] is intrinsic permeability, and ``\mu_l`` [Pa·s]
-# is liquid viscosity. The dimensionless factor ``k_{rl}`` describes the reduction
+# Here $g_x$ is the signed component of gravitational acceleration along the
+# coordinate, $k_{\mathrm{int}}$ [m²] is intrinsic permeability, and $\mu_l$ [Pa·s]
+# is liquid viscosity. The dimensionless factor $k_{rl}$ describes the reduction
 # of liquid mobility when the pores are not fully water-filled.
 #
-# ``K_l`` has units kg/(m·s·Pa): it multiplies a pressure gradient to produce a
+# Here $K_l$ has units kg/(m·s·Pa): it multiplies a pressure gradient to produce a
 # **mass flux**. It is not the hydraulic conductivity in m/s often used with a
-# hydraulic-head gradient. The Darcy **volume flux** is ``q_l=W_l/\rho_l`` [m/s].
+# hydraulic-head gradient. The Darcy **volume flux** is $q_l=W_l/\rho_l$ [m/s].
 # Neither flux is the velocity of an individual water particle.
 #
 # This barrier is horizontal, so `gravity = 0.0`. Initially pressure increases toward
-# the right reservoir: ``\partial_xp_l>0``, hence ``W_l<0``. Water flows from right
+# the right reservoir: $\partial_xp_l>0$, hence $W_l<0$. Water flows from right
 # to left, toward the region with stronger capillary suction. It does not need a
 # gravity term to enter the barrier.
 #
@@ -125,7 +125,7 @@
 #
 # ### Pressure-dependent storage and diffusion
 #
-# Because ``p_g`` is fixed, ``\partial_t p_c=-\partial_t p_l``. The chain rule gives
+# Because $p_g$ is fixed, $\partial_t p_c=-\partial_t p_l$. The chain rule gives
 #
 # ```math
 # C_p(p_l)=-\rho_l\phi\frac{dS_l}{dp_c},\qquad
@@ -133,16 +133,16 @@
 # =\frac{\partial}{\partial x}\left(K_l(p_c)\frac{\partial p_l}{\partial x}\right).
 # ```
 #
-# Since saturation decreases with capillary pressure, ``dS_l/dp_c\le0`` and
-# ``C_p\ge0``. Its units are kg/(m³·Pa); it measures the increase of stored mass per
+# Since saturation decreases with capillary pressure, $dS_l/dp_c\le0$ and
+# $C_p\ge0$. Its units are kg/(m³·Pa); it measures the increase of stored mass per
 # bulk volume when liquid pressure rises. This is not the constant storage coefficient
-# ``N`` of the Biot example.
+# $N$ of the Biot example.
 #
-# Where ``C_p>0``, freezing the coefficients locally suggests a diffusivity
-# ``D=K_l/C_p`` [m²/s] and a time scale ``L^2/D``. Both coefficients vary with state,
+# Where $C_p>0$, freezing the coefficients locally suggests a diffusivity
+# $D=K_l/C_p$ [m²/s] and a time scale $L^2/D$. Both coefficients vary with state,
 # so there is no single constant diffusion coefficient for the whole simulation.
 # Small permeability alone does not specify a universal consolidation or wetting time.
-# On the saturated branch the present storage is constant and ``C_p=0``; the equation
+# On the saturated branch the present storage is constant and $C_p=0$; the equation
 # locally becomes a pressure-equilibrium equation rather than a compressible-water
 # storage model. The code discretizes the original stored-mass difference, avoiding
 # division by a capacity that can vanish.
@@ -161,15 +161,15 @@
 # \qquad n_S=\frac{1}{1-m_S}.
 # ```
 #
-# Here ``a_S`` is a pressure scale and ``m_S`` controls the curve's shape. The
-# constructor `VanGenuchten(a_S, m_S)` computes ``n_S`` automatically. This example
-# uses no extra residual-saturation offset: the function returns ``S_l`` directly.
-# There is no sharp air-entry threshold at ``a_S`` in this smooth expression.
+# Here $a_S$ is a pressure scale and $m_S$ controls the curve's shape. The
+# constructor `VanGenuchten(a_S, m_S)` computes $n_S$ automatically. This example
+# uses no extra residual-saturation offset: the function returns $S_l$ directly.
+# There is no sharp air-entry threshold at $a_S$ in this smooth expression.
 #
 # ### Relative permeability: how easily can water move?
 #
 # The Mualem law used here first calculates an internal effective saturation
-# ``S_{e,k}``, then the relative permeability:
+# $S_{e,k}$, then the relative permeability:
 #
 # ```math
 # S_{e,k}=\left[1+(p_c/a_k)^{n_k}\right]^{-m_k},\qquad
@@ -181,12 +181,12 @@
 # \left[1-\left(1-S_{e,k}^{1/m_k}\right)^{m_k}\right]^2.
 # ```
 #
-# For ``p_c\le0``, the implementation returns ``k_{rl}=1``. At extremely small
-# ``S_{e,k}<10^{-14}``, it returns zero to avoid a singular square-root derivative.
+# For $p_c\le0$, the implementation returns $k_{rl}=1$. At extremely small
+# $S_{e,k}<10^{-14}$, it returns zero to avoid a singular square-root derivative.
 #
-# **Do not substitute the retention saturation ``S_l`` directly into this example's
+# **Do not substitute the retention saturation $S_l$ directly into this example's
 # Mualem expression.** The two fitted curves deliberately use different parameters,
-# so ``S_{e,k}`` is an internal variable of the mobility law, not the actual liquid
+# so $S_{e,k}$ is an internal variable of the mobility law, not the actual liquid
 # fraction of the pores. In the more usual construction where both laws share their
 # parameters and residual saturation is zero, those saturations coincide.
 # [PFLOTRAN's constitutive-relations guide](https://documentation.pflotran.org/theory_guide/constitutive_relations.html)
@@ -197,16 +197,16 @@
 #
 # | Symbol | Code expression or field | Value | Unit |
 # |:--|:--|:--|:--|
-# | ``\phi`` | `phi` | 0.30 | — |
-# | ``\rho_l`` | `rho_l` | 1,000 | kg/m³ |
-# | ``k_{\mathrm{int}}`` | `k_int` | ``10^{-20}`` | m² |
-# | ``\mu_l`` | `mu_l` | ``10^{-3}`` | Pa·s |
-# | ``p_g`` | `p_g` | ``10^5`` | Pa |
-# | ``a_S,m_S`` | `VanGenuchten(1.5e6, 0.06)` | ``1.5\times10^6,\;0.06`` | Pa, — |
-# | ``a_k,m_k`` | `Mualem(3.0e6, 0.5)` | ``3.0\times10^6,\;0.5`` | Pa, — |
+# | $\phi$ | `phi` | 0.30 | — |
+# | $\rho_l$ | `rho_l` | 1,000 | kg/m³ |
+# | $k_{\mathrm{int}}$ | `k_int` | $10^{-20}$ | m² |
+# | $\mu_l$ | `mu_l` | $10^{-3}$ | Pa·s |
+# | $p_g$ | `p_g` | $10^5$ | Pa |
+# | $a_S,m_S$ | `VanGenuchten(1.5e6, 0.06)` | $1.5\times10^6,\;0.06$ | Pa, — |
+# | $a_k,m_k$ | `Mualem(3.0e6, 0.5)` | $3.0\times10^6,\;0.5$ | Pa, — |
 #
-# Thus ``n_S\approx1.06383`` while ``n_k=2``. They are **different exponents**.
-# Initially, the interior has ``p_c=7.621930\times10^7`` Pa and approximately
+# Thus $n_S\approx1.06383$ while $n_k=2$. They are **different exponents**.
+# Initially, the interior has $p_c=7.621930\times10^7$ Pa and approximately
 #
 # ```math
 # S_l=0.77752,\qquad S_{e,k}=0.03933,\qquad k_{rl}=1.1872\times10^{-7}.
@@ -224,14 +224,14 @@
 # *Each node stores one pressure. Fluxes cross control-volume faces halfway between
 # neighboring nodes. This drawing is schematic, not a pressure or saturation profile.*
 #
-# The code creates ``N=101`` equally spaced **nodes**, hence 100 intervals of length
-# ``h=L/(N-1)=0.002`` m. VoronoiFVM associates each interior node with a control volume
+# The code creates $N=101$ equally spaced **nodes**, hence 100 intervals of length
+# $h=L/(N-1)=0.002$ m. VoronoiFVM associates each interior node with a control volume
 # extending halfway toward its neighbors. Per unit cross-sectional area, its volume
-# is a length ``\ell_i=h``; endpoint control volumes have length ``h/2``.
+# is a length $\ell_i=h$; endpoint control volumes have length $h/2$.
 #
-# Integrate the conservation law over the control volume around node ``i``. Denote
-# ``M(p)=\rho_l\phi S_l(p_g-p)`` and orient every interface flux toward increasing
-# ``x``. The semidiscrete balance is
+# Integrate the conservation law over the control volume around node $i$. Denote
+# $M(p)=\rho_l\phi S_l(p_g-p)$ and orient every interface flux toward increasing
+# $x$. The semidiscrete balance is
 #
 # ```math
 # \ell_i\frac{dM(p_i)}{dt}+W_{i+1/2}-W_{i-1/2}=0.
@@ -244,7 +244,7 @@
 #
 # ### The actual two-point flux
 #
-# For the edge joining ``x_i`` to ``x_j>x_i``, the implementation evaluates mobility
+# For the edge joining $x_i$ to $x_j>x_i$, the implementation evaluates mobility
 # at the **mean capillary pressure**, not the mean of the two mobilities:
 #
 # ```math
@@ -252,8 +252,8 @@
 # W_{i\to j}=K_l(\overline p_c)\frac{p_i-p_j}{x_j-x_i}.
 # ```
 #
-# Generally ``K_l((p_{c,i}+p_{c,j})/2)`` is not equal to
-# ``(K_l(p_{c,i})+K_l(p_{c,j}))/2`` because the law is nonlinear. This choice is part
+# Generally $K_l((p_{c,i}+p_{c,j})/2)$ is not equal to
+# $(K_l(p_{c,i})+K_l(p_{c,j}))/2$ because the law is nonlinear. This choice is part
 # of the numerical model and matters at steep wetting fronts.
 #
 # The model's `flux!` callback returns `K * (pl1 - pl2)` in this horizontal case.
@@ -281,7 +281,7 @@
 # of zero physical inflow.
 #
 # The equations are nonlinear because pressure changes both storage and mobility.
-# At Newton iteration ``k``, solve
+# At Newton iteration $k$, solve
 #
 # ```math
 # J(p^{(k)})\,\delta p=-R(p^{(k)}),\qquad
@@ -345,7 +345,7 @@ richards_material(; p_g = 1.0e5) = RichardsModel(;
 # ## 6. Construct the grid, initial state, and solver controls
 #
 # `run_richards` returns `(tsol, grid, model, tsave, an)`. The last entry is the
-# conversion factor ``1\ \mathrm{year}=31\,536\,000`` s, a 365-day year. `t_max_ans`
+# conversion factor $1\ \mathrm{year}=31\,536\,000$ s, a 365-day year. `t_max_ans`
 # is the duration in years; `N` is the number of nodes, not the number of intervals.
 # The default call solves ten years on a 20 cm barrier.
 #
@@ -356,12 +356,12 @@ richards_material(; p_g = 1.0e5) = RichardsModel(;
 #
 # | Control | Value | What it controls |
 # |:--|:--|:--|
-# | `Δt` | ``10^6`` s (about 11.6 days) | Initial proposed time step |
+# | `Δt` | $10^6$ s (about 11.6 days) | Initial proposed time step |
 # | `Δt_min` | 1 s | Minimum permitted time step |
 # | `Δt_max` | 1 year | Maximum permitted time step |
-# | `Δu_opt` | ``10^6`` Pa | Target size of pressure change between successive time states |
-# | `reltol` | ``10^{-4}`` | Newton-update tolerance relative to the first Newton update |
-# | `abstol` | ``10^{-8}`` | Absolute Newton-update tolerance, in pressure units here |
+# | `Δu_opt` | $10^6$ Pa | Target size of pressure change between successive time states |
+# | `reltol` | $10^{-4}$ | Newton-update tolerance relative to the first Newton update |
+# | `abstol` | $10^{-8}$ | Absolute Newton-update tolerance, in pressure units here |
 #
 # These meanings follow the installed VoronoiFVM solver controls. `Δu_opt` guides
 # adaptive stepping; it is not a bound on the error relative to an exact solution.
@@ -435,17 +435,17 @@ tsol, grid, model, tsave, an = run_richards()
 # `model.p_g - pressure`. Interpolating pressure and then applying a nonlinear
 # retention law is generally not identical to interpolating saturation itself.
 #
-# The helper below integrates ``\theta=\phi S_l`` along the column:
+# The helper below integrates $\theta=\phi S_l$ along the column:
 #
 # ```math
 # w(t)=\int_0^L\phi S_l(x,t)\,dx.
 # ```
 #
 # Its unit is **meters of water**, meaning water volume per unit cross-sectional
-# area. The water mass per area is ``\rho_l w`` [kg/m²]; for area ``A``, the total
-# water mass is ``\rho_l A w``. The trapezoidal weights coincide with nodal
+# area. The water mass per area is $\rho_l w$ [kg/m²]; for area $A$, the total
+# water mass is $\rho_l A w$. The trapezoidal weights coincide with nodal
 # control-volume lengths on this 1D grid. A fully saturated column has
-# ``w_{\mathrm{sat}}=\phi L=0.060`` m.
+# $w_{\mathrm{sat}}=\phi L=0.060$ m.
 #
 # The initial value includes the already saturated right endpoint with its half-cell
 # weight. That discrete initial water inventory therefore depends slightly on mesh
@@ -471,13 +471,13 @@ end
 #
 # There is no separate front-position unknown. This helper finds the leftmost node
 # where saturation exceeds the initial interior value by `δ = 1e-3`. Water enters
-# at ``x=L``, so this threshold-defined position moves toward smaller ``x`` as the
+# at $x=L$, so this threshold-defined position moves toward smaller $x$ as the
 # wetted region advances. Its resolution is limited by the node spacing, 2 mm here,
 # and its value depends on the chosen threshold.
 #
-# A front indicator at ``x=0`` means the threshold has reached the left end, not that
+# A front indicator at $x=0$ means the threshold has reached the left end, not that
 # every pore is saturated. If no node passes the threshold, the helper returns
-# ``x=L``. Its internal name `sl_dry` refers to the unsaturated initial value,
+# $x=L$. Its internal name `sl_dry` refers to the unsaturated initial value,
 # approximately 0.77752, rather than zero saturation.
 
 function front_position(it; δ = 1.0e-3)
@@ -489,7 +489,7 @@ end
 # ### Print front position, water content, and one local probe
 #
 # The loop selects the stored state nearest each requested time. The probe lies at
-# approximately ``x=0.18`` m. It is deliberately near the inlet, where a response is
+# approximately $x=0.18$ m. It is deliberately near the inlet, where a response is
 # visible within the ten-year calculation. A mid-column probe can remain almost
 # unchanged even while the material takes up water nearer the reservoir.
 
@@ -510,7 +510,7 @@ end
 #
 # For the default calculation, representative values are:
 #
-# | Time [years] | Front indicator [m] | Water content ``w`` [m] |
+# | Time [years] | Front indicator [m] | Water content $w$ [m] |
 # |--:|--:|--:|
 # | 0 | 0.200 | 0.0467180 |
 # | 2 | 0.184 | 0.0476684 |
@@ -520,12 +520,12 @@ end
 # These values were obtained on the supplied 101-node setup with Julia 1.12.7 and
 # VoronoiFVM 3.5.2 on macOS ARM64. They describe this numerical solution, not an
 # experiment or a mesh-independent reference solution.
-# The ten-year uptake is about ``0.0051124`` m of water, or ``5.1124`` kg/m², an
+# The ten-year uptake is about $0.0051124$ m of water, or $5.1124$ kg/m², an
 # increase of about 10.94% over the initial inventory.
 #
 # The message below checks only whether total water content increased. It does not
 # measure the mass-balance residual or prove time/mesh convergence. In particular,
-# the default probe at 0.18 m approaches ``S_l\approx0.9998`` around year 4, then
+# the default probe at 0.18 m approaches $S_l\approx0.9998$ around year 4, then
 # falls slightly to about 0.9978 at year 10. Do not interpret this small reversal
 # as established physical behavior: inspect spatial profiles and refine space and
 # time before attributing it to the material.
@@ -633,7 +633,7 @@ p
 # )
 # ```
 #
-# The default setup gives ``w(10\ \mathrm{years})\approx0.0518304`` m, whereas
+# The default setup gives $w(10\ \mathrm{years})\approx0.0518304$ m, whereas
 # the refined setup above gives approximately 0.0564039 m. This sizeable difference
 # is a warning against treating the default profile as a converged result. Both
 # space and time controls changed in this comparison, so it does not isolate their
@@ -655,7 +655,7 @@ p
 #   nodal front indicator's resolution. Inspect the small probe reversal as well as
 #   the total uptake; a plausible total can hide local numerical artifacts.
 # - **Does mass balance close?** With zero left flux, the continuous balance is
-#   ``\rho_l[w(t)-w(0)]=-\int_0^t W_l(L,\tau)\,d\tau``. The right-boundary inflow
+#   $\rho_l[w(t)-w(0)]=-\int_0^t W_l(L,\tau)\,d\tau$. The right-boundary inflow
 #   is negative under our sign convention. A numerical audit should use boundary
 #   exchange consistent with the assembled discrete balances, including the
 #   prescribed boundary node's storage, rather than an unrelated flux estimate.
@@ -668,7 +668,7 @@ p
 #
 # At a stationary state, conservation and the sealed left boundary imply zero flux
 # throughout. Where conductivity is positive, pressure is then uniform and equal to
-# ``p_g``; this model's equilibrium is full saturation. The ten-year profiles have
+# $p_g$; this model's equilibrium is full saturation. The ten-year profiles have
 # not reached that state. This is imbibition in a rigid body, not the mechanically
 # coupled consolidation of the Biot example.
 #
@@ -683,13 +683,13 @@ p
 #
 # 1. For 1 m³ of this material at the initial interior saturation, calculate liquid
 #    and gas volumes. You should find approximately 0.23326 m³ and 0.06674 m³.
-# 2. Explain why ``W_l<0`` at the right inlet although the total water content grows.
+# 2. Explain why $W_l<0$ at the right inlet although the total water content grows.
 #    Check the signs using the integral mass balance.
-# 3. Compute ``n_S`` and ``n_k`` from their respective ``m`` values. Why would using
+# 3. Compute $n_S$ and $n_k$ from their respective $m$ values. Why would using
 #    the same exponent in both curves change this particular model?
 # 4. Convert the ten-year increase in water content into total added water mass for
 #    a cross-sectional area of 0.01 m². The result is approximately 0.0511 kg.
-# 5. Change the front threshold from ``10^{-3}`` to ``10^{-2}``. Explain why the
+# 5. Change the front threshold from $10^{-3}$ to $10^{-2}$. Explain why the
 #    reported front can move even though the pressure solution is unchanged.
 # 6. Compare finer meshes and time controls before deciding whether the small
 #    decrease at the 0.18 m probe is resolved behavior. Which of the current

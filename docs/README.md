@@ -47,3 +47,32 @@ upstream:
 Formulas are typeset at build time, in Node, into static SVG: a reader's browser
 fetches no MathJax bundle. New TeX extensions therefore go in
 `mathjax-plugin.ts`, never in a Documenter `mathengine`.
+
+## Mathematical notation
+
+Use `$...$` for inline math and fenced `math` blocks for displayed equations in all
+Markdown pages and in the prose comments of Literate scripts. Both are recognized by
+Documenter and VS Code's built-in Markdown math preview. Double-backtick inline math
+is specific to Julia Markdown and appears as code in VS Code. Keep single backticks
+for code names, such as `phi`, and use math notation for the physical quantity.
+Start explanatory paragraphs with prose before an inline formula: Julia Markdown can
+interpret a paragraph-leading dollar formula as a displayed equation.
+
+For generated example, demo, and validation pages, change the corresponding script in
+`examples/`, `demos/`, or `benchmarks/` and regenerate with `docs/make.jl`.
+
+## Theory pages and figures
+
+The introductory course is maintained directly in `docs/src/theory/`; it is not generated
+by Literate. Keep its symbols, units, and implementation notes consistent with the API.
+The original explanatory figures are SVG files in `docs/src/assets/theory/`. To regenerate
+them with Python, NumPy, and Matplotlib:
+
+```sh
+python3 docs/src/assets/theory/draw_figures.py
+```
+
+Pass `--preview-dir /tmp/poromechanics-theory` to also produce PNGs for visual review.
+The plot parameters are illustrative; the consolidation curves use the analytical
+Terzaghi series, not solver output. Figure generation is separate from the documentation
+build and adds no Python dependency to the Julia package.

@@ -8,9 +8,9 @@
 #
 # ## Problem
 #
-# A column of height ``H``, confined laterally (``u_x = 0`` on the sides), resting on a
-# rigid impermeable base (``u_y = 0``, no flow), drained at the top (``p = 0``) where a
-# constant surface load ``F`` is applied at ``t = 0``.
+# A column of height $H$, confined laterally ($u_x = 0$ on the sides), resting on a
+# rigid impermeable base ($u_y = 0$, no flow), drained at the top ($p = 0$) where a
+# constant surface load $F$ is applied at $t = 0$.
 #
 # The one-dimensional Biot equations reduce to
 #
@@ -20,14 +20,14 @@
 #   = \frac{k}{\mu_l}\frac{\partial^2 p}{\partial z^2}
 # ```
 #
-# with ``M_o = \lambda + 2\mu`` the oedometric modulus and ``\varepsilon = \partial u/\partial z``.
-# Vertical equilibrium makes ``\sigma`` uniform and equal to ``-F`` at all times, so
-# ``\varepsilon`` can be eliminated, leaving a diffusion equation for the pressure alone.
+# with $M_o = \lambda + 2\mu$ the oedometric modulus and $\varepsilon = \partial u/\partial z$.
+# Vertical equilibrium makes $\sigma$ uniform and equal to $-F$ at all times, so
+# $\varepsilon$ can be eliminated, leaving a diffusion equation for the pressure alone.
 #
 # ## Reference solution
 #
-# With ``Z = (H - y)/H`` the depth measured **from the drained surface** and
-# ``T = c_v t / H^2`` the dimensionless time,
+# With $Z = (H - y)/H$ the depth measured **from the drained surface** and
+# $T = c_v t / H^2$ the dimensionless time,
 #
 # ```math
 # \frac{p(Z, T)}{p_0} = \sum_{m=0}^{\infty}
@@ -37,15 +37,15 @@
 # ```
 #
 # The two constants follow from the equations above — the consolidation coefficient from
-# eliminating ``\varepsilon``, and the initial pressure from the undrained limit
-# ``N p + b\varepsilon = 0`` at ``t = 0^+``:
+# eliminating $\varepsilon$, and the initial pressure from the undrained limit
+# $N p + b\varepsilon = 0$ at $t = 0^+$:
 #
 # ```math
 # c_v = \frac{k/\mu_l}{N + b^2/M_o}, \qquad
 # p_0 = \frac{F\,b}{M_o N + b^2}
 # ```
 #
-# At ``T = 0`` the series is the Fourier expansion of a square wave and returns 1
+# At $T = 0$ the series is the Fourier expansion of a square wave and returns 1
 # everywhere, as it must.
 
 include("biot_common.jl")
@@ -104,10 +104,10 @@ end
 
 # ## Solving
 #
-# One short step to `T_start` captures the undrained response — the load produces ``p_0``
+# One short step to `T_start` captures the undrained response — the load produces $p_0$
 # instantaneously, and a first step that is too long would already have dissipated part of
-# it. The rest is marched with a uniform ``\Delta T``. Backward Euler is first order in
-# time, so it is ``\Delta T`` itself, not the number of steps, that sets the temporal
+# it. The rest is marched with a uniform $\Delta T$. Backward Euler is first order in
+# time, so it is $\Delta T$ itself, not the number of steps, that sets the temporal
 # error; it has to be small enough not to mask the spatial error being measured.
 
 """
@@ -232,7 +232,7 @@ function worst_error(; nely, dT)
     )
 end
 
-# Halving ``\Delta T`` halves the error: backward Euler is first order in time, and the
+# Halving $\Delta T$ halves the error: backward Euler is first order in time, and the
 # measurement confirms it.
 
 println("  ΔT        |  worst L2 error |  ratio")
@@ -244,7 +244,7 @@ for dT in (2.0e-3, 1.0e-3, 5.0e-4, 2.5e-4)
     global prev = e
 end
 
-# Refining the mesh instead, at a fixed ``\Delta T``, the error stops falling once the
+# Refining the mesh instead, at a fixed $\Delta T$, the error stops falling once the
 # spatial contribution drops below the temporal floor — which is why the default
 # configuration uses 60 elements and no more.
 
@@ -257,7 +257,7 @@ end
 # ### Pressure profiles
 #
 # Markers are the finite element solution, solid lines the Terzaghi series. The isochrones
-# flatten as the pressure diffuses towards the drained surface at ``Z = 0``.
+# flatten as the pressure diffuses towards the drained surface at $Z = 0$.
 
 plt = plot(;
     xlabel = "p / p₀  [-]",
@@ -286,13 +286,13 @@ plt
 
 # ## Notes
 #
-# - **Equal-order elements** — ``u`` and ``p`` both P1. This is not inf-sup stable in
-#   general, but the Biot storage term ``N > 0`` regularizes the pressure block. The error
+# - **Equal-order elements** — $u$ and $p$ both P1. This is not inf-sup stable in
+#   general, but the Biot storage term $N > 0$ regularizes the pressure block. The error
 #   is largest at the earliest probe time, where the pressure gradient at the drained
 #   surface is steepest and the mesh resolves it least well.
 # - **The first step sets the initial condition** — the column starts unloaded, and the
 #   load is applied over the first step. That step must be short enough that the column is
-#   still essentially undrained, so it produces ``p_0`` and not a partly dissipated
-#   pressure. Everything after it is marched with a uniform ``\Delta T``.
-# - **Series truncation** — the reference sum converges slowly at small ``T``; 400 terms
+#   still essentially undrained, so it produces $p_0$ and not a partly dissipated
+#   pressure. Everything after it is marched with a uniform $\Delta T$.
+# - **Series truncation** — the reference sum converges slowly at small $T$; 400 terms
 #   keeps the truncation error far below the discretization error being measured.

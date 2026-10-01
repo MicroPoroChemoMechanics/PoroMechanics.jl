@@ -1,25 +1,25 @@
 # # Cryer's Problem
 #
-# A saturated poroelastic sphere, drained at its surface, loaded at ``t = 0`` by a uniform
+# A saturated poroelastic sphere, drained at its surface, loaded at $t = 0$ by a uniform
 # radial compression. The pore pressure at the centre rises **23 % above** its undrained
 # value before decaying — the Mandel–Cryer effect [cryer1963](@cite), three times stronger
 # here than in the plane-strain Mandel case, which makes this the most severe of the three
 # poroelastic benchmarks.
 #
 # It is also the case that forces a curvilinear element. Terzaghi and Mandel are Cartesian;
-# spherical symmetry brings in hoop strains ``\varepsilon_{\theta\theta} = u_r/r`` that no
-# Cartesian element produces, and an ``r^2`` integration weight. The element written below
+# spherical symmetry brings in hoop strains $\varepsilon_{\theta\theta} = u_r/r$ that no
+# Cartesian element produces, and an $r^2$ integration weight. The element written below
 # is the prototype of the axisymmetric machinery the Barcelona Basic Model will need.
 #
 # ## Problem
 #
-# Sphere of radius ``R``. At ``t = 0`` a compressive radial traction ``P_c`` is applied to
+# Sphere of radius $R$. At $t = 0$ a compressive radial traction $P_c$ is applied to
 # the surface, which is held drained.
 #
 # | Boundary | Condition |
 # |---|---|
-# | ``r = 0`` | symmetry: ``u_r = 0``, no flux |
-# | ``r = R`` | drained ``p = 0``, traction ``\sigma_{rr} = -P_c`` |
+# | $r = 0$ | symmetry: $u_r = 0$, no flux |
+# | $r = R$ | drained $p = 0$, traction $\sigma_{rr} = -P_c$ |
 #
 # ## Reference solution
 #
@@ -31,8 +31,8 @@
 # \varepsilon = c_m\,p + f(t), \qquad c_m = \frac{\alpha(1-2\nu)}{2G(1-\nu)} = \frac{\alpha}{M_o}
 # ```
 #
-# with ``f`` an unknown function of time alone. Substituting into the fluid mass balance
-# leaves a diffusion equation for the pressure with a source driven by ``f``:
+# with $f$ an unknown function of time alone. Substituting into the fluid mass balance
+# leaves a diffusion equation for the pressure with a source driven by $f$:
 #
 # ```math
 # S \frac{\partial p}{\partial t}
@@ -40,14 +40,14 @@
 #   = -\alpha f'(t), \qquad S = \frac{1}{M} + \frac{\alpha^2}{M_o}
 # ```
 #
-# ``S`` is exactly the storage coefficient the package already uses: ``c = \kappa/S`` is the
+# Here $S$ is exactly the storage coefficient the package already uses: $c = \kappa/S$ is the
 # same consolidation coefficient as in the Terzaghi and Mandel benchmarks.
 #
 # In Laplace space this is an ordinary differential equation. Taking the solution regular at
-# ``r = 0``, imposing ``p(R) = 0``, integrating
-# ``u_r = r^{-2}\int_0^r x^2 \varepsilon\,\mathrm{d}x`` and closing with the traction
-# condition ``\sigma_{rr}(R) = -P_c H(t)`` gives, in ``r^* = r/R`` and ``t^* = ct/R^2``
-# with ``\hat s`` conjugate to ``t^*``:
+# $r = 0$, imposing $p(R) = 0$, integrating
+# $u_r = r^{-2}\int_0^r x^2 \varepsilon\,\mathrm{d}x$ and closing with the traction
+# condition $\sigma_{rr}(R) = -P_c H(t)$ gives, in $r^* = r/R$ and $t^* = ct/R^2$
+# with $\hat s$ conjugate to $t^*$:
 #
 # ```math
 # \tilde P(r^*, \hat s) = \frac{P_c}{\hat s}\,\frac{\alpha}{2GS}\,
@@ -57,11 +57,11 @@
 #   - 2q\left[\frac{\coth\sqrt{\hat s}}{\sqrt{\hat s}} - \frac{1}{\hat s}\right]
 # ```
 #
-# with ``q = \alpha c_m/S``. The inversion to the time domain is numerical, by the Stehfest
+# with $q = \alpha c_m/S$. The inversion to the time domain is numerical, by the Stehfest
 # algorithm — the same route the source paper takes.
 #
 # The expression is checked by the initial and final value theorems before it is used: it
-# must give the Skempton response ``p(r,0^+) = B P_c``, uniform in ``r``, and decay to zero.
+# must give the Skempton response $p(r,0^+) = B P_c$, uniform in $r$, and decay to zero.
 
 include("biot_common.jl")
 
@@ -127,8 +127,8 @@ end
 # \varepsilon_{\theta\theta} = \varepsilon_{\varphi\varphi} = \frac{u}{r}
 # ```
 #
-# so the discrete strain operator for shape function ``N_i`` is
-# ``B_i = [\,N_i',\; N_i/r,\; N_i/r\,]`` and the volume element carries ``r^2``. Contracting
+# so the discrete strain operator for shape function $N_i$ is
+# $B_i = [\,N_i',\; N_i/r,\; N_i/r\,]$ and the volume element carries $r^2$. Contracting
 # with the isotropic stiffness gives, for the mechanical block,
 #
 # ```math
@@ -264,8 +264,8 @@ println()
 
 # ### The reference solution, checked before it is used
 #
-# The Laplace expression must reproduce the Skempton response at ``t \to 0``, uniformly in
-# ``r``, and vanish at the drained surface.
+# The Laplace expression must reproduce the Skempton response at $t \to 0$, uniformly in
+# $r$, and vanish at the drained surface.
 
 @printf("p(r,t→0)/P_c at r* = 0.1, 0.5, 0.9 : %.6f  %.6f  %.6f   (B = %.6f)\n",
     cryer_pressure(model, 0.1, 1.0e-6) / P_CONF,
@@ -328,7 +328,7 @@ function worst_error(; nel, dT)
     )
 end
 
-# Halving ``\Delta T`` halves the error — backward Euler, first order in time.
+# Halving $\Delta T$ halves the error — backward Euler, first order in time.
 
 println("  ΔT        |  worst L2 error |  ratio")
 println("-"^42)
@@ -339,7 +339,7 @@ for dT in (4.0e-3, 2.0e-3, 1.0e-3, 5.0e-4)
     global prev = e
 end
 
-# Refining the mesh at fixed ``\Delta T`` changes almost nothing: the spatial error of the
+# Refining the mesh at fixed $\Delta T$ changes almost nothing: the spatial error of the
 # radial element is already well under the temporal floor by forty elements.
 
 println("\n  elements  |  worst L2 error")
@@ -371,11 +371,11 @@ plt
 
 # ## Notes
 #
-# - **The element is the new part** — hoop strains ``u_r/r`` and an ``r^2`` weight. It is
+# - **The element is the new part** — hoop strains $u_r/r$ and an $r^2$ weight. It is
 #   written out by hand here; the same kinematics, in cylindrical coordinates, is what the
 #   Barcelona Basic Model will need for axisymmetry.
 # - **`BigFloat` for the Stehfest weights** is not optional: they alternate in sign and grow
-#   to ``10^{9}``, and in `Float64` the cancellation leaves nothing.
+#   to $10^{9}$, and in `Float64` the cancellation leaves nothing.
 # - **The reference is derived, not transcribed.** The published closed-form series for this
 #   problem could not be reproduced from the printed prefactor; deriving the Laplace
 #   solution and inverting it numerically avoids the question entirely, and the initial and

@@ -82,36 +82,34 @@ end
 
 # Six of the eight agree to nine or ten digits. The other two are the interesting ones.
 #
-# ``\partial \varepsilon_v^p/\partial \kappa_s`` and ``\partial \varepsilon_v^p/\partial
-# \nu`` come back as ``10^{-18}`` and ``10^{-13}`` from automatic differentiation, and as
-# ``10^{-10}`` from finite differences. Automatic differentiation is right and the finite
+# Here $\partial \varepsilon_v^p/\partial \kappa_s$ and $\partial \varepsilon_v^p/\partial \nu$ come back as $10^{-18}$ and $10^{-13}$ from automatic differentiation, and as
+# $10^{-10}$ from finite differences. Automatic differentiation is right and the finite
 # differences are noise: the path is prescribed in **stress**, and under stress control the
 # plastic strain is fixed by the yield surface and the hardening law alone. The elastic
 # constants decide what strain accompanies that stress, not how much of it is plastic. The
 # derivative is therefore structurally, exactly zero.
 #
-# That is not a curiosity. A calibration that fits ``\varepsilon_v^p`` and tries to
-# determine ``\nu`` from it is fitting nothing, and a finite-difference gradient will hide
+# That is not a curiosity. A calibration that fits $\varepsilon_v^p$ and tries to
+# determine $\nu$ from it is fitting nothing, and a finite-difference gradient will hide
 # that behind a small non-zero number rather than reporting it.
 
 # ## Which parameters can an experiment determine?
 #
 # The usual identification experiment for the loading–collapse curve is isotropic
-# compression repeated at several suctions. Four parameters shape it: ``\kappa`` and
-# ``\lambda(0)`` set the elastic and virgin compression lines, and ``r`` and ``\beta`` set
-# how ``\lambda`` falls with suction,
+# compression repeated at several suctions. Four parameters shape it: $\kappa$ and
+# $\lambda(0)$ set the elastic and virgin compression lines, and $r$ and $\beta$ set
+# how $\lambda$ falls with suction,
 #
 # ```math
 # \lambda(s) = \lambda(0)\left[(1-r)\,e^{-\beta s} + r\right]
 # ```
 #
 # Whether a given choice of suction levels determines all four is a question about the rank
-# of ``\partial(\text{measurements})/\partial(\text{parameters})`` — a matrix this package
+# of $\partial(\text{measurements})/\partial(\text{parameters})$ — a matrix this package
 # can produce exactly.
 #
 # Parameters are scaled by their reference values, so the Jacobian is dimensionless and its
-# condition number means something. Without that, comparing a sensitivity to ``\kappa
-# \approx 10^{-2}`` with one to ``\beta \approx 10^{-5}`` would be comparing units.
+# condition number means something. Without that, comparing a sensitivity to $\kappa \approx 10^{-2}$ with one to $\beta \approx 10^{-5}$ would be comparing units.
 
 identification_names = ["κ", "λ(0)", "r", "β"]
 θ_lc = [reference.κ, reference.λ0, reference.r, reference.β]
@@ -162,18 +160,18 @@ end
 svd_plausible = report_design("Suctions 0, 100, 300 kPa — a plausible choice", plausible)
 svd_informative = report_design("Suctions 0, 50, 150 kPa", informative)
 
-# The first protocol looks entirely reasonable and cannot determine ``\beta`` at all: the
-# smallest singular value is ``10^{-19}``, and the direction it belongs to is ``\beta``
+# The first protocol looks entirely reasonable and cannot determine $\beta$ at all: the
+# smallest singular value is $10^{-19}$, and the direction it belongs to is $\beta$
 # alone. Two things conspire, and neither is visible from the protocol itself.
 #
-# At ``s = 100`` kPa the sample never reaches its yield surface — the preconsolidation
+# At $s = 100$ kPa the sample never reaches its yield surface — the preconsolidation
 # pressure the loading–collapse curve puts there, about 225 kPa, is beyond the 200 kPa the
-# leg applies — so that leg carries no information about ``\lambda(s)`` whatever. And at
-# ``s = 300`` kPa, ``\beta s = 6``, so ``e^{-\beta s}`` has already collapsed to zero and
-# ``\lambda(s)`` has saturated at ``\lambda(0)\,r``, with ``\beta`` no longer in it. The one
-# leg that does yield is the one where ``\beta`` has stopped mattering.
+# leg applies — so that leg carries no information about $\lambda(s)$ whatever. And at
+# $s = 300$ kPa, $\beta s = 6$, so $e^{-\beta s}$ has already collapsed to zero and
+# $\lambda(s)$ has saturated at $\lambda(0)\,r$, with $\beta$ no longer in it. The one
+# leg that does yield is the one where $\beta$ has stopped mattering.
 #
-# The second protocol puts the suctions where ``\beta s`` is of order one — 0, 1 and 3 — and
+# The second protocol puts the suctions where $\beta s$ is of order one — 0, 1 and 3 — and
 # raises each leg's peak pressure past the yield surface that the previous leg left behind.
 # All four singular values are then healthy, spanning a factor of about twenty.
 #
@@ -233,7 +231,7 @@ end
 @printf("Levenberg–Marquardt: %d iterations, cost %.3e → %.3e\n\n", length(history) - 1, first(history), last(history))
 
 # The covariance of the fitted parameters follows from the same Jacobian,
-# ``\Sigma = \sigma^2 (J^\top J)^{-1}`` with ``\sigma^2`` the residual variance. It is
+# $\Sigma = \sigma^2 (J^\top J)^{-1}$ with $\sigma^2$ the residual variance. It is
 # available only because the derivatives are.
 
 J_fit = ForwardDiff.jacobian(residual, θ_fit)
@@ -272,9 +270,9 @@ plt = plot(
 vline!(plt, [10.5, 20.5]; ls = :dash, c = :gray, label = "suction step")
 plt
 
-# The three groups of ten are the three suction levels. ``\kappa`` and ``\lambda(0)`` are
-# felt everywhere, growing as the sample is compressed further. ``r`` and ``\beta`` do
-# nothing at all in the first group — at zero suction ``\lambda(s) = \lambda(0)`` whatever
+# The three groups of ten are the three suction levels. $\kappa$ and $\lambda(0)$ are
+# felt everywhere, growing as the sample is compressed further. $r$ and $\beta$ do
+# nothing at all in the first group — at zero suction $\lambda(s) = \lambda(0)$ whatever
 # they are — and only separate from each other across the second and third. That is the
 # picture behind the rank deficiency of the first protocol, and the reason the third suction
 # level is not optional.

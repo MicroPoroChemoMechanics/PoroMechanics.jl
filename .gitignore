@@ -44,7 +44,7 @@ output/
 *.png
 *.pdf
 *.svg
-!docs/src/assets/*
+!docs/src/assets/**
 
 # Python
 __pycache__/

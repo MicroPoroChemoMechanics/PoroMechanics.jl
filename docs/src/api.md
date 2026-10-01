@@ -74,8 +74,8 @@ combine!
 #### Axisymmetric elastoplasticity
 
 Ferrite v1 has no axisymmetric element, so the kinematics are written out: the hoop strain
-``\varepsilon_{\theta\theta} = u_r/r`` makes the strain a genuine 3D tensor even though the
-mesh is 2D, and a constitutive model that reads ``-\mathrm{tr}(\sigma)/3`` gets the wrong
+$\varepsilon_{\theta\theta} = u_r/r$ makes the strain a genuine 3D tensor even though the
+mesh is 2D, and a constitutive model that reads $-\mathrm{tr}(\sigma)/3$ gets the wrong
 mean stress without it.
 
 ```@docs
