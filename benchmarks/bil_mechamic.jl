@@ -18,9 +18,9 @@
 #
 # Read from the deck and from `composite0.msh`:
 #
-# | phase | model in Bil | ``E`` | ``\nu`` | volume fraction |
+# | phase | model in Bil | $E$ | $\nu$ | volume fraction |
 # |---|---|---:|---:|---:|
-# | matrix | `Plast` (Drucker-Prager, ``c`` = 1.5 MPa, ``\varphi = \psi`` = 25°) | 2713 MPa | 0.339 | 0.8232 |
+# | matrix | `Plast` (Drucker-Prager, $c$ = 1.5 MPa, $\varphi = \psi$ = 25°) | 2713 MPa | 0.339 | 0.8232 |
 # | inclusion | `Elast` | 5000 MPa | 0.490 | **0.1768** |
 #
 # The fraction is not quoted anywhere: it is integrated from the mesh, four regions of
@@ -28,15 +28,14 @@
 #
 # ## Finding an elastic point
 #
-# The shipped dates are useless for this. At ``t = 5`` the deck imposes
-# ``\sigma_{22} = -16`` MPa and the cell reports ``\varepsilon_{11}/|\varepsilon_{22}| =
-# 2.6`` — an apparent Poisson ratio no elastic material can have, so the matrix has yielded
-# well before. At ``t = 10``, unloaded, a residual strain remains.
+# The shipped dates are useless for this. At $t = 5$ the deck imposes
+# $\sigma_{22} = -16$ MPa and the cell reports $\varepsilon_{11}/|\varepsilon_{22}| = 2.6$ — an apparent Poisson ratio no elastic material can have, so the matrix has yielded
+# well before. At $t = 10$, unloaded, a residual strain remains.
 #
 # Under uniaxial compression the Drucker-Prager matrix yields at about 4.7 MPa, so the load
 # was reduced and the response checked for linearity:
 #
-# | applied | ``\sigma_{22}/\varepsilon_{22}`` | ``-\varepsilon_{11}/\varepsilon_{22}`` |
+# | applied | $\sigma_{22}/\varepsilon_{22}$ | $-\varepsilon_{11}/\varepsilon_{22}$ |
 # |---:|---:|---:|
 # | 0.5 MPa | 3.4816e9 | 0.5697 |
 # | 1 MPa | 3.4816e9 | 0.5697 |
@@ -44,11 +43,11 @@
 # | 16 MPa | 1.3926e9 | 2.6059 |
 #
 # Identical over a factor of four, then not: the first three are elastic. In plane strain
-# those two numbers give ``E = 3.0230`` GPa and ``\nu = 0.3630``.
+# those two numbers give $E = 3.0230$ GPa and $\nu = 0.3630$.
 #
 # ## The comparison
 #
-# | scheme | ``E`` [GPa] | ``\nu`` |
+# | scheme | $E$ [GPa] | $\nu$ |
 # |---|---:|---:|
 # | Reuss — lower bound | 2.9517 | 0.3548 |
 # | Mori-Tanaka | 3.0160 | 0.3622 |
@@ -57,7 +56,7 @@
 # | **Bil, FE²** | **3.0230** | **0.3630** |
 #
 # Bil's cell sits inside the bounds, and the self-consistent scheme reproduces it to
-# **0.07 % on ``E`` and 0.03 % on ``\nu``**. Mori-Tanaka is 0.23 % out.
+# **0.07 % on $E$ and 0.03 % on $\nu$**. Mori-Tanaka is 0.23 % out.
 #
 # That the self-consistent estimate wins is not a surprise worth much on its own — at 17.7 %
 # the two schemes are close and the ordering could invert with the morphology. What the
@@ -77,13 +76,13 @@
 # `src/Backends/Homogenization.jl`, an `AbstractMaterial` whose response is a finite element
 # solve on a periodic cell. Run on Bil's own `composite0.msh` with the deck's phases:
 #
-# | | ``E`` [GPa] | ``\nu`` | ``\sigma_{22}/\varepsilon_{22}`` | ``-\varepsilon_{11}/\varepsilon_{22}`` |
+# | | $E$ [GPa] | $\nu$ | $\sigma_{22}/\varepsilon_{22}$ | $-\varepsilon_{11}/\varepsilon_{22}$ |
 # |---|---:|---:|---:|---:|
 # | this package | **3.0230** | **0.3630** | 3.4816e9 | 0.5697 |
 # | Bil, FE² | **3.0230** | **0.3630** | 3.4816e9 | 0.5697 |
 #
 # Identical to five figures, down to the intermediate quantities. The effective stiffness
-# comes out symmetric — ``C_{12} = C_{21} = 2.9369`` GPa — with ``C_{11} = C_{22}``, which
+# comes out symmetric — $C_{12} = C_{21} = 2.9369$ GPa — with $C_{11} = C_{22}$, which
 # the cell's four-fold symmetry requires and nothing in the assembly enforces.
 #
 # Two details of the periodic constraints cost more time than the physics. Both directions
@@ -99,7 +98,7 @@
 # `MechaMic` case is exactly that: a **single** Q4 macroscopic element on the unit square,
 # pressure-loaded on one face. A single element under a uniform load has a uniform
 # macroscopic field, so the two-scale problem collapses to one cell driven in stress —
-# ``\sigma_{11} = \sigma_{12} = 0``, ``\sigma_{22}`` ramped to −16 MPa, plane strain.
+# $\sigma_{11} = \sigma_{12} = 0$, $\sigma_{22}$ ramped to −16 MPa, plane strain.
 #
 # That is what `homogenize_to_stress` does: Newton on the three in-plane components of the
 # macroscopic strain, with the homogenised tangent obtained by perturbing the cell — three
@@ -110,7 +109,7 @@
 # The matrix becomes the deck's `Plast` material — Drucker-Prager, cohesion 1.5 MPa,
 # friction and dilatancy both 25° — and the inclusion stays elastic. At −16 MPa:
 #
-# | steps | ``\varepsilon_{11}`` | ``\varepsilon_{22}`` | ``\sigma_{33}`` [MPa] | ``-\varepsilon_{11}/\varepsilon_{22}`` |
+# | steps | $\varepsilon_{11}$ | $\varepsilon_{22}$ | $\sigma_{33}$ [MPa] | $-\varepsilon_{11}/\varepsilon_{22}$ |
 # |---:|---:|---:|---:|---:|
 # | 64 | 3.005576e-2 | −1.151298e-2 | −10.56519 | 2.6106 |
 # | 128 | 2.999363e-2 | −1.150011e-2 | −10.57170 | 2.6081 |

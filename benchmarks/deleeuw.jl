@@ -1,7 +1,7 @@
 # # De Leeuw's Problem — Consolidation of a Cylinder
 #
 # The axisymmetric member of the Mandel–Cryer family: a long saturated cylinder, drained on
-# its lateral surface, compressed radially at ``t = 0``. Like the slab and the sphere, the
+# its lateral surface, compressed radially at $t = 0$. Like the slab and the sphere, the
 # pore pressure at the axis overshoots before decaying [deleeuw1965](@cite) — by 11 %,
 # between Mandel's 6.5 % and Cryer's 23 % on the same material.
 #
@@ -14,20 +14,20 @@
 #
 # ## Problem
 #
-# Cylinder of radius ``R``, plane strain along its axis (``\varepsilon_{zz} = 0``). At
-# ``t = 0`` a compressive radial traction ``P_c`` is applied to the lateral surface, which
+# Cylinder of radius $R$, plane strain along its axis ($\varepsilon_{zz} = 0$). At
+# $t = 0$ a compressive radial traction $P_c$ is applied to the lateral surface, which
 # is held drained.
 #
 # | Boundary | Condition |
 # |---|---|
-# | ``r = 0`` | symmetry: ``u_r = 0``, no flux |
-# | ``r = R`` | drained ``p = 0``, traction ``\sigma_{rr} = -P_c`` |
+# | $r = 0$ | symmetry: $u_r = 0$, no flux |
+# | $r = R$ | drained $p = 0$, traction $\sigma_{rr} = -P_c$ |
 #
 # ## Reference solution
 #
 # Derived by the same route as Cryer's, from the single-porosity formulation of
 # [mehrabian2018](@cite). The displacement field is again irrotational, so
-# ``\varepsilon = c_m p + f(t)`` with the *same* ``c_m = \alpha/M_o``; only the Laplacian
+# $\varepsilon = c_m p + f(t)$ with the *same* $c_m = \alpha/M_o$; only the Laplacian
 # and the volume element change.
 #
 # In cylindrical coordinates the Laplace-space pressure is built on modified Bessel
@@ -41,21 +41,21 @@
 #   - q\,\frac{I_1(\sqrt{\hat s})}{\sqrt{\hat s}\,I_0(\sqrt{\hat s})}
 # ```
 #
-# with ``q = \alpha c_m / S`` and ``S = 1/M + \alpha^2/M_o`` as before.
+# with $q = \alpha c_m / S$ and $S = 1/M + \alpha^2/M_o$ as before.
 #
 # ## The check that this solution has to pass
 #
-# The undrained limit is **not** Skempton's ``B P_c`` here, and that is what makes it a
+# The undrained limit is **not** Skempton's $B P_c$ here, and that is what makes it a
 # genuinely independent test rather than a re-run of Cryer's. Plane strain forbids
-# ``\varepsilon_{zz}``, so the axial stress is whatever the constraint requires:
-# ``\sigma_{zz} = \nu_u(\sigma_{rr} + \sigma_{\theta\theta}) = -2\nu_u P_c``. The mean stress
-# is therefore ``-\tfrac{2}{3}(1+\nu_u)P_c``, and
+# $\varepsilon_{zz}$, so the axial stress is whatever the constraint requires:
+# $\sigma_{zz} = \nu_u(\sigma_{rr} + \sigma_{\theta\theta}) = -2\nu_u P_c$. The mean stress
+# is therefore $-\tfrac{2}{3}(1+\nu_u)P_c$, and
 #
 # ```math
 # p(r, 0^+) = \frac{2}{3}\,B\,(1 + \nu_u)\,P_c
 # ```
 #
-# uniform in ``r``. The initial value theorem must return exactly that.
+# uniform in $r$. The initial value theorem must return exactly that.
 
 include("biot_common.jl")
 
@@ -124,7 +124,7 @@ end
 # ## Solving
 #
 # The element is `radial_element_matrices!` with `nhoop = 1` — one hoop direction and an
-# ``r\,\mathrm{d}r`` weight, against two and ``r^2`` for the sphere. That single parameter is
+# $r\,\mathrm{d}r$ weight, against two and $r^2$ for the sphere. That single parameter is
 # the whole difference between the two geometries.
 
 """
@@ -336,7 +336,7 @@ plt
 # ## Notes
 #
 # - **A different undrained limit** is what makes this an independent check rather than a
-#   rerun of Cryer's. Plane strain gives ``\tfrac{2}{3}B(1+\nu_u)P_c``, not ``BP_c``, and the
+#   rerun of Cryer's. Plane strain gives $\tfrac{2}{3}B(1+\nu_u)P_c$, not $BP_c$, and the
 #   initial value theorem returns it on materials with very different couplings.
 # - **One parameter separates the geometries.** The same `radial_element_matrices!` serves
 #   both, with `nhoop = 1` here and `2` for the sphere.

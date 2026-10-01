@@ -24,27 +24,27 @@ that the two names do not collide.
 ![A tracer solution in contact with the left face of a porous slab; the tracer diffuses to the right; the right face is sealed.](assets/quickstart_problem.svg)
 
 A slab of saturated porous medium, one meter long, initially contains no tracer. At
-``t = 0`` its left face is put in contact with a solution of concentration ``c_\text{in}``.
+$t = 0$ its left face is put in contact with a solution of concentration $c_\text{in}$.
 The tracer enters the pore solution and diffuses to the right. The right face is sealed, so
 no tracer can leave through it.
 
-The slab is uniform across its section, so nothing changes in ``y`` or ``z``. The problem
-is therefore **one-dimensional**, with a single unknown: the concentration ``c(x, t)`` of
+The slab is uniform across its section, so nothing changes in $y$ or $z$. The problem
+is therefore **one-dimensional**, with a single unknown: the concentration $c(x, t)$ of
 tracer in the pore solution, in mol per m³ of solution.
 
 | Symbol | Value | Unit | Meaning |
 |---|---|---|---|
-| ``\varphi`` | ``0.30`` | — | porosity: volume fraction of the medium filled by the pore solution |
-| ``D`` | ``10^{-10}`` | m²/s | effective diffusion coefficient of the tracer |
-| ``c_\text{in}`` | ``1.0`` | mol/m³ | concentration imposed at ``x = 0`` |
-| ``L`` | ``1.0`` | m | length of the slab |
-| ``t_\text{end}`` | ``10^{8}`` | s | simulated duration, about three years |
+| $\varphi$ | $0.30$ | — | porosity: volume fraction of the medium filled by the pore solution |
+| $D$ | $10^{-10}$ | m²/s | effective diffusion coefficient of the tracer |
+| $c_\text{in}$ | $1.0$ | mol/m³ | concentration imposed at $x = 0$ |
+| $L$ | $1.0$ | m | length of the slab |
+| $t_\text{end}$ | $10^{8}$ | s | simulated duration, about three years |
 
 | Where | Condition | Type |
 |---|---|---|
-| everywhere, at ``t = 0`` | ``c = 0`` | initial condition |
-| ``x = 0`` | ``c = c_\text{in}`` | Dirichlet: the *value* is imposed |
-| ``x = L`` | no flux through the face | homogeneous Neumann: the *flux* is imposed, equal to zero |
+| everywhere, at $t = 0$ | $c = 0$ | initial condition |
+| $x = 0$ | $c = c_\text{in}$ | Dirichlet: the *value* is imposed |
+| $x = L$ | no flux through the face | homogeneous Neumann: the *flux* is imposed, equal to zero |
 
 ## 2. The equation, read as a balance
 
@@ -62,22 +62,22 @@ therefore change only by what flows in or out:
 
 The equation has two terms, and each one answers a separate question.
 
-- **The accumulation term** ``\partial(\varphi c)/\partial t`` answers *how fast does the
-  amount of tracer stored here change?* It is built on the **stored amount** ``\varphi c``.
-  ``c`` is counted per m³ of pore solution, but only the fraction ``\varphi`` of the medium
-  is solution, so ``\varphi c`` is the amount of tracer per m³ of *porous medium*
+- **The accumulation term** $\partial(\varphi c)/\partial t$ answers *how fast does the
+  amount of tracer stored here change?* It is built on the **stored amount** $\varphi c$.
+  $c$ is counted per m³ of pore solution, but only the fraction $\varphi$ of the medium
+  is solution, so $\varphi c$ is the amount of tracer per m³ of *porous medium*
   [mol/m³]. The accumulation term is its time derivative [mol/(m³·s)]: the rate at which
   that stored amount grows or shrinks. Keep the two apart. You will provide the stored
   amount, and the solver will take its time derivative.
-- **The flux** ``\mathbf{j}`` answers *how much tracer crosses a surface?* It is an
+- **The flux** $\mathbf{j}$ answers *how much tracer crosses a surface?* It is an
   amount per unit area per unit time [mol/(m²·s)]. Fick's law says that tracer moves from
   high to low concentration, which is where the minus sign comes from. The factor
-  ``\varphi`` is there because diffusion happens only through the pore solution.
-- **The divergence** ``\nabla \cdot \mathbf{j}`` is the net outflow per unit volume. When
+  $\varphi$ is there because diffusion happens only through the pore solution.
+- **The divergence** $\nabla \cdot \mathbf{j}$ is the net outflow per unit volume. When
   more tracer leaves a small volume than enters it, the stored amount decreases.
 
-Substituting ``\mathbf{j}`` gives the more familiar form
-``\varphi\, \partial c/\partial t = \nabla\cdot(D\varphi\nabla c)``. In one dimension:
+Substituting $\mathbf{j}$ gives the more familiar form
+$\varphi\, \partial c/\partial t = \nabla\cdot(D\varphi\nabla c)$. In one dimension:
 
 ```math
 \frac{\partial (\varphi\, c)}{\partial t} + \frac{\partial j}{\partial x} = 0,
@@ -85,10 +85,10 @@ Substituting ``\mathbf{j}`` gives the more familiar form
 j = -\,D\,\varphi\,\frac{\partial c}{\partial x}
 ```
 
-The boundary conditions can be stated in the same terms: ``c = c_\text{in}`` at ``x = 0``,
-and ``j = 0`` at ``x = L``.
+The boundary conditions can be stated in the same terms: $c = c_\text{in}$ at $x = 0$,
+and $j = 0$ at $x = L$.
 
-Why write the equation as a balance rather than as ``\partial c/\partial t = D\,\partial^2 c/\partial x^2``?
+Why write the equation as a balance rather than as $\partial c/\partial t = D\,\partial^2 c/\partial x^2$?
 Because the finite volume solver asks for exactly these two quantities, **separately**: the
 amount stored, and the flux. It handles the time derivative, the divergence and the rest by
 itself.
@@ -97,14 +97,14 @@ itself.
 
 ![The segment [0, L] split into nodes; each node has a control volume bounded by dashed lines; the edge between nodes K and L carries the flux.](assets/quickstart_discretization.svg)
 
-The grid places ``N`` nodes along ``[0, L]``. Each node ``K`` owns a **control volume**
-``\omega_K`` (orange), bounded by the midpoints between ``K`` and its neighbors (dashed
-lines). Two neighboring nodes ``K`` and ``L`` are joined by an **edge** (blue), and their
-control volumes touch at an interface ``\sigma_{KL}``.
+The grid places $N$ nodes along $[0, L]$. Each node $K$ owns a **control volume**
+$\omega_K$ (orange), bounded by the midpoints between $K$ and its neighbors (dashed
+lines). Two neighboring nodes $K$ and $L$ are joined by an **edge** (blue), and their
+control volumes touch at an interface $\sigma_{KL}$.
 
 The balance of section 2 is then written for each control volume. Integrate it over
-``\omega_K`` and replace the time derivative by a difference over one time step ``\Delta t``
-(implicit Euler, where ``n`` is the current step):
+$\omega_K$ and replace the time derivative by a difference over one time step $\Delta t$
+(implicit Euler, where $n$ is the current step):
 
 ```math
 \underbrace{\lvert\omega_K\rvert\;
@@ -123,22 +123,22 @@ s(c) = \varphi\, c,
 g(c_K, c_L) = D\,\varphi\,(c_K - c_L).
 ```
 
-``s`` is the stored amount. ``g`` comes from the flux through the interface: along the edge,
-``j = -D\varphi\,\partial c/\partial x \approx D\varphi\,(c_K - c_L)/h_{KL}``, and ``g`` is
-the numerator of that expression. It is positive when tracer goes from ``K`` to ``L``. In
-one dimension, ``\lvert\omega_K\rvert = h`` (``h/2`` at the two end nodes),
-``\lvert\sigma_{KL}\rvert = 1`` (the interface is a point, counted per unit cross-section),
-and ``h_{KL} = h``.
+Here $s$ is the stored amount. $g$ comes from the flux through the interface: along the edge,
+$j = -D\varphi\,\partial c/\partial x \approx D\varphi\,(c_K - c_L)/h_{KL}$, and $g$ is
+the numerator of that expression. It is positive when tracer goes from $K$ to $L$. In
+one dimension, $\lvert\omega_K\rvert = h$ ($h/2$ at the two end nodes),
+$\lvert\sigma_{KL}\rvert = 1$ (the interface is a point, counted per unit cross-section),
+and $h_{KL} = h$.
 
 This splits the work in two:
 
 | Piece of the discrete balance | In this problem | Provided by |
 |---|---|---|
-| stored amount ``s`` | ``\varphi\, c`` | **you**: `storage!` |
-| flux ``g`` between two neighboring nodes | ``D\varphi\,(c_K - c_L)`` | **you**: `flux!` |
-| boundary conditions | ``c = c_\text{in}`` at ``x = 0`` | **you**: `bcondition!` |
-| number and names of unknowns | one unknown, ``c`` | **you**: `nspecies`, `species_names` |
-| geometry ``\lvert\omega_K\rvert``, ``\lvert\sigma_{KL}\rvert``, ``h_{KL}`` | from the grid | VoronoiFVM |
+| stored amount $s$ | $\varphi\, c$ | **you**: `storage!` |
+| flux $g$ between two neighboring nodes | $D\varphi\,(c_K - c_L)$ | **you**: `flux!` |
+| boundary conditions | $c = c_\text{in}$ at $x = 0$ | **you**: `bcondition!` |
+| number and names of unknowns | one unknown, $c$ | **you**: `nspecies`, `species_names` |
+| geometry $\lvert\omega_K\rvert$, $\lvert\sigma_{KL}\rvert$, $h_{KL}$ | from the grid | VoronoiFVM |
 | time derivative, sum over neighbors, Jacobian, Newton iterations, step size | — | VoronoiFVM |
 
 Your functions never see a derivative, a mesh size or a loop. They describe the physics
@@ -222,16 +222,16 @@ The shape of `u` depends on where the callback is evaluated.
 
 - **`storage!` and `bcondition!` look at a single node.** There, `u` is a vector and
   `u[i]` is unknown number `i` at that node. With a single unknown, `u[1]` is the
-  concentration ``c`` at that node.
+  concentration $c$ at that node.
 - **`flux!` looks at an edge, which has two nodes.** There, `u` is a matrix and `u[i, j]`
   is unknown number `i` at node `j` **of the edge**, with `j = 1` or `2`. So `u[1, 1]` is
-  ``c_K`` and `u[1, 2]` is ``c_L`` (the blue labels in the figure above).
+  $c_K$ and `u[1, 2]` is $c_L$ (the blue labels in the figure above).
 
 | Expression | Callback | Meaning |
 |---|---|---|
-| `u[1]` | `storage!`, `bcondition!` | unknown 1 (``c``) at this node |
-| `u[1, 1]` | `flux!` | unknown 1 (``c``) at the first node of the edge, ``c_K`` |
-| `u[1, 2]` | `flux!` | unknown 1 (``c``) at the second node of the edge, ``c_L`` |
+| `u[1]` | `storage!`, `bcondition!` | unknown 1 ($c$) at this node |
+| `u[1, 1]` | `flux!` | unknown 1 ($c$) at the first node of the edge, $c_K$ |
+| `u[1, 2]` | `flux!` | unknown 1 ($c$) at the second node of the edge, $c_L$ |
 | `u[2, 1]` | `flux!`, model with two unknowns | unknown 2 at the first node of the edge |
 
 The first index counts unknowns, not nodes. In a model with two unknowns, for instance a
@@ -253,10 +253,10 @@ end
 nothing # hide
 ```
 
-This is the stored amount ``s(c) = \varphi c``, the quantity **inside**
-``\partial/\partial t``. It is not the accumulation term itself. From it, the solver builds
+This is the stored amount $s(c) = \varphi c$, the quantity **inside**
+$\partial/\partial t$. It is not the accumulation term itself. From it, the solver builds
 the accumulation term of the control volume: it computes
-``(s^n - s^{n-1})/\Delta t`` and multiplies it by ``\lvert\omega_K\rvert``. Returning
+$(s^n - s^{n-1})/\Delta t$ and multiplies it by $\lvert\omega_K\rvert$. Returning
 a time derivative from `storage!` would be wrong. The solver would differentiate it a second
 time.
 
@@ -272,12 +272,12 @@ end
 nothing # hide
 ```
 
-This is ``g(c_K, c_L) = D\varphi\,(c_K - c_L)``. The function returns a **difference** of
-node values, not a gradient, because the solver divides by the edge length ``h_{KL}``
+This is $g(c_K, c_L) = D\varphi\,(c_K - c_L)$. The function returns a **difference** of
+node values, not a gradient, because the solver divides by the edge length $h_{KL}$
 itself.
 
 The sign follows a convention: `f[1]` is the flux *from the first node to the second*. When
-``c_K > c_L`` it is positive, and tracer moves from ``K`` to ``L``, down the concentration
+$c_K > c_L$ it is positive, and tracer moves from $K$ to $L$, down the concentration
 gradient. That makes the sign easy to check. Writing `c_L - c_K` instead would make
 tracer flow toward high concentration, and the computation would blow up.
 
@@ -292,13 +292,13 @@ nothing # hide
 ```
 
 A grid numbers its boundaries by **region**. For a one-dimensional grid built with
-`simplexgrid`, region 1 is the left end (``x = 0``) and region 2 is the right end
-(``x = L``).
+`simplexgrid`, region 1 is the left end ($x = 0$) and region 2 is the right end
+($x = L$).
 
 `bcondition!` is called at **every** boundary node, in both regions. `boundary_dirichlet!`,
 a helper from VoronoiFVM, only acts when `bnode.region` equals the requested `region`. At
-``x = 0`` it adds a very large penalty term, proportional to ``c - c_\text{in}``, to the
-equation of that node, which forces ``c = c_\text{in}``. At ``x = L`` it does nothing.
+$x = 0$ it adds a very large penalty term, proportional to $c - c_\text{in}$, to the
+equation of that node, which forces $c = c_\text{in}$. At $x = L$ it does nothing.
 
 Doing nothing on a boundary means that **no flux crosses it**. The control volume of the
 last node has no neighbor on its right, so nothing is added to its balance through that
@@ -342,7 +342,7 @@ carries actual numbers.
 grid = simplexgrid(range(0, 1.0; length = 101))
 ```
 
-This grid has 101 nodes and 100 cells, so ``h = 0.01`` m.
+This grid has 101 nodes and 100 cells, so $h = 0.01$ m.
 
 ### 5.3 The system: where the model meets the solver
 
@@ -371,8 +371,8 @@ size(inival)
 ```
 
 `inival` is a matrix of size (number of unknowns) × (number of grid nodes), and `inival[i, k]`
-is unknown `i` at **grid** node `k`. Here, `inival[1, 1]` is ``c`` at the first grid node,
-at ``x = 0``.
+is unknown `i` at **grid** node `k`. Here, `inival[1, 1]` is $c$ at the first grid node,
+at $x = 0$.
 
 !!! warning "Same notation, different meaning"
     In `flux!`, the second index of `u[1, 1]` means *the first node of the edge*. In
@@ -406,22 +406,22 @@ all nodes:
 \Delta u = \max_k \big\lvert c_k^{n} - c_k^{n-1} \big\rvert
 ```
 
-- If ``\Delta u > 1.2\,\Delta u_\text{opt}``, the step is **rejected**. `Δt` is halved and
+- If $\Delta u > 1.2\,\Delta u_\text{opt}$, the step is **rejected**. `Δt` is halved and
   the step is computed again. The factor 1.2 is the `Δu_max_factor` option.
 - Otherwise the step is **accepted**, and the next `Δt` is scaled by
-  ``\Delta u_\text{opt}/\Delta u``, capped at a growth of 1.2 per step and at `Δt_max`.
+  $\Delta u_\text{opt}/\Delta u$, capped at a growth of 1.2 per step and at `Δt_max`.
 
 This rests on one assumption: **a shorter step gives a smaller change**. For diffusion that
-holds, since over one step ``\Delta u \approx \Delta t\,\partial c/\partial t``.
+holds, since over one step $\Delta u \approx \Delta t\,\partial c/\partial t$.
 
-#### Why the initial value at ``x = 0`` matters
+#### Why the initial value at $x = 0$ matters
 
-`bcondition!` imposes ``c = c_\text{in}`` at ``x = 0`` at the end of **every** step,
+`bcondition!` imposes $c = c_\text{in}$ at $x = 0$ at the end of **every** step,
 whatever its length. If `inival[1, 1]` were left at `0`, that node would go from `0` to
-`1` during the first step. The change would be ``\Delta u = 1`` whether `Δt` is 10⁴ s,
-1 s or 10⁻³ s. This jump is not an evolution in time. It is a discontinuity, at ``t = 0``,
+`1` during the first step. The change would be $\Delta u = 1$ whether `Δt` is 10⁴ s,
+1 s or 10⁻³ s. This jump is not an evolution in time. It is a discontinuity, at $t = 0$,
 between the initial state and the boundary condition, and no step size can resolve it. The
-controller keeps halving the step, sees ``\Delta u/\Delta u_\text{opt} = 10`` every time,
+controller keeps halving the step, sees $\Delta u/\Delta u_\text{opt} = 10$ every time,
 and gives up at `Δt_min`. With `verbose = "e"` in `SolverControl`, the solver prints:
 
 ```text
@@ -432,11 +432,11 @@ and gives up at `Δt_min`. With `verbose = "e"` in `SolverControl`, the solver p
 ERROR: Δt_min=0.001 reached while Δu/Δu_opt=10.0.
 ```
 
-Because ``\Delta u`` is a maximum over the nodes, that single boundary node blocks the whole
+Because $\Delta u$ is a maximum over the nodes, that single boundary node blocks the whole
 computation, even though the interior nodes barely move.
 
 With `inival[1, 1] = m.c_in`, the boundary node starts at its imposed value and does not
-move. The first step gives ``\Delta u = 9.8 \times 10^{-3}``, well below the threshold, and
+move. The first step gives $\Delta u = 9.8 \times 10^{-3}$, well below the threshold, and
 every step is accepted:
 
 ```text
@@ -469,8 +469,8 @@ On a semi-infinite medium, this problem has an exact solution:
 c(x, t) = c_\text{in}\,\operatorname{erfc}\!\left(\frac{x}{2\sqrt{D t}}\right)
 ```
 
-It applies here as long as the front, of width about ``2\sqrt{Dt}``, stays far from the
-sealed face. At ``t_\text{end}`` that width is 0.2 m, compared with ``L = 1`` m.
+It applies here as long as the front, of width about $2\sqrt{Dt}$, stays far from the
+sealed face. At $t_\text{end}$ that width is 0.2 m, compared with $L = 1$ m.
 
 ```@example quickstart
 using Plots
@@ -486,7 +486,7 @@ end
 p
 ```
 
-The porosity does not appear in the exact solution. On a homogeneous medium, ``\varphi``
+The porosity does not appear in the exact solution. On a homogeneous medium, $\varphi$
 multiplies both the accumulation and the flux, so it cancels. It no longer cancels across an
 interface between two materials of different porosity, which is why the model keeps it in
 both terms.
@@ -501,18 +501,18 @@ than a bare `0.0`.
 
 The models shipped with the package go one step further. Their parameter fields are
 type-parameterized instead of declared `Float64`, which lets a result be differentiated with
-respect to ``D`` or ``\varphi`` as well as ``u``. See
+respect to $D$ or $\varphi$ as well as $u$. See
 [Parameter identification](demos/parameter_identification.md).
 
 ## Summary
 
 | In the equation | In the discrete balance | Callback | Code |
 |---|---|---|---|
-| accumulation ``\partial(\varphi c)/\partial t``, built on the stored amount ``\varphi c`` | ``s(c_K)``, differenced in time by the solver | `storage!` | `f[1] = m.φ * u[1]` |
-| flux ``j = -D\varphi\,\partial c/\partial x`` | ``g(c_K, c_L)`` | `flux!` | `f[1] = m.D * m.φ * (u[1, 1] - u[1, 2])` |
-| ``c = c_\text{in}`` at ``x = 0`` | penalty at the boundary node | `bcondition!` | `boundary_dirichlet!(…; region = 1, value = m.c_in)` |
-| ``j = 0`` at ``x = L`` | nothing added | — | — |
-| one unknown ``c`` | size of `f` and of `u` | `nspecies`, `species_names` | `1`, `[:c]` |
+| accumulation $\partial(\varphi c)/\partial t$, built on the stored amount $\varphi c$ | $s(c_K)$, differenced in time by the solver | `storage!` | `f[1] = m.φ * u[1]` |
+| flux $j = -D\varphi\,\partial c/\partial x$ | $g(c_K, c_L)$ | `flux!` | `f[1] = m.D * m.φ * (u[1, 1] - u[1, 2])` |
+| $c = c_\text{in}$ at $x = 0$ | penalty at the boundary node | `bcondition!` | `boundary_dirichlet!(…; region = 1, value = m.c_in)` |
+| $j = 0$ at $x = L$ | nothing added | — | — |
+| one unknown $c$ | size of `f` and of `u` | `nspecies`, `species_names` | `1`, `[:c]` |
 
 ## Next
 

@@ -20,7 +20,7 @@
 # ```
 #
 # It is deliberately a model the package does not already contain, and it has an exact
-# solution — Ogata and Banks (1961) for a semi-infinite column with ``c(0,t) = c_0``:
+# solution — Ogata and Banks (1961) for a semi-infinite column with $c(0,t) = c_0$:
 #
 # ```math
 # \frac{c(x,t)}{c_0} = \frac{1}{2}\left[
