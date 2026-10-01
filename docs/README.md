@@ -26,7 +26,11 @@ nothing has to be installed system-wide; if it is not on `PATH`:
 PATH="$(dirname $(ls ~/.julia/artifacts/*/bin/npm | head -1)):$PATH" npm run docs:preview
 ```
 
-`npm run docs:dev` does the same with hot reload while editing.
+`npm run docs:dev` serves the generated Markdown with hot reload. It watches
+`docs/build/.documenter`, not `docs/src`. After changing source pages, the theme,
+or the page order in `docs/pages.jl`, rerun the Julia build above and restart the
+local server. This regenerates both menus and the previous/next page links;
+running only `npm run docs:build` keeps the old Documenter navigation.
 
 ## What is tracked here, and what is substituted
 
