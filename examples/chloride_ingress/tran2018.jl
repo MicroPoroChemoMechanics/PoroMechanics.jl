@@ -249,7 +249,7 @@ Builds two distinct chemical systems from cemdata18:
       - LDH-OH ss (M4A/M6A/M8A-OH-LDH) — cemdata18
 """
 function _init_chemistry_marks2015()
-    data_path = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data_path = datapath("cemdata18-thermofun.json")
     isfile(data_path) || error("cemdata18 introuvable : $data_path")
     @info "Loading cemdata18…"
     substances = build_species(data_path)

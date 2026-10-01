@@ -28,7 +28,7 @@ using Printf
 
 # ── Path to the cemdata18 database ────────────────────────────────────────────
 # pkgdir returns the root directory of ChemistryLab (works in dev mode)
-const CEMDATA18 = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+const CEMDATA18 = datapath("cemdata18-thermofun.json")
 
 # ── Solver: OptimaSolver (preferred) or Ipopt (fallback) ──────────────────────
 # Uncomment the line matching the solver available in your environment.

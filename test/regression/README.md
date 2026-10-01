@@ -137,10 +137,18 @@ profiles; the two certified dependency versions overlap at this scale.
 
 ![Adsorbed calcium before and after certifying transient chemistry](../../docs/src/assets/chloride_certified_regression.png)
 
+The reference was renewed again for ChemistryLab 0.28.2 with OptimaSolver 0.7.4, which
+replaced the patched 0.15.2 once ChemistryLab 0.25.0 took the patch upstream. Against the
+previous reference the new pair measured a relative L2 deviation of 2.77e-4 on the same
+Mac, every other case staying bit for bit. The cause is the data, not the solver:
+ChemistryLab 0.26.0 stopped shipping its databases and downloads Cemdata18 from its
+publisher, a release that differs from the one shipped before in ten species. Keeping the
+old reference would have left a margin of 3.6 under the 1e-3 tolerance to absorb a
+platform spread measured at 1.0e-4, so it was regenerated rather than tolerated.
+
 To reproduce the reference and checks from the repository root:
 
 ```sh
-julia +1.12 scripts/prepare_chemistrylab.jl
 julia +1.12 --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
 julia +1.12 --project=examples test/regression/generate.jl chloride_ingress
 julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["regression", "chemistry"])'

@@ -45,7 +45,6 @@ inventories. Specify water and aluminum through `fixed` when held constant.
 
 Requires `using ChemistryLab, DynamicQuantities` to activate the optional extension.
 Also load `OptimaSolver`, which provides ChemistryLab's certified solver.
-Use the patched ChemistryLab environment prepared by `scripts/prepare_chemistrylab.jl`.
 ChemistryLab owns the equilibrium solve, its certificate and implicit sensitivities.
 `D` denotes a bulk effective diffusivity, or a free-water diffusivity multiplied by
 `tortuosity = D_eff/D⁰`; no extra porosity factor is applied to the flux.

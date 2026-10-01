@@ -54,7 +54,7 @@ function potential_params(state; ϵ = 1.0e-16)
     T, P = state.T[], state.P[]
     RT = R_GAS * ustrip(us"K", T)
     g = [ustrip(us"J/mol", s[:ΔₐG⁰](T = T, P = P; unit = true)) / RT for s in state.system.species]
-    return (ΔₐG⁰overT = g, T = ustrip(us"K", T), P = ustrip(us"Pa", P), ϵ = ϵ)
+    return (ΔₐG⁰overRT = g, T = ustrip(us"K", T), P = ustrip(us"Pa", P), ϵ = ϵ)
 end
 
 """
@@ -95,7 +95,7 @@ function worst_mass_action_residual(state; presence = 1.0e-10)
 end
 
 @testset "ChemistryLab interface" begin
-    db = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    db = datapath("cemdata18-thermofun.json")
     substances = build_species(db)
     by_name = Dict(symbol(s) => s for s in substances)
 

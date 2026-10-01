@@ -854,12 +854,10 @@ p_sl
 # For segment diagnostics, also set `DRYING_VERBOSE=1`.
 #
 # !!! tip "Preparing a new checkout"
-#     The examples environment includes chemistry examples as well. Follow the repository
-#     dependency setup, including the local chemistry preparation, even though this
-#     particular model has no chemistry reactions:
+#     The examples environment includes chemistry examples as well, so it carries
+#     ChemistryLab even though this particular model has no chemistry reactions:
 #
 #     ```sh
-#     julia +1.12 scripts/prepare_chemistrylab.jl
 #     julia +1.12 --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
 #     ```
 #

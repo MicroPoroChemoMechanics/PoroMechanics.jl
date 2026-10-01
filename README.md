@@ -62,16 +62,16 @@ That is also why the chemistry stack is not a dependency of this package: nothin
 calls it. `ChemistryLab.jl` and `OptimaSolver.jl` are dependencies of `examples/` and of the
 test suite, where they are actually used.
 
-The examples and tests use ChemistryLab **0.15.2** with OptimaSolver **0.5** and
-an upstream sensitivity correction maintained as a local patch. Before using either
-environment on a fresh checkout, prepare the pinned source:
+The examples and tests use ChemistryLab **0.28.2** with OptimaSolver **0.7.4**, both
+from the General registry. ChemistryLab no longer ships its thermodynamic databases: the
+first call to `datapath("cemdata18-thermofun.json")` downloads Cemdata18 from its
+publisher, so it needs the network once (or `CHEMISTRYLAB_DATABASE_DIR`, or a copy
+installed with `install_database`).
 
 ```sh
-julia +1.12 scripts/prepare_chemistrylab.jl
 julia +1.12 --project=examples -e 'using Pkg; Pkg.instantiate()'
 ```
 
-See [patches/README.md](patches/README.md) for the correction and its validation.
 The example `examples/chloride_ingress/repro_equilibrated_transport.jl` checks a
 certified component equilibrium and its Jacobian; it does not validate a long-term
 reactive-transport profile.

@@ -62,8 +62,8 @@ relative_current = maximum(abs, current) / maximum(current_scale)
 #
 # ## Transporting inventories through local equilibrium
 #
-# This route needs the examples environment, including the patched ChemistryLab
-# dependency prepared by `julia scripts/prepare_chemistrylab.jl`. Load:
+# This route needs the examples environment, which carries ChemistryLab and
+# OptimaSolver. Load:
 #
 # ```julia
 # using PoroMechanics, ChemistryLab, DynamicQuantities, OptimaSolver

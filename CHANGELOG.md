@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Move to ChemistryLab 0.28.2 and OptimaSolver 0.7.4 from the General registry, and drop
+  the local sensitivity patch, its preparation script, the `[sources]` overrides and the
+  CI step: ChemistryLab 0.25.0 took the patch upstream. The equilibrium-coupled transport
+  tests that failed under unpatched 0.18.1 pass. Read Cemdata18 through `datapath`, since
+  ChemistryLab 0.26.0 downloads its databases instead of shipping them, and rename the
+  potential parameter `ΔₐG⁰overT` to `ΔₐG⁰overRT`. The downloaded Cemdata18 differs in ten
+  species, which moved the chloride signature by 2.77e-4; its reference is regenerated
+  (see `test/regression/README.md`). The OPC initial state still fails mass action.
+
 - Split the API reference into interfaces, physics models, constitutive laws and
   plasticity pages. This fixes the documentation build exceeding Documenter's
   200 KiB HTML page limit while preserving every API entry and the size checks.

@@ -6,7 +6,7 @@ using PoroMechanics, ChemistryLab, DynamicQuantities, ForwardDiff, OptimaSolver
 include("element_balance.jl")
 
 function opc_equilibrated_case(; chloride = 1.0)
-    substances = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+    substances = build_species(datapath("cemdata18-thermofun.json"))
     by_name = Dict(symbol(s) => s for s in substances)
     seeds = split("Portlandite ettringite monosulphate12 H2O@ Ca+2 OH- Cl- Na+ K+ H+ Al+3 SO4-2")
     aq = speciation(substances, seeds; aggregate_state = [AS_AQUEOUS])

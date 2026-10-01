@@ -196,7 +196,7 @@ end
 # ── cemdata18 chemical system initialisation ──────────────────────────────────
 
 function _init_chemistry_ternary()
-    data_path = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data_path = datapath("cemdata18-thermofun.json")
     isfile(data_path) || error("cemdata18 introuvable : $data_path")
     @info "Loading cemdata18…"
     substances = build_species(data_path)

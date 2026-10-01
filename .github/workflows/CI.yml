@@ -39,8 +39,6 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - name: Prepare ChemistryLab sensitivity correction
-        run: julia scripts/prepare_chemistrylab.jl
       # The moving Julia resolves everything from scratch, which is what catches an
       # unbounded dependency whose API moved under us — it is how the MeanFieldHomogenization
       # drift was found. Both manifests go before the build step, or `julia-buildpkg`

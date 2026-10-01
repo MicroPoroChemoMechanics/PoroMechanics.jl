@@ -260,7 +260,7 @@ The `chem_states` are `ChemicalState`s in moles per REV (V_REV = 1 dm³).
 """
 function init_chemistry(m::ChlorideModel2b, N_nodes::Int)
     # Path to the thermodynamic database (cemdata18)
-    data_path = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data_path = datapath("cemdata18-thermofun.json")
     if !isfile(data_path)
         error("Base cemdata18 introuvable : $data_path\n" *
               "Check the ChemistryLab.jl path.")
