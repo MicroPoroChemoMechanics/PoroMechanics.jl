@@ -4,8 +4,8 @@
 #
 # [MeanFieldHomogenization.jl](https://github.com/MicroPoroChemoMechanics/MeanFieldHomogenization.jl)
 # owns the estimate: given a microstructure and a scheme it returns a drained stiffness
-# ``\mathbb{C}^{\rm hom}``, and from it the Biot tensor ``\boldsymbol{B}`` and modulus
-# ``M``. This package owns the field problem: [`BiotPoroelastic`](@ref) consumes a Biot
+# $\mathbb{C}^{\rm hom}$, and from it the Biot tensor $\boldsymbol{B}$ and modulus
+# $M$. This package owns the field problem: [`BiotPoroelastic`](@ref) consumes a Biot
 # coefficient `b` and a storage modulus `N`, and knows nothing about where they came from.
 # The division is deliberate — a microstructure is not a boundary value problem, and the
 # two questions have different right answers about what to be general in.
@@ -26,8 +26,7 @@ using Printf
 # ## A porous solid
 #
 # Spherical pores in a uniform solid, Mori-Tanaka. Deliberately the simplest microstructure
-# that has a textbook answer: the pore space is isotropic, so ``\boldsymbol{B} = b\,
-# \boldsymbol{1}`` and the classical relations hold.
+# that has a textbook answer: the pore space is isotropic, so $\boldsymbol{B} = b\, \boldsymbol{1}$ and the classical relations hold.
 
 E_s, ν_s, φ = 60.0e9, 0.25, 0.20        # solid grain, and the porosity
 C_s = iso_stiffness_E_nu(E_s, ν_s)
@@ -56,7 +55,7 @@ E_hom = 9k_hom * G_hom / (3k_hom + G_hom)
 
 # ## The coefficient, computed twice
 #
-# MeanFieldHomogenization forms ``\boldsymbol{B}`` and ``1/M`` from the full tensors,
+# MeanFieldHomogenization forms $\boldsymbol{B}$ and $1/M$ from the full tensors,
 #
 # ```math
 # \boldsymbol{B} = \boldsymbol{1} : \left(\mathbb{I} - \mathbb{S}_{\rm s} : \mathbb{C}^{\rm hom}\right),
@@ -91,7 +90,7 @@ m = BiotPoroelastic(;
 
 # The Skempton coefficient comes out **above one**, which is not a bug in either package
 # and is worth pausing on. MeanFieldHomogenization's own documentation warns of it: its
-# ``1/M`` assumes an incompressible fluid, and with compressible grains the pore volume is
+# $1/M$ assumes an incompressible fluid, and with compressible grains the pore volume is
 # held fixed while the grains themselves compress, so an isotropic total stress can raise
 # the pore pressure by more than itself. The formula here — `skempton(m) = b / (N·K + b²)`
 # — was written from Biot's relations with no knowledge of that discussion, and reproduces
@@ -99,13 +98,13 @@ m = BiotPoroelastic(;
 # page has to offer.
 #
 # It also means the pairing carries an assumption that has to travel with it: a compressible
-# fluid adds ``\varphi/k_f`` to the storage, and neither `N` above nor `BiotPoroelastic`
+# fluid adds $\varphi/k_f$ to the storage, and neither `N` above nor `BiotPoroelastic`
 # will add it for you.
 
 # ## Where the bridge stops
 #
-# ``\boldsymbol{B}`` is a tensor, and it is anisotropic whenever the pore space is — which
-# is the normal case, not the exotic one. Penny-shaped cracks normal to ``e_3``:
+# Here $\boldsymbol{B}$ is a tensor, and it is anisotropic whenever the pore space is — which
+# is the normal case, not the exotic one. Penny-shaped cracks normal to $e_3$:
 
 rve_c = RVE(:solid)
 add_matrix!(rve_c, Ellipsoid(1.0), Dict(:C => C_s))

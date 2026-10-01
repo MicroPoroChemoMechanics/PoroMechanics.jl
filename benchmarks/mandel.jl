@@ -14,26 +14,26 @@
 #
 # ## Problem
 #
-# A sample ``-a \le x \le a``, ``-b \le y \le b`` in plane strain. At ``t = 0`` a constant
-# vertical force is applied through rigid plates at ``y = \pm b``; the faces ``x = \pm a``
-# are drained and traction-free. Only a quarter is meshed, ``x \in [0, a]``,
-# ``y \in [0, b]``, with symmetry conditions on the two inner edges.
+# A sample $-a \le x \le a$, $-b \le y \le b$ in plane strain. At $t = 0$ a constant
+# vertical force is applied through rigid plates at $y = \pm b$; the faces $x = \pm a$
+# are drained and traction-free. Only a quarter is meshed, $x \in [0, a]$,
+# $y \in [0, b]$, with symmetry conditions on the two inner edges.
 #
 # | Boundary | Condition |
 # |---|---|
-# | ``x = 0`` | symmetry: ``u_x = 0``, no flow |
-# | ``y = 0`` | symmetry: ``u_y = 0``, no flow |
-# | ``x = a`` | drained ``p = 0``, traction free |
-# | ``y = b`` | rigid plate: ``u_y`` uniform but unknown, carrying the total force ``F`` |
+# | $x = 0$ | symmetry: $u_x = 0$, no flow |
+# | $y = 0$ | symmetry: $u_y = 0$, no flow |
+# | $x = a$ | drained $p = 0$, traction free |
+# | $y = b$ | rigid plate: $u_y$ uniform but unknown, carrying the total force $F$ |
 #
 # The rigid plate is the whole difficulty. Its displacement is not prescribed and not free
 # either: every node on the top edge must share one unknown. That is imposed here with
-# Ferrite affine constraints tying each top ``u_y`` to a single master dof, on which the
+# Ferrite affine constraints tying each top $u_y$ to a single master dof, on which the
 # resultant force is applied.
 #
 # ## Reference solution
 #
-# With ``\alpha_n`` the positive roots of
+# With $\alpha_n$ the positive roots of
 #
 # ```math
 # \tan \alpha_n = \frac{1 - \nu}{\nu_u - \nu}\,\alpha_n
@@ -49,10 +49,10 @@
 #   \exp\!\left(-\frac{\alpha_n^2 c\, t}{a^2}\right)
 # ```
 #
-# and the initial value is uniform, ``p_0 = F B (1 + \nu_u) / (3a)``.
+# and the initial value is uniform, $p_0 = F B (1 + \nu_u) / (3a)$.
 #
-# Because ``(1-\nu)/(\nu_u-\nu) > 1``, the first root lies in ``(0, \pi/2)`` and the
-# remaining ones in ``(n\pi, n\pi + \pi/2)``. That first root is the dominant term; omitting
+# Because $(1-\nu)/(\nu_u-\nu) > 1$, the first root lies in $(0, \pi/2)$ and the
+# remaining ones in $(n\pi, n\pi + \pi/2)$. That first root is the dominant term; omitting
 # it — an easy mistake, since the later roots follow a tidier pattern — turns the solution
 # negative and destroys the overshoot.
 
@@ -60,8 +60,8 @@ include("biot_common.jl")
 
 # ## Model
 #
-# Parameters chosen for a pronounced effect: ``B = 5/7`` and ``\nu_u = 0.4`` against a
-# drained ``\nu = 0.2``. The overshoot grows with ``\nu_u - \nu``, and vanishes when the two
+# Parameters chosen for a pronounced effect: $B = 5/7$ and $\nu_u = 0.4$ against a
+# drained $\nu = 0.2$. The overshoot grows with $\nu_u - \nu$, and vanishes when the two
 # coincide.
 
 const MANDEL_MATERIAL = HomogeneousBiot(;
@@ -324,12 +324,12 @@ plt
 # - **The rigid plate is the physics** — replace the affine constraints by a uniform
 #   traction and the overshoot disappears entirely. The plate is what transfers load from
 #   the drained edges to the undrained core.
-# - **The first root** — with ``(1-\nu)/(\nu_u-\nu) > 1`` there is a root in
-#   ``(0, \pi/2)``, outside the ``(n\pi, n\pi + \pi/2)`` pattern of all the others. It is
+# - **The first root** — with $(1-\nu)/(\nu_u-\nu) > 1$ there is a root in
+#   $(0, \pi/2)$, outside the $(n\pi, n\pi + \pi/2)$ pattern of all the others. It is
 #   the slowest-decaying and therefore dominant term.
-# - **Series truncation at ``T = 0``** — the expansion converges slowly at very small time;
-#   at ``T \to 0`` the 60-term sum returns ``0.9955\,p_0`` rather than ``p_0``. The probe
-#   times start at ``T = 0.01``, where truncation is far below the discretisation error.
+# - **Series truncation at $T = 0$** — the expansion converges slowly at very small time;
+#   at $T \to 0$ the 60-term sum returns $0.9955\,p_0$ rather than $p_0$. The probe
+#   times start at $T = 0.01$, where truncation is far below the discretisation error.
 # - **Sparsity with affine constraints** — the matrix has to be allocated with
 #   `allocate_matrix(dh, ch)`, not `allocate_matrix(dh)`, or the master–slave couplings have
 #   nowhere to go.

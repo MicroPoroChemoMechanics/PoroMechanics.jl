@@ -7,11 +7,11 @@
 #
 # ## Why this case has a closed form
 #
-# Richards' equation is nonlinear because ``k_{rl}`` depends on the unknown. For Gardner's
+# Richards' equation is nonlinear because $k_{rl}$ depends on the unknown. For Gardner's
 # exponential law [gardner1958](@cite) the nonlinearity is removable: a change of variable
 # turns the steady equation into a *linear* first-order ODE.
 #
-# Take ``z`` upward, ``p_g = 0`` so that ``p_c = -p_l``, and write the vertical Darcy flux
+# Take $z$ upward, $p_g = 0$ so that $p_c = -p_l$, and write the vertical Darcy flux
 # (positive upward) as
 #
 # ```math
@@ -19,9 +19,9 @@
 # \qquad K_s = \frac{k_\text{int}}{\mu_l}
 # ```
 #
-# At steady state ``q`` is constant through the column. With
-# ``k_{rl} = \exp(-\alpha p_c) = \exp(\alpha p_l)`` and the substitution
-# ``v = \exp(\alpha p_l)``,
+# At steady state $q$ is constant through the column. With
+# $k_{rl} = \exp(-\alpha p_c) = \exp(\alpha p_l)$ and the substitution
+# $v = \exp(\alpha p_l)$,
 #
 # ```math
 # \frac{\mathrm{d}v}{\mathrm{d}z} = \alpha v \frac{\mathrm{d}p_l}{\mathrm{d}z}
@@ -29,8 +29,8 @@
 #   = -\frac{\alpha q}{K_s} - \alpha \rho_l g\, v
 # ```
 #
-# which is linear in ``v``. Integrating from a water table at ``z = 0`` where ``p_l = 0``,
-# hence ``v = 1``:
+# which is linear in $v$. Integrating from a water table at $z = 0$ where $p_l = 0$,
+# hence $v = 1$:
 #
 # ```math
 # \boxed{\;p_l(z) = \frac{1}{\alpha}
@@ -39,7 +39,7 @@
 # \beta = \alpha \rho_l g, \quad Q = \frac{q}{K_s \rho_l g}
 # ```
 #
-# ``Q`` is the flux scaled by the saturated gravity-driven flux; it is negative for
+# Here $Q$ is the flux scaled by the saturated gravity-driven flux; it is negative for
 # downward infiltration. For upward flux (evaporation) the bracket vanishes at a finite
 # height — the water table can only sustain evaporation up to that depth — which is the
 # physical content of Gardner's original paper.
@@ -136,11 +136,11 @@ end
 
 # ## Notes
 #
-# - **The steady state does not depend on the retention curve** — only on ``k_{rl}``. The
+# - **The steady state does not depend on the retention curve** — only on $k_{rl}$. The
 #   retention curve controls how the column *gets* there, not where it settles, which is
-#   why the closed form involves ``\alpha`` of the permeability alone.
+#   why the closed form involves $\alpha$ of the permeability alone.
 # - **Where the closed form stops existing** — for upward flux the bracket
-#   ``(1+Q)e^{-\beta z} - Q`` reaches zero at a finite height: a water table can only feed
+#   $(1+Q)e^{-\beta z} - Q$ reaches zero at a finite height: a water table can only feed
 #   evaporation down to a limited depth. `gardner_profile` returns `NaN` there rather than
 #   pretending.
 # - **Not a fitting curve** — Gardner's exponential law is chosen here because it makes the

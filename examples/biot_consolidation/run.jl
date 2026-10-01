@@ -17,11 +17,11 @@
 #
 # | Unknown | Meaning | Unit |
 # |:--|:--|:--|
-# | ``u_1`` | Horizontal displacement; positive to the right | m |
-# | ``u_2`` | Vertical displacement; positive upward | m |
-# | ``p`` | Liquid pore pressure relative to the reference pressure | Pa |
+# | $u_1$ | Horizontal displacement; positive to the right | m |
+# | $u_2$ | Vertical displacement; positive upward | m |
+# | $p$ | Liquid pore pressure relative to the reference pressure | Pa |
 #
-# The displacement vector is ``\mathbf u=(u_1,u_2)``. Pressure acts inside the pores;
+# The displacement vector is $\mathbf u=(u_1,u_2)$. Pressure acts inside the pores;
 # it is distinct from the external water force on the upstream surface. The model
 # accounts for both effects.
 #
@@ -39,24 +39,24 @@
 #
 # The file `ternay.msh` contains 479 nodes and 860 triangular cells, with two material
 # regions: concrete (physical surface `"1"`) and rock (`"2"`). Coordinates are in
-# meters. The water surface is at elevation ``H=517`` m and the dam-foundation
-# interface is at ``y=476`` m. The reservoir imposes
+# meters. The water surface is at elevation $H=517$ m and the dam-foundation
+# interface is at $y=476$ m. The reservoir imposes
 #
 # ```math
 # p_{\mathrm{hydro}}(y)=(\rho_l g)(H-y).
 # ```
 #
-# Using ``\rho_l g=10\,000`` Pa/m, the upstream pressure increases from zero at the
-# water surface to ``410\,000`` Pa, or ``0.41`` MPa, at the interface. The outward
-# unit normal is ``\mathbf n``: therefore an inward water force has traction
-# ``\mathbf t=-p_{\mathrm{hydro}}\mathbf n``. Traction is force per unit area.
+# Using $\rho_l g=10\,000$ Pa/m, the upstream pressure increases from zero at the
+# water surface to $410\,000$ Pa, or $0.41$ MPa, at the interface. The outward
+# unit normal is $\mathbf n$: therefore an inward water force has traction
+# $\mathbf t=-p_{\mathrm{hydro}}\mathbf n$. Traction is force per unit area.
 #
 # | Mesh tags | Hydraulic condition | Mechanical condition |
 # |:--|:--|:--|
-# | `101`–`105`, `121`: upstream | ``p=p_{\mathrm{hydro}}`` | ``\boldsymbol\sigma\mathbf n=-p_{\mathrm{hydro}}\mathbf n`` |
-# | `106`–`112`, `125`: downstream | ``p=0`` (drained boundary) | Zero applied traction |
-# | `122`, `124`: foundation sides | Zero normal flow | ``u_1=0``; vertical sliding is allowed |
-# | `123`: foundation base | Zero normal flow | ``u_1=u_2=0`` |
+# | `101`–`105`, `121`: upstream | $p=p_{\mathrm{hydro}}$ | $\boldsymbol\sigma\mathbf n=-p_{\mathrm{hydro}}\mathbf n$ |
+# | `106`–`112`, `125`: downstream | $p=0$ (drained boundary) | Zero applied traction |
+# | `122`, `124`: foundation sides | Zero normal flow | $u_1=0$; vertical sliding is allowed |
+# | `123`: foundation base | Zero normal flow | $u_1=u_2=0$ |
 #
 # A prescribed value is a **Dirichlet condition**. Zero flow and zero traction on
 # otherwise unconstrained boundaries are **natural conditions** of the weak form
@@ -105,7 +105,7 @@
 # ```
 #
 # Strain is dimensionless. For example, a bar lengthening by 1 mm over 1 m has axial
-# strain ``10^{-3}``. Positive volumetric strain ``\varepsilon_v`` denotes expansion;
+# strain $10^{-3}$. Positive volumetric strain $\varepsilon_v$ denotes expansion;
 # negative volumetric strain denotes compression.
 #
 # With tension taken as positive, the total stress is
@@ -117,24 +117,24 @@
 # \qquad \nabla\cdot\boldsymbol\sigma=\mathbf0.
 # ```
 #
-# Here ``\mathbf I`` is the identity tensor and ``b`` is the dimensionless Biot
+# Here $\mathbf I$ is the identity tensor and $b$ is the dimensionless Biot
 # coefficient. The minus sign makes positive pore pressure contribute compressive
-# stress. At fixed total load, changing ``p`` changes the load supported by the
+# stress. At fixed total load, changing $p$ changes the load supported by the
 # skeleton, so the displacement changes too. The Lamé constants are calculated from
-# Young's modulus ``E`` and Poisson's ratio ``\nu``:
+# Young's modulus $E$ and Poisson's ratio $\nu$:
 #
 # ```math
 # \lambda=\frac{E\nu}{(1+\nu)(1-2\nu)},\qquad
 # \mu=\frac{E}{2(1+\nu)}.
 # ```
 #
-# Do not confuse the shear modulus ``\mu`` [Pa] with liquid viscosity ``\mu_l``
-# [Pa·s]. Under plane strain, ``\varepsilon_{33}=0`` but
-# ``\sigma_{33}=\lambda(\varepsilon_{11}+\varepsilon_{22})-bp`` generally is not zero.
+# Do not confuse the shear modulus $\mu$ [Pa] with liquid viscosity $\mu_l$
+# [Pa·s]. Under plane strain, $\varepsilon_{33}=0$ but
+# $\sigma_{33}=\lambda(\varepsilon_{11}+\varepsilon_{22})-bp$ generally is not zero.
 #
 # ### Water storage and Darcy flow
 #
-# Let ``\zeta`` denote the change in fluid content: the additional fluid mass,
+# Let $\zeta$ denote the change in fluid content: the additional fluid mass,
 # divided by the reference liquid density and the reference bulk volume. It is
 # dimensionless: an equivalent fluid volume per initial bulk volume. Linear
 # poroelasticity writes, with pressure measured from the reference state,
@@ -145,15 +145,15 @@
 # ```
 #
 # The first term describes storage associated with deformation. The second describes
-# pressure-dependent storage at fixed strain. **``N`` is a storage coefficient**, in
-# Pa⁻¹; it is the inverse of the Biot modulus often denoted ``M`` in other texts.
-# ``\mathbf q`` is the Darcy volume flux **relative to the solid skeleton** [m/s],
+# pressure-dependent storage at fixed strain. **$N$ is a storage coefficient**, in
+# Pa⁻¹; it is the inverse of the Biot modulus often denoted $M$ in other texts.
+# $\mathbf q$ is the Darcy volume flux **relative to the solid skeleton** [m/s],
 # not the velocity of an individual water molecule or the mass flux. Intrinsic
-# permeability ``k_{\mathrm{int}}`` [m²] measures how easily the pore network
+# permeability $k_{\mathrm{int}}$ [m²] measures how easily the pore network
 # transmits water.
 #
 # As a sign check, consider a locally undrained compression: no water leaves, so
-# ``d\zeta=0``. Then ``dp=-(b/N)d\varepsilon_v``. A negative strain increment raises
+# $d\zeta=0$. Then $dp=-(b/N)d\varepsilon_v$. A negative strain increment raises
 # pressure. This simple calculation explains the coupling without assuming that
 # every point in this dam follows an undrained path.
 #
@@ -168,13 +168,13 @@
 #
 # Both terms have units s⁻¹. This is the constant-reference-density fluid mass balance
 # written in terms of fluid content. Together with force balance, it supplies three
-# scalar equations for ``u_1``, ``u_2``, and ``p``.
+# scalar equations for $u_1$, $u_2$, and $p$.
 #
 # ### Does the volume in the conservation law change?
 #
 # **Yes: the material deforms, but it is water mass that is conserved.** Imagine a
 # small piece of the dam whose boundary follows the solid skeleton. Call its current
-# domain ``V(t)``. Its volume can change, and water can cross its moving boundary.
+# domain $V(t)$. Its volume can change, and water can cross its moving boundary.
 # Without a fluid source, the exact integral balance is
 #
 # ```math
@@ -183,29 +183,29 @@
 # \qquad \mathbf q=\phi(\mathbf v_l-\mathbf v_s).
 # ```
 #
-# Here ``\phi`` is the current porosity, ``\rho_l`` the current liquid density,
-# and ``\mathbf v_l`` and ``\mathbf v_s`` the liquid and solid velocities.
+# Here $\phi$ is the current porosity, $\rho_l$ the current liquid density,
+# and $\mathbf v_l$ and $\mathbf v_s$ the liquid and solid velocities.
 # The integral on the left is the water mass inside the deforming piece; the one
 # on the right is its outward mass flow rate. The derivative includes the motion
-# of the domain, not just a change in ``\phi\rho_l`` at fixed coordinates. A boundary
+# of the domain, not just a change in $\phi\rho_l$ at fixed coordinates. A boundary
 # moving with the solid does not necessarily move with the water, which is why the
 # flux uses the relative velocity.
 #
-# To express this balance on an unchanged reference domain ``V_0``, introduce the
-# local volume ratio ``J=dV/dV_0``. The water mass per reference bulk volume is
-# ``J\phi\rho_l``, and the dimensionless change in fluid content is
+# To express this balance on an unchanged reference domain $V_0$, introduce the
+# local volume ratio $J=dV/dV_0$. The water mass per reference bulk volume is
+# $J\phi\rho_l$, and the dimensionless change in fluid content is
 #
 # ```math
 # \zeta=\frac{J\phi\rho_l-\phi_0\rho_{l0}}{\rho_{l0}}.
 # ```
 #
-# Subscript 0 denotes the reference state, where ``J=1``. Dividing by the fixed
-# reference density ``\rho_{l0}`` is a choice of units; it does not require the
+# Subscript 0 denotes the reference state, where $J=1$. Dividing by the fixed
+# reference density $\rho_{l0}$ is a choice of units; it does not require the
 # actual liquid to be incompressible. Notice that both changing pore volume and
 # changing liquid density can change the amount of water stored.
 #
-# In small-strain theory, ``J\simeq1+\varepsilon_v``. Linearizing the storage law
-# gives ``\zeta=b\varepsilon_v+Np``. Consistently linearizing the balance and flux
+# In small-strain theory, $J\simeq1+\varepsilon_v$. Linearizing the storage law
+# gives $\zeta=b\varepsilon_v+Np$. Consistently linearizing the balance and flux
 # about the reference state gives
 #
 # ```math
@@ -214,7 +214,7 @@
 #
 # Dots denote time derivatives following the reference material points. Thus the
 # fixed mesh used by this example does **not** assume a constant physical volume:
-# its first-order effect is retained through ``b\dot\varepsilon_v``. At finite
+# its first-order effect is retained through $b\dot\varepsilon_v$. At finite
 # deformation, one would need the full volume ratio and transformations of areas
 # and fluxes between current and reference configurations. Those geometric effects
 # are outside this linear example.
@@ -228,14 +228,14 @@
 #
 # | Situation | Consequence for the local balance | Interpretation |
 # |:--|:--|:--|
-# | Locally fixed volume: ``\dot\varepsilon_v=0`` | ``N\dot p+\nabla\cdot\mathbf q=0`` | Pressure-dependent storage remains even without bulk-volume change. |
-# | Locally undrained compression: ``d\zeta=0`` | ``dp=-(b/N)d\varepsilon_v`` | Water mass stays constant while compression raises pressure. |
+# | Locally fixed volume: $\dot\varepsilon_v=0$ | $N\dot p+\nabla\cdot\mathbf q=0$ | Pressure-dependent storage remains even without bulk-volume change. |
+# | Locally undrained compression: $d\zeta=0$ | $dp=-(b/N)d\varepsilon_v$ | Water mass stays constant while compression raises pressure. |
 #
 # For the first case, compressibility allows fluid exchange to change pressure
 # even though the bulk volume is fixed. For the second, imagine a sealed, uniformly
 # compressed small specimen. Sealing the exterior of a large heterogeneous domain
 # fixes its total water mass but does not prevent internal redistribution: it does
-# not by itself imply ``d\zeta=0`` at every point.
+# not by itself imply $d\zeta=0$ at every point.
 #
 # Our dam already has mechanical constraints: the foundation base is fixed and its
 # sides cannot move horizontally. These conditions do not set volumetric strain to
@@ -246,16 +246,16 @@
 #
 # | Symbol | Concrete | Rock | Unit | Meaning |
 # |:--|:--|:--|:--|:--|
-# | ``E`` | ``1.4\times10^{10}`` | ``1.8\times10^{10}`` | Pa | Elastic stiffness |
-# | ``\nu`` | 0.15 | 0.15 | — | Lateral strain response |
-# | ``k_{\mathrm{int}}`` | ``10^{-14}`` | ``10^{-11}`` | m² | Intrinsic permeability |
-# | ``b`` | 0.4 | 0.2 | — | Pressure–deformation coupling |
-# | ``N`` | ``10^{-10}`` | ``10^{-10}`` | Pa⁻¹ | Storage coefficient at fixed strain |
-# | ``\mu_l`` | ``10^{-3}`` | ``10^{-3}`` | Pa·s | Liquid viscosity |
+# | $E$ | $1.4\times10^{10}$ | $1.8\times10^{10}$ | Pa | Elastic stiffness |
+# | $\nu$ | 0.15 | 0.15 | — | Lateral strain response |
+# | $k_{\mathrm{int}}$ | $10^{-14}$ | $10^{-11}$ | m² | Intrinsic permeability |
+# | $b$ | 0.4 | 0.2 | — | Pressure–deformation coupling |
+# | $N$ | $10^{-10}$ | $10^{-10}$ | Pa⁻¹ | Storage coefficient at fixed strain |
+# | $\mu_l$ | $10^{-3}$ | $10^{-3}$ | Pa·s | Liquid viscosity |
 #
-# **The coefficient of consolidation ``c_v`` is not the effective storage.**
+# **The coefficient of consolidation $c_v$ is not the effective storage.**
 # To see the distinction, consider a separate, homogeneous one-dimensional column,
-# with deformation along ``y``, lateral strains held at zero, and axial total stress
+# with deformation along $y$, lateral strains held at zero, and axial total stress
 # held constant after a load increment. Its axial strain is its volumetric strain,
 # and the axial constitutive equation gives
 #
@@ -285,13 +285,13 @@
 #
 # | Quantity | Unit | Physical role |
 # |:--|:--|:--|
-# | ``N`` | Pa⁻¹ | Storage response to pressure at fixed strain |
-# | ``S_{\mathrm{eff}}`` | Pa⁻¹ | Storage response including the strain allowed by this column's mechanical conditions |
-# | ``c_v`` | m²/s | Diffusivity governing the redistribution of pressure |
+# | $N$ | Pa⁻¹ | Storage response to pressure at fixed strain |
+# | $S_{\mathrm{eff}}$ | Pa⁻¹ | Storage response including the strain allowed by this column's mechanical conditions |
+# | $c_v$ | m²/s | Diffusivity governing the redistribution of pressure |
 #
-# The extra term ``b^2/(\lambda+2\mu)`` is the mechanical contribution to effective
+# The extra term $b^2/(\lambda+2\mu)$ is the mechanical contribution to effective
 # storage. It follows from the stated column constraints; it is not a universal
-# replacement for ``N`` under any mechanical boundary conditions. The dam solver
+# replacement for $N$ under any mechanical boundary conditions. The dam solver
 # retains displacement and pressure as coupled unknowns and does not substitute
 # this scalar estimate for their equations.
 #
@@ -303,7 +303,7 @@
 # larger effective storage slows it down for a given permeability and viscosity.
 #
 # Balancing the time and space derivatives in the diffusion equation gives the
-# characteristic time for a drainage length ``L``:
+# characteristic time for a drainage length $L$:
 #
 # ```math
 # t_c\sim\frac{L^2}{c_v}.
@@ -316,13 +316,13 @@
 # boundary loading also acts alongside the mechanical reservoir force.
 #
 # The material values here give
-# ``c_v\approx0.0903`` m²/s for concrete and ``97.9`` m²/s for rock. For an illustrative
-# drainage length ``L=10`` m, the corresponding times are about 1,108 s (18.5 min) and
-# 1.02 s. Doubling ``L`` multiplies the estimate by four. These estimates explain why
+# $c_v\approx0.0903$ m²/s for concrete and $97.9$ m²/s for rock. For an illustrative
+# drainage length $L=10$ m, the corresponding times are about 1,108 s (18.5 min) and
+# 1.02 s. Doubling $L$ multiplies the estimate by four. These estimates explain why
 # rock responds faster; they are **not an analytical solution or a completion time
 # for this heterogeneous two-dimensional dam**.
 #
-# The default simulation lasts ``20\times100=2\,000`` s, or 33.3 min. A 100 s step
+# The default simulation lasts $20\times100=2\,000$ s, or 33.3 min. A 100 s step
 # cannot resolve a process occurring in approximately one second. Implicit integration
 # can remain stable with that step while missing the fast initial rock response.
 #
@@ -409,7 +409,7 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 #
 # The weak formulation transfers one spatial derivative to a **test function** by
 # integration by parts. It uses only first derivatives of the unknowns, and boundary
-# forces and fluxes appear explicitly. Here ``\Omega`` is the fixed reference domain
+# forces and fluxes appear explicitly. Here $\Omega$ is the fixed reference domain
 # of the small-strain model discussed above.
 #
 # Before discretization, requiring the weak equations for every admissible test
@@ -420,38 +420,38 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 #
 # ### Step 1: choose admissible test functions
 #
-# Let ``\mathbf v`` be a vector test function for displacement and ``w`` a scalar
+# Let $\mathbf v$ be a vector test function for displacement and $w$ a scalar
 # test function for pressure. A test function weights the residual of an equation;
 # requiring every such weighted integral to vanish expresses the balance throughout
-# the domain. Mechanically, ``\mathbf v`` can also be interpreted as a virtual
+# the domain. Mechanically, $\mathbf v$ can also be interpreted as a virtual
 # displacement. It is not the solid velocity and is not an additional unknown.
 #
 # Why must the tests vanish on prescribed-value boundaries? Suppose that
-# ``\mathbf u=\mathbf u_D`` is imposed there. A trial variation
-# ``\mathbf u+\eta\mathbf v`` must keep that value for any small scalar ``\eta``,
-# so the corresponding components of ``\mathbf v`` must be zero. Similarly,
-# ``p=p_D`` requires ``w=0``. The prescribed values themselves need not be zero.
+# $\mathbf u=\mathbf u_D$ is imposed there. A trial variation
+# $\mathbf u+\eta\mathbf v$ must keep that value for any small scalar $\eta$,
+# so the corresponding components of $\mathbf v$ must be zero. Similarly,
+# $p=p_D$ requires $w=0$. The prescribed values themselves need not be zero.
 #
 # | Field | Essential (Dirichlet) boundary | Natural boundary |
 # |:--|:--|:--|
-# | Displacement | Prescribe ``\mathbf u``; set the corresponding components of ``\mathbf v`` to zero | Prescribe traction ``\boldsymbol\sigma\mathbf n=\overline{\mathbf t}`` |
-# | Pressure | Prescribe ``p`` on ``\Gamma_p``; set ``w=0`` there | Prescribe outward flux ``\mathbf q\cdot\mathbf n=\overline q_n`` on ``\Gamma_q`` |
+# | Displacement | Prescribe $\mathbf u$; set the corresponding components of $\mathbf v$ to zero | Prescribe traction $\boldsymbol\sigma\mathbf n=\overline{\mathbf t}$ |
+# | Pressure | Prescribe $p$ on $\Gamma_p$; set $w=0$ there | Prescribe outward flux $\mathbf q\cdot\mathbf n=\overline q_n$ on $\Gamma_q$ |
 #
-# For displacement, the split is componentwise: on the foundation sides, ``u_1=0``
-# implies ``v_1=0``, while ``v_2`` is unrestricted and the vertical traction is zero.
+# For displacement, the split is componentwise: on the foundation sides, $u_1=0$
+# implies $v_1=0$, while $v_2$ is unrestricted and the vertical traction is zero.
 # At the fixed base, both test components vanish. Reactions at constrained components
 # are not prescribed tractions; they are determined by the solution.
 #
 # ### Step 2: integrate mechanical equilibrium by parts
 #
-# There is no body force in this example. Multiply ``\nabla\cdot\boldsymbol\sigma=0``
-# by ``\mathbf v`` and integrate:
+# There is no body force in this example. Multiply $\nabla\cdot\boldsymbol\sigma=0$
+# by $\mathbf v$ and integrate:
 #
 # ```math
 # 0=\int_\Omega\mathbf v\cdot(\nabla\cdot\boldsymbol\sigma)\,d\Omega.
 # ```
 #
-# Recall the one-dimensional identity ``\int v f'=[vf]-\int v'f``. The divergence
+# Recall the one-dimensional identity $\int v f'=[vf]-\int v'f$. The divergence
 # theorem gives its multidimensional counterpart:
 #
 # ```math
@@ -460,10 +460,10 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # -\int_\Omega\nabla\mathbf v:\boldsymbol\sigma\,d\Omega.
 # ```
 #
-# The boundary normal ``\mathbf n`` points outward. The colon is a tensor dot product:
-# ``A:B=\sum_{i,j}A_{ij}B_{ij}``. Since stress is symmetric, its contraction with the
-# antisymmetric part of ``\nabla\mathbf v`` is zero. Therefore
-# ``\nabla\mathbf v:\boldsymbol\sigma=\boldsymbol\varepsilon(\mathbf v):\boldsymbol\sigma``.
+# The boundary normal $\mathbf n$ points outward. The colon is a tensor dot product:
+# $A:B=\sum_{i,j}A_{ij}B_{ij}$. Since stress is symmetric, its contraction with the
+# antisymmetric part of $\nabla\mathbf v$ is zero. Therefore
+# $\nabla\mathbf v:\boldsymbol\sigma=\boldsymbol\varepsilon(\mathbf v):\boldsymbol\sigma$.
 # Moving the volume term to the other side gives the virtual-work identity
 #
 # ```math
@@ -471,9 +471,9 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # =\int_{\partial\Omega}\mathbf v\cdot(\boldsymbol\sigma\mathbf n)\,d\Gamma.
 # ```
 #
-# Now insert ``\boldsymbol\sigma=\mathsf C:\boldsymbol\varepsilon(\mathbf u)-bp\mathbf I``,
-# where ``\mathsf C`` is the elastic stiffness tensor encoded by ``\lambda`` and ``\mu``.
-# The identity ``\boldsymbol\varepsilon(\mathbf v):\mathbf I=\nabla\cdot\mathbf v``
+# Now insert $\boldsymbol\sigma=\mathsf C:\boldsymbol\varepsilon(\mathbf u)-bp\mathbf I$,
+# where $\mathsf C$ is the elastic stiffness tensor encoded by $\lambda$ and $\mu$.
+# The identity $\boldsymbol\varepsilon(\mathbf v):\mathbf I=\nabla\cdot\mathbf v$
 # explains the pressure coupling term. Tests vanish at prescribed displacement
 # components; the other boundary components contribute prescribed traction. Thus
 #
@@ -488,7 +488,7 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 #
 # Here the traction integral includes only unconstrained displacement components.
 # It is the internal virtual work balanced by external virtual work. In the dam,
-# the nonzero prescribed traction is ``\overline{\mathbf t}=-p_{\mathrm{hydro}}\mathbf n``
+# the nonzero prescribed traction is $\overline{\mathbf t}=-p_{\mathrm{hydro}}\mathbf n$
 # on the upstream boundary. `facet_load!` evaluates this right-hand side.
 # The minus sign in the pressure coupling comes from the stress law, not from the
 # choice of outward normal.
@@ -504,7 +504,7 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # \kappa=\frac{k_{\mathrm{int}}}{\mu_l}.
 # ```
 #
-# A dot denotes a time derivative. Multiply by the pressure test ``w``, integrate,
+# A dot denotes a time derivative. Multiply by the pressure test $w$, integrate,
 # and apply integration by parts **only to the flux divergence**:
 #
 # ```math
@@ -518,9 +518,9 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # ```
 #
 # Substituting Darcy's law makes the interior transport term positive:
-# ``-\nabla w\cdot\mathbf q=+\kappa\nabla w\cdot\nabla p``. The storage term already
+# $-\nabla w\cdot\mathbf q=+\kappa\nabla w\cdot\nabla p$. The storage term already
 # contains at most first spatial derivatives, so there is no need to integrate it
-# by parts. On ``\Gamma_p``, ``w=0``; on ``\Gamma_q``, the prescribed flux remains:
+# by parts. On $\Gamma_p$, $w=0$; on $\Gamma_q$, the prescribed flux remains:
 #
 # ```math
 # \boxed{
@@ -530,14 +530,14 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # }
 # ```
 #
-# The sign convention matters: ``\overline q_n>0`` denotes water leaving the body,
+# The sign convention matters: $\overline q_n>0$ denotes water leaving the body,
 # so it contributes negatively to the right-hand side. An imposed inflow has the
 # opposite sign. In this example the base and foundation sides have zero normal
-# flux, so ``\overline q_n=0`` and the hydraulic right-hand side vanishes.
+# flux, so $\overline q_n=0$ and the hydraulic right-hand side vanishes.
 #
 # **A zero test function on a prescribed-pressure boundary does not mean zero flow
 # there.** Upstream and downstream water exchange is determined by the solution.
-# Its boundary integral vanishes in this weak equation because ``w=0`` there,
+# Its boundary integral vanishes in this weak equation because $w=0$ there,
 # not because the physical flux is zero. The prescribed pressure values still
 # enter the solution through the Dirichlet constraints.
 #
@@ -556,20 +556,20 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # both materials on one shared mesh, using each cell's own coefficients. We do not
 # differentiate permeability across its jump as if it were a smooth function.
 #
-# The mechanical pressure term is negative, ``-\int b(\nabla\cdot\mathbf v)p``;
-# the deformation-storage term is positive, ``+\int wb\nabla\cdot\dot{\mathbf u}``.
+# The mechanical pressure term is negative, $-\int b(\nabla\cdot\mathbf v)p$;
+# the deformation-storage term is positive, $+\int wb\nabla\cdot\dot{\mathbf u}$.
 # These are the origins of the opposite coupling signs in the matrices below.
 #
 # ### One triangle, nine degrees of freedom
 #
 # “P1” means a polynomial of degree one: each field varies linearly over a triangle.
 # There are three nodal pressure values and two displacement components at each of
-# three nodes: ``3+2\times3=9`` local degrees of freedom. Neighboring cells share
+# three nodes: $3+2\times3=9$ local degrees of freedom. Neighboring cells share
 # nodal values. With 479 nodes, this gives 1,437 global degrees of freedom before
 # constraints are imposed.
 #
-# Write the vector displacement shape functions as ``\mathbf V_i`` and scalar
-# pressure shape functions as ``\phi_j``. Approximate the fields by
+# Write the vector displacement shape functions as $\mathbf V_i$ and scalar
+# pressure shape functions as $\phi_j$. Approximate the fields by
 #
 # ```math
 # \mathbf u_h=\sum_j\mathbf V_j U_j,\qquad
@@ -577,12 +577,12 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # ```
 #
 # In the Galerkin method, choose each basis function in turn as a test:
-# ``\mathbf v=\mathbf V_i`` for the mechanical rows and ``w=\phi_i`` for the hydraulic
+# $\mathbf v=\mathbf V_i$ for the mechanical rows and $w=\phi_i$ for the hydraulic
 # rows, with the prescribed-value constraints accounted for. Substitution into the
-# two weak equations gives a finite system for the nodal coefficients ``U_j`` and
-# ``P_j``. For example, the diffusion integral becomes
-# ``\sum_j P_j\int_{\Omega_e}\kappa\nabla\phi_i\cdot\nabla\phi_j\,d\Omega``:
-# the integral is a matrix entry, and ``P_j`` is an unknown coefficient.
+# two weak equations gives a finite system for the nodal coefficients $U_j$ and
+# $P_j$. For example, the diffusion integral becomes
+# $\sum_j P_j\int_{\Omega_e}\kappa\nabla\phi_i\cdot\nabla\phi_j\,d\Omega$:
+# the integral is a matrix entry, and $P_j$ is an unknown coefficient.
 # The four element blocks are
 #
 # ```math
@@ -595,20 +595,20 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 # \end{aligned}
 # ```
 #
-# Their sizes are respectively ``6\times6``, ``6\times3``, ``3\times3``, and
-# ``3\times3``. Ferrite evaluates these integrals by **quadrature**, a weighted sum
+# Their sizes are respectively $6\times6$, $6\times3$, $3\times3$, and
+# $3\times3$. Ferrite evaluates these integrals by **quadrature**, a weighted sum
 # at points inside each cell. `shape_value` returns a basis function's value,
 # `shape_gradient` its spatial gradient, and `getdetJdV` the geometric integration
 # weight. `reinit!` updates these quantities for the current cell.
 #
-# The implementation stores two matrices, with local unknown order ``[\mathbf U;P]``:
+# The implementation stores two matrices, with local unknown order $[\mathbf U;P]$:
 #
 # ```math
 # K_1=\begin{bmatrix}K_{uu}&-K_{up}\\0&K_{pp}\end{bmatrix},\qquad
 # K_2=\begin{bmatrix}0&0\\K_{up}^{\mathsf T}&M_{pp}\end{bmatrix}.
 # ```
 #
-# Thus ``K_1 X+K_2\dot X=F``: mechanics has no inertial or time-derivative term,
+# Thus $K_1 X+K_2\dot X=F$: mechanics has no inertial or time-derivative term,
 # whereas fluid content changes with both displacement and pressure. The opposite
 # coupling signs follow directly from stress and storage; they are not arbitrary.
 # The package function `biot_element_matrices!` implements these four blocks.
@@ -617,7 +617,7 @@ p_hydro(m::BiotModel, y::Real) = m.rho_g * (m.H - y)
 
 # ## 6. Apply the reservoir force
 #
-# The following callback integrates ``\mathbf V_i\cdot\mathbf t`` over an upstream
+# The following callback integrates $\mathbf V_i\cdot\mathbf t$ over an upstream
 # facet (an edge in two dimensions). `getnormal` supplies the outward normal, and
 # `spatial_coordinate` supplies the elevation used for hydrostatic pressure. Pressure
 # Dirichlet conditions will be added separately: imposing a pore pressure does not
@@ -650,11 +650,11 @@ end
 # The solver first reads the mesh and creates a `DofHandler` for `:u` and `:p`.
 # A `ConstraintHandler` records prescribed values. Cell contributions are added to
 # global sparse matrices through `assemble!`, using `celldofs` to find their positions.
-# The matrices ``K_1`` and ``K_2`` are assembled once because the material laws and
+# The matrices $K_1$ and $K_2$ are assembled once because the material laws and
 # geometry are constant.
 #
-# **Backward Euler** replaces ``\dot X`` at the new time by
-# ``(X^{n+1}-X^n)/\Delta t``. Rearranging gives the actual linear system in the code:
+# **Backward Euler** replaces $\dot X$ at the new time by
+# $(X^{n+1}-X^n)/\Delta t$. Rearranging gives the actual linear system in the code:
 #
 # ```math
 # \underbrace{\left(K_1+\frac{K_2}{\Delta t}\right)}_{A}X^{n+1}
@@ -884,7 +884,7 @@ result = run_biot()
 # ## 9. Numerical limitations and checks
 #
 # This is an **equal-order P1/P1** mixed discretization without an added pressure
-# stabilization term. Positive storage ``N`` helps regularize the pressure equations,
+# stabilization term. Positive storage $N$ helps regularize the pressure equations,
 # but does not guarantee freedom from spurious pressure oscillations. Small time
 # steps, low permeability, and nearly incompressible or undrained limits can expose
 # mixed-element stability problems. Ferrite's
@@ -916,22 +916,22 @@ result = run_biot()
 # convergence. MOOSE's
 # [poroelasticity verification examples](https://mooseframework.inl.gov/modules/porous_flow/tests/poro_elasticity/poro_elasticity_tests.html)
 # provide additional examples of checking storage and deformation against analytical
-# solutions, using the alternative notation ``1/M`` for our ``N``.
+# solutions, using the alternative notation $1/M$ for our $N$.
 #
 # ## 10. Short exercises
 #
-# - **Pressure and units:** compute the upstream pressure at ``y=500`` m. You should
-#   obtain ``170\,000`` Pa = ``0.17`` MPa. Explain why the applied traction points inward.
+# - **Pressure and units:** compute the upstream pressure at $y=500$ m. You should
+#   obtain $170\,000$ Pa = $0.17$ MPa. Explain why the applied traction points inward.
 # - **Coupling sign:** for concrete, take an undrained volumetric strain increment
-#   of ``-10^{-5}``. Using the local storage relation gives ``dp=40\,000`` Pa.
+#   of $-10^{-5}$. Using the local storage relation gives $dp=40\,000$ Pa.
 #   Explain why this is an illustrative local calculation, not a predicted dam profile.
 # - **Constraints and drainage:** can a specimen have fixed bulk volume while still
 #   exchanging water? Write the reduced mass balance and identify the storage term
 #   that remains. Does fixing the base of a dam impose that condition everywhere?
-# - **Storage versus diffusivity:** check the units of ``S_{\mathrm{eff}}`` and
-#   ``c_v``. At fixed permeability, viscosity, and drainage length, what happens to
-#   ``c_v`` and ``t_c`` if the effective storage doubles?
-# - **Drainage length:** use ``L=20`` m in the time-scale estimate. Why is the estimate
+# - **Storage versus diffusivity:** check the units of $S_{\mathrm{eff}}$ and
+#   $c_v$. At fixed permeability, viscosity, and drainage length, what happens to
+#   $c_v$ and $t_c$ if the effective storage doubles?
+# - **Drainage length:** use $L=20$ m in the time-scale estimate. Why is the estimate
 #   four times larger than at 10 m even though material coefficients are unchanged?
 # - **Time resolution:** compare 100 s, 50 s, and 25 s steps, all ending at 2,000 s.
 #   Examine pressure and displacement separately, including profiles rather than

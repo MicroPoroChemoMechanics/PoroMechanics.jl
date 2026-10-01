@@ -10,13 +10,13 @@
 # nowhere to hide:
 #
 # * **the mesh** — Bil's own `columncomposite.msh`, read through `read_gmsh_simplexgrid`,
-#   so node ``i`` here is node ``i`` there and nothing is interpolated;
+#   so node $i$ here is node $i$ there and nothing is interpolated;
 # * **the retention curve** — `billes`, the table Bil interpolated, read back rather than
 #   refitted to a Van Genuchten;
 # * **the initial state** — hydrostatic, agreeing with Bil's `t0` file to 1.4e-7, which is
 #   exactly the seven significant digits Bil prints.
 #
-# And yet the two codes were 3.4 % apart at ``t = 600`` s. This page is about that number.
+# And yet the two codes were 3.4 % apart at $t = 600$ s. This page is about that number.
 #
 # ## The first answer was wrong
 #
@@ -24,7 +24,7 @@
 # work: our own answer converges cleanly — first order, the error halving as the step halves
 # — and the gap to Bil settles at 2.9 % and stays there.
 #
-# | our ``\Delta t_{max}`` [s] | gap to Bil's shipped output | gap to our own limit |
+# | our $\Delta t_{max}$ [s] | gap to Bil's shipped output | gap to our own limit |
 # |---:|---:|---:|
 # | 20 | 3.82e-2 | 9.63e-3 |
 # | 10 | 3.35e-2 | 4.88e-3 |
@@ -61,14 +61,14 @@
 # refined**, not the other way round.
 #
 # It also explains the shape of the discrepancy over time, which nothing else did: zero at
-# ``t = 0``, largest at ``t = 600`` s where ``k_{rl}`` changes fastest between steps — the
+# $t = 0$, largest at $t = 600$ s where $k_{rl}$ changes fastest between steps — the
 # `billes` curve takes it from 1 to 2.6e-8 across 500 Pa of suction — and decaying to 0.4 %
-# by ``t = 3000`` s once the column has stopped moving.
+# by $t = 3000$ s once the column has stopped moving.
 #
 # ## The decisive experiment
 #
 # `run_bil` can rewrite a deck before running it, so Bil's `Dtmax` can be forced down and
-# the answer watched. Measured at ``t = 600`` s, against our converged solution:
+# the answer watched. Measured at $t = 600$ s, against our converged solution:
 #
 # | Bil `Dtmax` [s] | Bil's runtime | gap to our converged answer |
 # |---:|---:|---:|
@@ -99,8 +99,8 @@
 #
 # At `Dtmax = 1` s the two codes are 7.2e-4 apart, and that residual is still falling with
 # the step — there is no plateau yet. Whatever separates a Galerkin finite element
-# discretisation (Bil evaluates the gradient and ``k_{rl}`` at quadrature points) from a
-# two-point finite volume one on the Voronoi dual (we evaluate ``k_{rl}`` at the mean
+# discretisation (Bil evaluates the gradient and $k_{rl}$ at quadrature points) from a
+# two-point finite volume one on the Voronoi dual (we evaluate $k_{rl}$ at the mean
 # capillary pressure of the edge) is **below 7e-4 on this mesh** — an order of magnitude
 # under the time error that had been hiding it.
 #
@@ -115,7 +115,7 @@
 # 2.8 % discretisation error — a test that passes for the wrong reason and would keep passing
 # through a real regression of the same size. `test/bil/cases.jl` freezes a Bil run with
 # `Dtmax = 1` s instead, and the tolerance drops from 5e-2 to 1e-2, most of which is our own
-# step at the ``\Delta t_{max} = 10`` s the test runs at.
+# step at the $\Delta t_{max} = 10$ s the test runs at.
 #
 # The general lesson, for the models still to be compared: **a reference case is not
 # automatically a converged one.** The decks in `base/` were written to demonstrate a model,

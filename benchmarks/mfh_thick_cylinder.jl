@@ -25,7 +25,7 @@ include("cylinder_common.jl")
 
 # ## The microstructure
 #
-# Matrix ``k = 30`` GPa, ``\mu = 18`` GPa; inclusions ``k = 120`` GPa, ``\mu = 80`` GPa at a
+# Matrix $k = 30$ GPa, $\mu = 18$ GPa; inclusions $k = 120$ GPa, $\mu = 80$ GPa at a
 # volume fraction of 25 %. Spherical, so the result is isotropic and Lamé applies unchanged.
 
 rve = RVE(:matrix)
@@ -56,13 +56,13 @@ end
 
 # | radial elements | 24 | 48 | 96 |
 # |:--|--:|--:|--:|
-# | here, ``\max\lvert u_r - u_r^{\rm Lamé}\rvert / \max\lvert u_r^{\rm Lamé}\rvert`` | 1.6083·10⁻² | 4.2464·10⁻³ | 1.0775·10⁻³ |
+# | here, $\max\lvert u_r - u_r^{\text{Lamé}}\rvert / \max\lvert u_r^{\text{Lamé}}\rvert$ | 1.6083·10⁻² | 4.2464·10⁻³ | 1.0775·10⁻³ |
 # | MeanFieldHomogenization, same quantity | 1.6·10⁻² | 4.3·10⁻³ | 1.1·10⁻³ |
 #
 # The same numbers, to the precision the other page prints. That is the expected outcome
 # rather than a surprise, and the reason is the point: with a structured radial mesh the
 # error of this problem is the piecewise-linear interpolation error of a field that depends
-# on ``r`` alone. Both computations divide the same ``[0.1, 1]`` into the same number of
+# on $r$ alone. Both computations divide the same $[0.1, 1]$ into the same number of
 # radial elements, so both should land on the same number — and anything either code added
 # on top of that unavoidable error would show up as a discrepancy. None does.
 #
@@ -79,7 +79,7 @@ end
 # available there too. What it does mean is that the check is cheap enough to sit in the
 # test suite, which is where `test/benchmarks.jl` puts it.
 #
-# The one thing genuinely gained here is exactness in ``\theta``: a straight-edged Q1
+# The one thing genuinely gained here is exactness in $\theta$: a straight-edged Q1
 # annulus approximates the circular boundary, whereas a radial strip has no circumferential
 # discretisation at all. At these resolutions the difference is below the printed digits,
 # which the agreement above demonstrates rather than assumes.

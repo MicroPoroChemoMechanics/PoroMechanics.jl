@@ -23,17 +23,17 @@
 #
 # Imagine a long cylindrical canister. We neglect variations along its axis and around
 # its circumference: every point at the same radius behaves alike. This is
-# **axisymmetry**. We only need the radial coordinate ``r``, although the material still
+# **axisymmetry**. We only need the radial coordinate $r$, although the material still
 # occupies a three-dimensional cylindrical shell.
 #
 # The canister interior is outside the computational domain. Its surface supplies heat
 # to a clay buffer, which is surrounded by host rock. The outer boundary represents a
 # reservoir maintained at fixed pressures and temperature.
 #
-# | Part | Radial extent | Porosity ``\phi`` | Permeability ``k_{\rm int}`` |
+# | Part | Radial extent | Porosity $\phi$ | Permeability $k_{\rm int}$ |
 # |:---|:---|:---|:---|
-# | Clay, material region 1 | 0.425–1.225 m | 0.30 | ``10^{-20}`` m² |
-# | Rock, material region 2 | 1.225–10 m | 0.05 | ``10^{-19}`` m² |
+# | Clay, material region 1 | 0.425–1.225 m | 0.30 | $10^{-20}$ m² |
+# | Rock, material region 2 | 1.225–10 m | 0.05 | $10^{-19}$ m² |
 #
 # **Porosity** is the fraction of total volume occupied by pores. **Intrinsic
 # permeability** measures how readily a connected pore network lets fluid pass. These
@@ -47,9 +47,9 @@
 # an aggregate state; a **component** identifies material that we track. Water therefore
 # belongs to two phases, but it is one conserved component.
 #
-# The liquid saturation ``S_l`` is the fraction of **pore volume** occupied by liquid.
-# Thus ``S_g = 1-S_l`` is the gas saturation. In a 1 m³ sample with ``\phi=0.30`` and
-# ``S_l=0.80``, there are 0.24 m³ of liquid, 0.06 m³ of gas, and 0.70 m³ of solid.
+# The liquid saturation $S_l$ is the fraction of **pore volume** occupied by liquid.
+# Thus $S_g = 1-S_l$ is the gas saturation. In a 1 m³ sample with $\phi=0.30$ and
+# $S_l=0.80$, there are 0.24 m³ of liquid, 0.06 m³ of gas, and 0.70 m³ of solid.
 # Saturation 0.80 does **not** mean that 80% of the whole sample is water.
 #
 # We idealize the solid as rigid: porosity and geometry stay fixed. Liquid density and
@@ -63,27 +63,27 @@
 # An **initial condition** sets the state everywhere at time zero. A **boundary
 # condition** describes exchanges with the surroundings throughout the calculation.
 #
-# | Initial material | Liquid pressure ``p_l`` | Air partial pressure ``p_a`` | Temperature ``T`` |
+# | Initial material | Liquid pressure $p_l$ | Air partial pressure $p_a$ | Temperature $T$ |
 # |:---|---:|---:|---:|
 # | Clay | −76.11655 MPa | 0.09225595 MPa | 323 K |
 # | Rock | 4.905 MPa | 4.891671 MPa | 323 K |
 #
-# Here 1 MPa = ``10^6`` Pa and 323 K is about 50 °C. The negative liquid pressure is the
+# Here 1 MPa = $10^6$ Pa and 323 K is about 50 °C. The negative liquid pressure is the
 # model's representation of water under capillary tension; it is not a negative gas
 # pressure. Whether such large tensions are physically sustainable depends on the
 # material and on effects such as cavitation that this model does not include.
 #
 # | Boundary | Prescribed condition | Physical interpretation |
 # |:---|:---|:---|
-# | Canister, ``r=0.425`` m | Incoming heat flux ``Q_{\rm in}(t)``; zero water and air fluxes | Heat crosses the wall; matter does not |
-# | Outer rock, ``r=10`` m | ``p_l=4.905`` MPa, ``p_a=4.891671`` MPa, ``T=323`` K | A reservoir can supply or remove water, air, and heat |
+# | Canister, $r=0.425$ m | Incoming heat flux $Q_{\rm in}(t)$; zero water and air fluxes | Heat crosses the wall; matter does not |
+# | Outer rock, $r=10$ m | $p_l=4.905$ MPa, $p_a=4.891671$ MPa, $T=323$ K | A reservoir can supply or remove water, air, and heat |
 #
 # Prescribing a value is a **Dirichlet** condition; prescribing a flux is a **Neumann**
 # condition. A heat flux in W/m² is power per area, not a temperature. The canister wall
 # will find its own temperature as the coupled equations evolve.
 #
-# The supplied table contains cumulative heat ``F(t)`` in J/m². Its slope gives
-# ``Q_{\rm in}=dF/dt``: approximately 349 W/m² during the first ten years, decreasing
+# The supplied table contains cumulative heat $F(t)$ in J/m². Its slope gives
+# $Q_{\rm in}=dF/dt$: approximately 349 W/m² during the first ten years, decreasing
 # in steps afterward. Only the boundary injects this heat; there is no radioactive heat
 # source inside the clay or rock.
 #
@@ -95,27 +95,27 @@
 # \mathbf{u}(r,t)=\begin{pmatrix}p_l\\p_a\\T\end{pmatrix}.
 # ```
 #
-# The vapor pressure ``p_v``, gas pressure ``p_g``, and saturation are **derived
+# The vapor pressure $p_v$, gas pressure $p_g$, and saturation are **derived
 # quantities**: constitutive laws calculate them from these three unknowns. A
 # constitutive law describes a material's response and supplies the information that
 # conservation alone cannot provide.
 #
 # | Symbol | Meaning | Unit |
 # |:---|:---|:---|
-# | ``p_a``, ``p_v`` | Partial pressures of air and vapor in the same gas mixture | Pa |
-# | ``p_g=p_a+p_v`` | Total gas pressure | Pa |
-# | ``p_c=p_g-p_l`` | Capillary pressure, the gas–liquid pressure difference | Pa |
-# | ``\rho_l,\rho_v,\rho_a`` | Liquid density and gas-component densities | kg/m³ of the corresponding phase |
-# | ``M_l,M_v,M_a,M_{ad}`` | Liquid water, vapor, gaseous air, and dissolved air inventories | kg/m³ of porous medium |
-# | ``W_l,W_v,W_a,W_{ad}`` | Radial mass fluxes, positive outward | kg/(m²·s) |
-# | ``s_l,s_v,s_a`` | Specific entropies | J/(kg·K) |
-# | ``S_{\rm sys}``, ``J_s`` | Entropy per bulk volume and its radial flux | J/(m³·K), W/(m²·K) |
+# | $p_a$, $p_v$ | Partial pressures of air and vapor in the same gas mixture | Pa |
+# | $p_g=p_a+p_v$ | Total gas pressure | Pa |
+# | $p_c=p_g-p_l$ | Capillary pressure, the gas–liquid pressure difference | Pa |
+# | $\rho_l,\rho_v,\rho_a$ | Liquid density and gas-component densities | kg/m³ of the corresponding phase |
+# | $M_l,M_v,M_a,M_{ad}$ | Liquid water, vapor, gaseous air, and dissolved air inventories | kg/m³ of porous medium |
+# | $W_l,W_v,W_a,W_{ad}$ | Radial mass fluxes, positive outward | kg/(m²·s) |
+# | $s_l,s_v,s_a$ | Specific entropies | J/(kg·K) |
+# | $S_{\rm sys}$, $J_s$ | Entropy per bulk volume and its radial flux | J/(m³·K), W/(m²·K) |
 #
 # ### Capillary retention: how much water stays in the pores?
 #
 # Capillary forces allow small pores to hold water while gas occupies other pores. The
-# **retention curve** gives ``S_l`` as a function of capillary pressure. In this example,
-# a larger positive ``p_c`` generally means less liquid water. Each material has its own
+# **retention curve** gives $S_l$ as a function of capillary pressure. In this example,
+# a larger positive $p_c$ generally means less liquid water. Each material has its own
 # curve, so equal pressures on the two sides of the interface need not mean equal
 # saturations.
 #
@@ -127,14 +127,14 @@
 # p_{c0}=\frac{p_c}{1-\alpha_T(T-T_0)}.
 # ```
 #
-# The pressure scale ``a`` and dimensionless exponents ``n,m`` set the curve's shape.
-# The denominator introduces the model's empirical thermal shift. For positive ``p_c``,
-# raising ``T`` increases ``p_{c0}`` and lowers ``S_l`` **if the pressures are held fixed**.
+# The pressure scale $a$ and dimensionless exponents $n,m$ set the curve's shape.
+# The denominator introduces the model's empirical thermal shift. For positive $p_c$,
+# raising $T$ increases $p_{c0}$ and lowers $S_l$ **if the pressures are held fixed**.
 # In the full problem, the pressures also change, so this observation alone cannot
 # predict whether a particular point dries.
 #
 # Near saturation the code uses `ExponentialCutoff`: an exponential continuation below
-# ``p_{c3}``, including negative pressures,
+# $p_{c3}$, including negative pressures,
 #
 # ```math
 # S_l(p_{c0})=1-[1-S_l^{\rm raw}(p_{c3})]
@@ -143,8 +143,8 @@
 #
 # It approaches 1 continuously as pressure decreases. Setting it abruptly to 1 at zero
 # would create a jump in stored water and remove its pressure sensitivity on the
-# negative side. That distinction matters because the initial rock has ``p_c\approx-50`` Pa.
-# The continuation matches the value, but not generally the slope, at ``p_{c3}``.
+# negative side. That distinction matters because the initial rock has $p_c\approx-50$ Pa.
+# The continuation matches the value, but not generally the slope, at $p_{c3}$.
 #
 # ### Evaporation and vapor pressure
 #
@@ -157,14 +157,14 @@
 #  +(C_{pl}-C_{pv})\left(T-T_0-T\ln\frac{T}{T_0}\right)\right]\right\}.
 # ```
 #
-# Here ``R`` is the gas constant, ``M_v^{\rm mol}`` the molar mass of water,
-# ``L_0`` a reference latent heat, and ``C_{pl},C_{pv}`` specific heat capacities.
+# Here $R$ is the gas constant, $M_v^{\rm mol}$ the molar mass of water,
+# $L_0$ a reference latent heat, and $C_{pl},C_{pv}$ specific heat capacities.
 # The subscript 0 marks a **reference state** used in the formula, not the initial state:
-# ``T_0=293`` K whereas ``T_{\rm ini}=323`` K. At ``p_l=p_{l0}`` and ``T=T_0``,
-# the exponent vanishes and the function must return ``p_{v0}``.
+# $T_0=293$ K whereas $T_{\rm ini}=323$ K. At $p_l=p_{l0}$ and $T=T_0$,
+# the exponent vanishes and the function must return $p_{v0}$.
 #
-# The ideal-gas relations then give ``\rho_v=p_v(M_v^{\rm mol}/R)/T`` and
-# ``\rho_a=p_a(M_a^{\rm mol}/R)/T``. In the code the two molar-mass-to-gas-constant
+# The ideal-gas relations then give $\rho_v=p_v(M_v^{\rm mol}/R)/T$ and
+# $\rho_a=p_a(M_a^{\rm mol}/R)/T$. In the code the two molar-mass-to-gas-constant
 # ratios are `M_vsR` and `M_asR`; their units are kg·K/J.
 #
 # ![A coupling diagram connecting temperature, vapor equilibrium, capillary saturation, and heat and mass transport.](../assets/drying_coupling.svg)
@@ -192,22 +192,22 @@
 # b=\underbrace{\rho_a\phi(1-S_l)}_{M_a}+M_{ad},\qquad W_b=W_a+W_{ad}.
 # ```
 #
-# ``X_{ad}`` is the dilute dissolved-air mass fraction used here; Henry's constant ``H_a``
+# Here $X_{ad}$ is the dilute dissolved-air mass fraction used here; Henry's constant $H_a$
 # sets its scale. The approximation keeps liquid-water density fixed and transports
-# dissolved air with the liquid, ``W_{ad}=X_{ad}W_l``. It neglects a separate dissolved-air
+# dissolved air with the liquid, $W_{ad}=X_{ad}W_l$. It neglects a separate dissolved-air
 # diffusion term and the heat of dissolution.
 #
-# ### Why a radial balance contains a factor of ``r``
+# ### Why a radial balance contains a factor of $r$
 #
-# A cylindrical surface at radius ``r`` has area ``2\pi r\ell`` for axial length ``\ell``.
-# A shell of thickness ``dr`` has volume approximately ``2\pi r\ell\,dr``. Its balance is
+# A cylindrical surface at radius $r$ has area $2\pi r\ell$ for axial length $\ell$.
+# A shell of thickness $dr$ has volume approximately $2\pi r\ell\,dr$. Its balance is
 #
 # ```math
 # \frac{\partial}{\partial t}\left(w\,2\pi r\ell\,dr\right)
 # +\left[2\pi(r+dr)\ell W_w(r+dr)-2\pi r\ell W_w(r)\right]=0.
 # ```
 #
-# Divide by the shell volume and let ``dr`` tend to zero. The component balances become
+# Divide by the shell volume and let $dr$ tend to zero. The component balances become
 #
 # ```math
 # \underbrace{\frac{\partial w}{\partial t}}_{\text{accumulation}}
@@ -217,7 +217,7 @@
 # ```
 #
 # If more water leaves than enters, the first term must be negative. In steady radial
-# flow, ``rW_w`` is constant, so the flux **per area** decreases with radius as the same
+# flow, $rW_w$ is constant, so the flux **per area** decreases with radius as the same
 # flow spreads over a larger cylindrical surface. This is why a radial calculation is
 # not the same as a planar calculation with a renamed coordinate.
 #
@@ -232,13 +232,13 @@
 # ```
 #
 # The minus sign sends liquid toward lower liquid pressure. The dimensionless
-# **relative permeability** ``k_{rl}`` reduces flow when liquid occupies only part of
-# the pore network. `PowerLawKrl` calculates it; the gas has its own factor ``k_{rg}``.
+# **relative permeability** $k_{rl}$ reduces flow when liquid occupies only part of
+# the pore network. `PowerLawKrl` calculates it; the gas has its own factor $k_{rg}$.
 # These are the usual storage and Darcy ingredients of a two-phase model; see the
 # [DuMux course's balance equations](https://pages.iws.uni-stuttgart.de/dumux-repositories/dumux-course/problem.html).
 #
 # Vapor and air move both with the pressure-driven gas mixture and by diffusion within
-# that mixture. Defining mass fractions ``c_v=\rho_v/(\rho_v+\rho_a)`` and ``c_a=1-c_v``,
+# that mixture. Defining mass fractions $c_v=\rho_v/(\rho_v+\rho_a)$ and $c_a=1-c_v$,
 # the implemented flux structure is
 #
 # ```math
@@ -248,7 +248,7 @@
 #     -K_F\frac{\partial c_a}{\partial r}.
 # ```
 #
-# The diffusion terms are opposite because ``c_a=1-c_v``. The coefficients also include
+# The diffusion terms are opposite because $c_a=1-c_v$. The coefficients also include
 # the pressure-diffusion correction visible in `bar` in the code. Gas diffusion is
 # reduced when its pathways become scarce or indirect:
 #
@@ -259,7 +259,7 @@
 # K_F=(\rho_v+\rho_a)D_{\rm eff}.
 # ```
 #
-# Here ``\tau`` is the dimensionless path-reduction factor of the chosen tortuosity
+# Here $\tau$ is the dimensionless path-reduction factor of the chosen tortuosity
 # law. Its strong dependence on gas saturation suppresses diffusion as pores fill with
 # liquid. These coefficients are model inputs and empirical closures, not universal
 # constants for every clay or rock.
@@ -272,7 +272,7 @@
 #                                       \lambda_g^{\phi S_g}.
 # ```
 #
-# ``q_r`` is heat flux in W/m² and ``\lambda_{\rm eff}`` is conductivity in W/(m·K).
+# Here $q_r$ is heat flux in W/m² and $\lambda_{\rm eff}$ is conductivity in W/(m·K).
 # The weighted geometric mean gives each constituent a contribution according to its
 # volume fraction. Since the liquid conductivity exceeds the gas conductivity in this
 # model, losing liquid reduces conduction. Matter also transports thermal energy; vapor
@@ -281,8 +281,8 @@
 # ### The thermal equation actually solved here
 #
 # This example uses **entropy** as its third stored quantity, while temperature remains
-# the third unknown. Specific entropy ``s`` is measured per unit mass; ``S_{\rm sys}``
-# is measured per bulk volume. Neither is the saturation ``S_l``.
+# the third unknown. Specific entropy $s$ is measured per unit mass; $S_{\rm sys}$
+# is measured per bulk volume. Neither is the saturation $S_l$.
 #
 # For reference, the general local entropy balance has a production term:
 #
@@ -292,13 +292,13 @@
 # ```
 #
 # Irreversible processes produce entropy: for conduction alone the contribution is
-# ``\lambda_{\rm eff}(\partial_rT)^2/T^2\geq0``. Heat also transports entropy at the rate
-# ``q_r/T``. These are distinct effects; the
+# $\lambda_{\rm eff}(\partial_rT)^2/T^2\geq0$. Heat also transports entropy at the rate
+# $q_r/T$. These are distinct effects; the
 # [MIT thermodynamics notes](https://web.mit.edu/course/16/16.unified/www/FALL/thermodynamics/notes/node48.html)
 # explain transfer versus generation.
 #
 # !!! note "An approximation in this example"
-#     The implemented equation sets the explicit production term ``\sigma_s`` to zero.
+#     The implemented equation sets the explicit production term $\sigma_s$ to zero.
 #     It retains entropy carried by heat and matter. This is an approximation of the
 #     thermal balance, not an exact energy-conservation statement for general irreversible
 #     transport. Numerical convergence does not establish the accuracy of this approximation.
@@ -314,7 +314,7 @@
 # ```
 #
 # Read the storage as solid contribution + capillary contribution + fluid contributions.
-# ``C_s`` is the bulk-volume solid heat-capacity coefficient used by the code. The
+# $C_s$ is the bulk-volume solid heat-capacity coefficient used by the code. The
 # capillary integral accounts for the temperature-dependent retention law. Pressure has
 # units J/m³, so integrating a saturation derivative in K⁻¹ over pressure gives exactly
 # J/(m³·K), the required unit of entropy density.
@@ -327,19 +327,19 @@
 # s_a=C_{pa}\ln(T/T_0)-\frac{\ln(p_a/p_{a0})}{M_a^{\rm mol}/R}.
 # ```
 #
-# The large ``L_0/T_0`` contribution shows where latent heat enters this formulation.
+# The large $L_0/T_0$ contribution shows where latent heat enters this formulation.
 # Dissolved air is assigned the same specific entropy as gaseous air, another explicit
 # simplification. Boundary heating must enter the entropy equation as
-# ``Q_{\rm in}/T``, not directly as ``Q_{\rm in}``.
+# $Q_{\rm in}/T$, not directly as $Q_{\rm in}$.
 #
 # ## 5. From continuous balances to finite volumes
 #
 # ![Three radial nodes with midpoint control-volume faces, one highlighted shell, and opposite contributions from a shared flux to neighboring balances.](../assets/drying_finite_volumes.svg)
 #
-# The grid places nodes at radii ``r_i``. An interior node owns a shell bounded by the
-# midpoints ``r_{i-1/2}`` and ``r_{i+1/2}``. Its volume is
-# ``V_i=\pi\ell(r_{i+1/2}^2-r_{i-1/2}^2)`` and its face areas are
-# ``A_{i\pm1/2}=2\pi\ell r_{i\pm1/2}``. A common factor such as ``\ell`` cancels from
+# The grid places nodes at radii $r_i$. An interior node owns a shell bounded by the
+# midpoints $r_{i-1/2}$ and $r_{i+1/2}$. Its volume is
+# $V_i=\pi\ell(r_{i+1/2}^2-r_{i-1/2}^2)$ and its face areas are
+# $A_{i\pm1/2}=2\pi\ell r_{i\pm1/2}$. A common factor such as $\ell$ cancels from
 # the equations. For any of the three balances, implicit Euler gives
 #
 # ```math
@@ -347,15 +347,15 @@
 # +A_{i+1/2}J_{i+1/2}^{n+1}-A_{i-1/2}J_{i-1/2}^{n+1}=0.
 # ```
 #
-# Here ``B`` is ``w``, ``b``, or ``S_{\rm sys}``, and ``J`` is its associated flux.
+# Here $B$ is $w$, $b$, or $S_{\rm sys}$, and $J$ is its associated flux.
 # Superscripts label time steps. **Implicit** means that the new, unknown state is used
 # in both storage and flux. The equations for all nodes are solved together. Each shared
 # face contributes with opposite signs to its two neighboring balances, which is the
 # basic conservation mechanism of finite volumes.
 #
 # For a liquid flux on an edge joining nodes 1 and 2, the code supplies
-# ``K_l(p_{l,1}-p_{l,2})``. VoronoiFVM supplies the distance and area factors.
-# **Do not divide by the mesh spacing or multiply by ``2\pi r`` again inside `flux!`.**
+# $K_l(p_{l,1}-p_{l,2})$. VoronoiFVM supplies the distance and area factors.
+# **Do not divide by the mesh spacing or multiply by $2\pi r$ again inside `flux!`.**
 # The `circular_symmetric!` grid setting provides the cylindrical geometry.
 #
 # At the material interface, the control volume contains parts of both materials.
@@ -371,7 +371,7 @@
 #
 # | Mathematical role | Method provided by the package | What the method writes into `f` |
 # |:---|:---|:---|
-# | Stored quantities ``B(\mathbf u)`` | `PoroMechanics.storage!` | Water mass, air mass, entropy per bulk volume |
+# | Stored quantities $B(\mathbf u)$ | `PoroMechanics.storage!` | Water mass, air mass, entropy per bulk volume |
 # | Edge transport | `PoroMechanics.flux!` | Flux expressions before geometric factors |
 # | Exchanges with surroundings | `PoroMechanics.bcondition!` | Dirichlet values and incoming entropy flux |
 #
@@ -453,7 +453,7 @@ const U_TEM = 3
 # ### 6.4 Evaluate the capillary contribution
 #
 # This small integral is the most technical storage term; it can be treated as a helper
-# on a first reading. Its integrand follows from the chain rule at fixed ``p_c``:
+# on a first reading. Its integrand follows from the chain rule at fixed $p_c$:
 #
 # ```math
 # \left.\frac{\partial S_l}{\partial T}\right|_{p_c}
@@ -465,8 +465,8 @@ const U_TEM = 3
 # six pressures and takes a weighted sum. A negative upper bound reverses the integration
 # interval; it does not make the integral disappear.
 #
-# The thermal shift requires ``1-\alpha_T(T-T_0)>0``. For the default parameters this
-# means ``T<626.33`` K. The integral helper's guard is not a valid extension of the complete
+# The thermal shift requires $1-\alpha_T(T-T_0)>0$. For the default parameters this
+# means $T<626.33$ K. The integral helper's guard is not a valid extension of the complete
 # model beyond that limit, since other functions still use the same denominator.
 
 # PoroMechanics evaluates this signed integral with the same six-point rule
@@ -606,7 +606,7 @@ plot(
 # 2. Call `circular_symmetric!` and assign `CellRegions`. Material-region labels are
 #    distinct from boundary-region labels, even though both use the integers 1 and 2.
 # 3. Call `fvm_system` to connect the model callbacks, then `unknowns(sys)` to allocate a
-#    matrix of size ``3\times N``. Column ``i`` holds ``(p_l,p_a,T)`` at radius ``r_i``.
+#    matrix of size $3\times N$. Column $i$ holds $(p_l,p_a,T)$ at radius $r_i$.
 # 4. Fill the initial matrix and impose values consistent with the outer boundary.
 #    The single interface node receives the rock initial values. The neighboring clay
 #    nodes start at the clay values, producing a sharp initial transition.
@@ -616,15 +616,15 @@ plot(
 # ### Why this is a nonlinear solve
 #
 # Saturation, vapor pressure, density, and transport coefficients depend on the solution.
-# The discretized balances form a nonlinear residual ``\mathbf R(\mathbf U)=0``, where
-# ``\mathbf U`` collects all ``3N`` unknowns. Newton's method repeatedly solves
+# The discretized balances form a nonlinear residual $\mathbf R(\mathbf U)=0$, where
+# $\mathbf U$ collects all $3N$ unknowns. Newton's method repeatedly solves
 #
 # ```math
 # \mathbf J(\mathbf U^{(k)})\,\delta\mathbf U=-\mathbf R(\mathbf U^{(k)}),\qquad
 # \mathbf U^{(k+1)}=\mathbf U^{(k)}+\delta\mathbf U.
 # ```
 #
-# The Jacobian ``\mathbf J=\partial\mathbf R/\partial\mathbf U`` describes how each balance
+# The Jacobian $\mathbf J=\partial\mathbf R/\partial\mathbf U$ describes how each balance
 # changes when an unknown changes. Each Newton iteration recomputes the local physics.
 # This is why differentiable constitutive laws and consistent storage matter.
 #
@@ -888,7 +888,7 @@ p_sl
 #
 # `u_final[U_TEM, 1]` selects one row and one column. A colon, as in `u_final[U_PL, :]`,
 # selects all columns in that row. Broadcasting with `./` divides every pressure by
-# ``10^6``. The coordinate vector `r_all` tells you where each column is located.
+# $10^6$. The coordinate vector `r_all` tells you where each column is located.
 #
 # ### Start with a shorter calculation
 #
@@ -942,10 +942,10 @@ p_sl
 #
 # ### Exercises with checks on your reasoning
 #
-# 1. **Count the water.** For ``\phi=0.30``, ``S_l=0.80``, and ``\rho_l=1000`` kg/m³,
+# 1. **Count the water.** For $\phi=0.30$, $S_l=0.80$, and $\rho_l=1000$ kg/m³,
 #    calculate the liquid-water mass per m³ of medium. The answer is 240 kg, not 800 kg.
 # 2. **Predict a flux sign.** Suppose two neighboring nodes have the same material and
-#    temperature, with ``p_{l,1}=-20`` MPa and ``p_{l,2}=-10`` MPa. Darcy flow is from
+#    temperature, with $p_{l,1}=-20$ MPa and $p_{l,2}=-10$ MPa. Darcy flow is from
 #    node 2 toward node 1: “less negative” is the higher pressure.
 # 3. **Test the interface.** Evaluate `Sl_clay` and `Sl_rock` using the same state vector
 #    as above. Explain why different saturations can coexist with shared pressures.
@@ -953,7 +953,7 @@ p_sl
 #    `h_rock_max=0.175` at equal times. Canister temperatures can be compared directly;
 #    interior profiles require interpolation onto common radii. Do not compare equal
 #    column indices on different meshes as if they were equal positions.
-# 5. **Separate heating from wetting.** At fixed ``p_l`` and ``p_a``, increase temperature
+# 5. **Separate heating from wetting.** At fixed $p_l$ and $p_a$, increase temperature
 #    slightly and recompute vapor pressure and saturation. Then explain why the full
 #    time-dependent simulation can still show rewetting: the pressures are not fixed
 #    in that calculation, and water can enter through the outer reservoir.

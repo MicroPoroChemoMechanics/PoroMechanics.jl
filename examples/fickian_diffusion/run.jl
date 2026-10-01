@@ -8,14 +8,14 @@
 #
 # ## Physical problem
 #
-# A solute diffuses into a saturated soil column. The concentration ``c`` [mol/m³] is the
+# A solute diffuses into a saturated soil column. The concentration $c$ [mol/m³] is the
 # only unknown, and it obeys
 #
 # ```math
 # \varphi \frac{\partial c}{\partial t} = \nabla \cdot \left(D \varphi \, \nabla c\right)
 # ```
 #
-# The porosity ``\varphi`` cancels, leaving pure diffusion:
+# The porosity $\varphi$ cancels, leaving pure diffusion:
 #
 # ```math
 # \frac{\partial c}{\partial t} = D \, \frac{\partial^2 c}{\partial x^2}
@@ -23,10 +23,10 @@
 #
 # | Boundary | Condition |
 # |---|---|
-# | ``x = 0`` (inlet) | Dirichlet ``c = c_\text{in}`` |
-# | ``x = L`` (outlet) | Zero Neumann ``\partial c / \partial x = 0`` (the VoronoiFVM default) |
+# | $x = 0$ (inlet) | Dirichlet $c = c_\text{in}$ |
+# | $x = L$ (outlet) | Zero Neumann $\partial c / \partial x = 0$ (the VoronoiFVM default) |
 #
-# The initial condition is ``c(x, 0) = 0``, with ``c(0, 0) = c_\text{in}`` so that it is
+# The initial condition is $c(x, 0) = 0$, with $c(0, 0) = c_\text{in}$ so that it is
 # consistent with the boundary condition — see the note at the end of this page.
 #
 # ## Reference solution
@@ -37,20 +37,20 @@
 # c(x, t) = c_\text{in} \operatorname{erfc}\!\left(\frac{x}{2\sqrt{D t}}\right)
 # ```
 #
-# valid as long as the diffusion front ``2\sqrt{Dt}`` stays small compared with ``L``.
+# valid as long as the diffusion front $2\sqrt{Dt}$ stays small compared with $L$.
 #
 # ## Parameters
 #
 # | Symbol | Value | Unit | Description |
 # |---|---|---|---|
-# | ``\varphi`` | ``0.30`` | — | Porosity |
-# | ``D`` | ``10^{-10}`` | m²/s | Effective diffusion coefficient |
-# | ``c_\text{in}`` | ``1.0`` | mol/m³ | Concentration imposed at the inlet |
-# | ``L`` | ``1.0`` | m | Column length |
+# | $\varphi$ | $0.30$ | — | Porosity |
+# | $D$ | $10^{-10}$ | m²/s | Effective diffusion coefficient |
+# | $c_\text{in}$ | $1.0$ | mol/m³ | Concentration imposed at the inlet |
+# | $L$ | $1.0$ | m | Column length |
 #
-# The characteristic diffusion time is ``t_\text{diff} = L^2/D = 10^{10}`` s. The
-# simulation covers ``t_\text{end} = 10^8`` s ``= t_\text{diff}/100``, an early transient
-# in which the front penetrates only about ``2\sqrt{D t_\text{end}} \approx 0.2`` m.
+# The characteristic diffusion time is $t_\text{diff} = L^2/D = 10^{10}$ s. The
+# simulation covers $t_\text{end} = 10^8$ s $= t_\text{diff}/100$, an early transient
+# in which the front penetrates only about $2\sqrt{D t_\text{end}} \approx 0.2$ m.
 
 using PoroMechanics
 using VoronoiFVM
@@ -64,7 +64,7 @@ using ExtendableGrids
 #
 # That imposed concentration is given as data — `dirichlet = ((1, c_in),)`, meaning "impose
 # `c_in` on boundary region 1" — rather than written into a method, so the same model serves
-# a column fed from the other end without editing anything. The sealed face at ``x = L``
+# a column fed from the other end without editing anything. The sealed face at $x = L$
 # needs no code at all: zero flux is what `VoronoiFVM` does with a boundary nobody claims.
 
 const C_IN = 1.0    # concentration imposed at x = 0 [mol/m³]

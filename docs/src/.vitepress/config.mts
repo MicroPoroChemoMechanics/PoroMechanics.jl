@@ -30,8 +30,8 @@ const sidebarTemp = {
 // GitHub link off screen. This folds named top-level entries into one menu.
 //
 //
-// Empty on purpose: the seven top-level entries of `docs/pages.jl` fit the bar
-// as they are. `API` is the one that must never go in here -- folding it puts
+// Empty on purpose: keep the top-level entries of `docs/pages.jl` visible.
+// `API` is the one that must never go in here -- folding it puts
 // the docstring reference behind a dropdown labeled something else, which reads
 // to a visitor as the reference having been dropped from the manual. This is the
 // place to fold `Validation` or `Differentiability` the day the top level grows.
@@ -43,6 +43,21 @@ function curateNav(items: any[]): any[] {
   const out = items.filter((i) => !more.includes(i))
   if (more.length) out.push({ text: 'Reference', items: more })
   return out
+}
+
+// DocumenterVitepress emits extensionless `/index` links. VitePress matches an
+// `index.md` page to its directory URL instead; otherwise the pager cannot find
+// the current page and falls back to Home as the next page.
+function normalizeIndexLinks(items: any[]): any[] {
+  return items.map((item) => ({
+    ...item,
+    ...(typeof item.link === 'string'
+      ? { link: item.link.replace(/\/index(?=[?#]|$)/, '/') }
+      : {}),
+    ...(Array.isArray(item.items)
+      ? { items: normalizeIndexLinks(item.items) }
+      : {}),
+  }))
 }
 
 // VitePress renders a sidebar group expanded unless it says otherwise, and
@@ -63,13 +78,13 @@ function collapseGroups(node: any): any {
 }
 
 const nav = [
-  ...curateNav(navTemp.nav as unknown as any[]),
+  ...curateNav(normalizeIndexLinks(navTemp.nav as unknown as any[])),
   {
     component: 'VersionPicker'
   }
 ]
 
-const sidebar = collapseGroups(sidebarTemp.sidebar as unknown as any)
+const sidebar = collapseGroups(normalizeIndexLinks(sidebarTemp.sidebar as unknown as any[]))
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
