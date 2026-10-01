@@ -25,6 +25,10 @@ hero:
       link: https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl
 
 features:
+  - icon: 📘
+    title: Theory
+    details: A first course in porous media, from balances and Darcy flow to Biot consolidation, capillarity and drying, with figures and links to the code.
+    link: /theory/
   - icon: 🚀
     title: Getting started
     details: Install the package, then write and run a first transport model from its governing equation to its profile.

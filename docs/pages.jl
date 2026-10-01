@@ -1,6 +1,17 @@
 pages = [
     "Home" => "index.md",
     "Getting Started" => "quickstart.md",
+    "Theory" => [
+        "Reading guide" => "theory/index.md",
+        "Porous media and notation" => "theory/basics.md",
+        "Balance laws" => "theory/balances.md",
+        "Transport: Darcy and Fick" => "theory/transport.md",
+        "Saturated poroelasticity" => "theory/poroelasticity.md",
+        "Consolidation" => "theory/consolidation.md",
+        "Unsaturated media" => "theory/unsaturated.md",
+        "Drying and temperature" => "theory/drying.md",
+        "From equations to a solver" => "theory/numerics.md",
+    ],
     "Examples" => [
         "Fickian diffusion 1D"   => "examples/fickian_diffusion.md",
         "Identifying a diffusion coefficient" => "examples/fickian_identification.md",

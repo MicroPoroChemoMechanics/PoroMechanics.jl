@@ -61,7 +61,7 @@
 #
 # ### An initial stress is an *effective* stress
 #
-# The deck quotes ``\sigma_0 = -11.5`` MPa with ``p_0 = 4.7`` MPa. The skeleton does not
+# The deck quotes $\sigma_0 = -11.5$ MPa with $p_0 = 4.7$ MPa. The skeleton does not
 # start there: it starts at
 #
 # ```math
@@ -69,12 +69,12 @@
 # ```
 #
 # Hand the total stress to the skeleton instead and the initial state is out of equilibrium
-# by ``\beta p_0`` — 3.76 MPa here — so the very first step produces a smooth, plausible and
+# by $\beta p_0$ — 3.76 MPa here — so the very first step produces a smooth, plausible and
 # entirely spurious wave of displacement and pressure. `poroplast_initial_states` therefore
 # takes the *total* stress a deck quotes and converts it, because that is the step nobody
 # notices getting wrong.
 #
-# The conversion uses ``\beta`` and not ``b``. Bil converts with the coefficient it calls
+# The conversion uses $\beta$ and not $b$. Bil converts with the coefficient it calls
 # `beta` — `sig += beta*pl` before its return mapping and `-=` after — while `b` drives its
 # incremental update and the elastic part of its porosity. The two are equal in this deck,
 # both 0.8, so the choice is invisible here. It is written down because the deck that
@@ -82,13 +82,12 @@
 #
 # The check that caught it takes one line to state: **at the initial state, nothing may
 # move**. Imposing the deck's own stresses and pressures and stepping once must return
-# ``u = 0`` and ``p_l`` unchanged, exactly. It does, to machine precision — and it did not,
+# $u = 0$ and $p_l$ unchanged, exactly. It does, to machine precision — and it did not,
 # before.
 #
 # ### A single residual norm cannot judge a two-field problem
 #
-# The mechanical block of this residual is a force per radian, of order ``\sigma r \approx
-# 10^8``. The hydraulic block is a mass rate, of order ``10^{-7}``. Fifteen orders of
+# The mechanical block of this residual is a force per radian, of order $\sigma r \approx 10^8$. The hydraulic block is a mass rate, of order $10^{-7}$. Fifteen orders of
 # magnitude apart, in the same vector.
 #
 # So `‖R‖ < 1e-9` is not a strict test. It is a test of the mechanical block, with the
@@ -108,7 +107,7 @@
 # the last of the time discretisation. Two candidates remain, both first-order and both
 # Bil's:
 #
-# * its stress update is **incremental** from ``\sigma_n`` — `sig = sig_n + C:deps -
+# * its stress update is **incremental** from $\sigma_n$ — `sig = sig_n + C:deps -
 #   b dp` then return mapping — while [`DruckerPrager`](@ref) predicts from the plastic
 #   strain, which is the path-independent choice and the same distinction as
 #   [`ExplicitPredictor`](bbm_bil.md) on the Barcelona Basic Model;
