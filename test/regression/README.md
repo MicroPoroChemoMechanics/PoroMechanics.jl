@@ -146,6 +146,13 @@ publisher, a release that differs from the one shipped before in ten species. Ke
 old reference would have left a margin of 3.6 under the 1e-3 tolerance to absorb a
 platform spread measured at 1.0e-4, so it was regenerated rather than tolerated.
 
+ChemistryLab 0.31.0 with OptimaSolver 0.8.0 moved the chloride signature by 1.46e-6 on
+the same Mac (largest entry 84.2194 → 84.2381), every other case staying under 1e-10 in
+strict mode. That is three orders of magnitude inside the 1e-3 tolerance and well below the
+1.0e-4 platform spread, so the reference was kept rather than regenerated. The cause is
+upstream: 0.31 polishes every back end's answer by the dual Newton, and OptimaSolver 0.8
+judges each balance row relative to what it holds.
+
 To reproduce the reference and checks from the repository root:
 
 ```sh
@@ -156,6 +163,6 @@ julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["regression", "chemistr
 
 The initial interior-point *guess* can still emit `MaxIters`; the initialization
 adapter certifies the state it actually accepts. The separate legacy-optimizer
-test remains an expected failure. Local equilibrium certification does not validate
+test, an expected failure up to ChemistryLab 0.28.2, passes since 0.31. Local equilibrium certification does not validate
 the accuracy or global conservation of the full SNIA splitting scheme, nor does
 this Mac comparison replace Linux/Windows CI checks.
