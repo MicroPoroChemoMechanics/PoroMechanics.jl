@@ -64,7 +64,7 @@ That is also why the chemistry stack is not a dependency of this package: Chemis
 is a weak dependency, behind that extension, and `OptimaSolver.jl` is a dependency of
 `examples/` and of the test suite only, where they are actually used.
 
-The examples and tests use ChemistryLab **0.28.2** with OptimaSolver **0.7.4**, both
+The examples and tests use ChemistryLab **0.31.0** with OptimaSolver **0.8.0**, both
 from the General registry. ChemistryLab no longer ships its thermodynamic databases: the
 first call to `datapath("cemdata18-thermofun.json")` downloads Cemdata18 from its
 publisher, so it needs the network once (or `CHEMISTRYLAB_DATABASE_DIR`, or a copy

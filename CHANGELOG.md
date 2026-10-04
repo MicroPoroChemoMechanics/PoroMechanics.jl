@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Move to ChemistryLab 0.31.0 and OptimaSolver 0.8.0, which migrate as a pair: from 0.30
+  ChemistryLab's OptimaSolver extension requires 0.8. No source change was needed. Since
+  0.31 `equilibrate(state, solver)` returns the composition the dual Newton certifies from
+  the back end's answer, so the OPC initial state solved by the interior point is now an
+  equilibrium: its mass-action residual falls from 11.8 to 1.3e-12 log-units, and the
+  `@test_broken` that recorded it is an `@test`. That test now sets its presence floor to
+  1e-17, since the correct H⁺ sits below the former 1e-10 and no reaction qualified there.
+  The chloride signature moves by 1.46e-6 (tolerance 1e-3), every other case staying under
+  1e-10; the reference is kept.
+
 - Move to ChemistryLab 0.28.2 and OptimaSolver 0.7.4 from the General registry, and drop
   the local sensitivity patch, its preparation script, the `[sources]` overrides and the
   CI step: ChemistryLab 0.25.0 took the patch upstream. The equilibrium-coupled transport

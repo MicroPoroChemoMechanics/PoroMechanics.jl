@@ -241,28 +241,25 @@ end
             @test residual < 1.0e-2
         end
 
-        ## And the state the chloride examples start from, which does not.
+        ## And the state the chloride examples start from, which failed it until
+        ## ChemistryLab 0.31.
         ##
-        ## Measured on this state: 4 reactions qualify and the worst is 11.8 log-units,
-        ## on portlandite; the water autoprotolysis is out by 5.9, so the H⁺ and OH⁻ that
-        ## come back are six orders of magnitude from satisfying Kw. Lowering the floor
-        ## does not rescue it — at 1e-12, 24 reactions qualify and the worst is 179.
+        ## Up to 0.28.2 the interior point stopped 11.8 log-units from equilibrium on
+        ## portlandite, with the water autoprotolysis out by 5.9: H⁺ came back six orders
+        ## of magnitude too high. Since 0.31, `equilibrate(state, solver)` returns the
+        ## composition the dual Newton certifies from the back end's answer, and the same
+        ## state reads 1.3e-12 — it is now the certified state, Ca²⁺ and OH⁻ to the digit.
         ##
-        ## It is not a regression from the version bump: ChemistryLab 0.3.1 with
-        ## OptimaSolver 0.2.7 fails it the same way and merely had no convergence check
-        ## to say so. Nor is it Friedel's salt: dropping `C4AClH10` from the species list
-        ## moves the numbers without fixing them. The lead worth following is that
-        ## `OptimaSolver` refuses the log variable space on this system outright — "the
-        ## conservation matrix has rank 8 for 9 rows" — so one conservation law is a
-        ## combination of the others and the multipliers are not unique, which is exactly
-        ## the conditioning an interior-point method stalls on.
-        ##
-        ## Retain the legacy solver's failure as an upstream acceptance criterion.
-        ## The examples' initializers now use the separately tested KKT-certified path.
-        @testset "the legacy OPC interior-point state does not" begin
-            residual, _, checked = worst_mass_action_residual(equilibrated)
-            @test checked >= 1
-            @test_broken residual < 1.0e-2
+        ## The floor has to move with it. H⁺ now sits at its true amount, 3e-16 of the
+        ## water at pH 13.4, and every formation reaction passes through H⁺: at the default
+        ## 1e-10 nothing qualifies and the residual is zero because nothing was measured.
+        ## 1e-17 admits the same 4 reactions, H⁺ thirty times above it, and keeps out the
+        ## sulfur redox traces (S²⁻ at 4e-18), which sit below the 1e-16 mol regularization
+        ## of `μ` and read 0.55 to 1.5 log-units for that reason alone.
+        @testset "the OPC initial state passes it" begin
+            residual, _, checked = worst_mass_action_residual(equilibrated; presence = 1.0e-17)
+            @test checked >= 4
+            @test residual < 1.0e-2
         end
     end
 
