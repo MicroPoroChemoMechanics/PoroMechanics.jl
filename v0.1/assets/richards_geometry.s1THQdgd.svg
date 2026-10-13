@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 665" width="1000" height="665" role="img" aria-labelledby="title description">
+<title id="title">Water enters a horizontal, unsaturated barrier</title><desc id="description">A 20 cm barrier has a sealed left end and a saturated water supply at the right. Water travels toward smaller x. The lower bar shows initial bulk fractions of solid, liquid, and gas for porosity 0.30 and saturation 0.77752.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="663" rx="10" fill="#ffffff" stroke="#ccd8e1"/>
+<text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#193047" text-anchor="start" font-weight="bold">Water enters a horizontal, unsaturated barrier</text>
+<text x="32" y="78" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#536879" text-anchor="start" font-weight="normal">Fixed solid skeleton · fixed gas pressure · no gravity along the column</text>
+<rect x="80" y="170" width="700" height="145" rx="10" fill="#e4eeec" stroke="#19796d"/>
+<path d="M90 184L108 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M90 282L108 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M114 184L132 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M114 282L132 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M138 184L156 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M138 282L156 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M162 184L180 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M162 282L180 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M186 184L204 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M186 282L204 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M210 184L228 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M210 282L228 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M234 184L252 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M234 282L252 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M258 184L276 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M258 282L276 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M282 184L300 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M282 282L300 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M306 184L324 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M306 282L324 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M330 184L348 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M330 282L348 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M354 184L372 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M354 282L372 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M378 184L396 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M378 282L396 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M402 184L420 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M402 282L420 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M426 184L444 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M426 282L444 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M450 184L468 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M450 282L468 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M474 184L492 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M474 282L492 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M498 184L516 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M498 282L516 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M522 184L540 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M522 282L540 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M546 184L564 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M546 282L564 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M570 184L588 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M570 282L588 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M594 184L612 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M594 282L612 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M618 184L636 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M618 282L636 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M642 184L660 202" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<path d="M642 282L660 300" fill="none" stroke="#cadbd6" stroke-width="1"/>
+<rect x="650" y="172" width="128" height="141" rx="10" fill="#c1dff6" stroke="none"/>
+<rect x="800" y="145" width="160" height="195" rx="10" fill="#e3f2ff" stroke="#216baf"/>
+<text x="880" y="192" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#216baf" text-anchor="middle" font-weight="bold">Water</text>
+<text x="880" y="228" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#216baf" text-anchor="middle" font-weight="bold">supply</text>
+<text x="880" y="271" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#216baf" text-anchor="middle" font-weight="normal">pₗ = pɡ</text>
+<text x="880" y="304" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#216baf" text-anchor="middle" font-weight="normal">Sₗ = 1</text>
+<text x="345" y="248" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#19796d" text-anchor="middle" font-weight="bold">Porous barrier: L = 0.20 m</text>
+<path d="M80 160L80 326" fill="none" stroke="#536879" stroke-width="5"/>
+<path d="M80 170L65 182" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 188L65 200" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 206L65 218" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 224L65 236" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 242L65 254" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 260L65 272" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 278L65 290" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 296L65 308" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M80 314L65 326" fill="none" stroke="#536879" stroke-width="2"/>
+<text x="80" y="132" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">Sealed: Wₗ = 0</text>
+<path d="M760 120L480 120" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<text x="617" y="104" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#216baf" text-anchor="middle" font-weight="normal">water flows toward smaller x</text>
+<path d="M80 370L780 370" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#gray)"/>
+<text x="80" y="398" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">x = 0</text>
+<text x="780" y="398" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">x = L</text>
+<text x="32" y="444" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#193047" text-anchor="start" font-weight="bold">Initial interior: Sₗ ≈ 0.77752 is unsaturated, not water-free.</text>
+<text x="32" y="475" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#536879" text-anchor="start" font-weight="normal">Volumes in 1 m³ of material, with porosity φ = 0.30:</text>
+<rect x="50" y="500" width="630" height="58" rx="10" fill="#dce3e9" stroke="#ffffff"/>
+<rect x="680" y="500" width="210" height="58" rx="10" fill="#acd2f2" stroke="#ffffff"/>
+<rect x="890" y="500" width="60" height="58" rx="10" fill="#fff0c2" stroke="#ffffff"/>
+<text x="365" y="536" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#193047" text-anchor="middle" font-weight="normal">Solid: 0.70 m³</text>
+<text x="785" y="535" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#193047" text-anchor="middle" font-weight="normal">Liquid: 0.23326 m³</text>
+<path d="M920 560L920 584" fill="none" stroke="#536879" stroke-width="2"/>
+<text x="950" y="612" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="end" font-weight="normal">Gas: 0.06674 m³</text>
+<text x="50" y="608" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#216baf" text-anchor="start" font-weight="normal">Pores = liquid + gas = 0.30 m³</text>
+</svg>

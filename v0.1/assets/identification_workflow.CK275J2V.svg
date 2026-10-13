@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 590" width="1000" height="590" role="img" aria-labelledby="title description">
+<title id="title">From a parameter guess to a calibrated diffusion model</title><desc id="description">Scaled diffusivity and inlet concentration enter the finite volume and time-integration model. Twelve predictions are compared with observations. ForwardDiff propagates parameter derivatives through the solve. A damped least-squares step proposes parameters, accepted only for positive values and lower cost. The fitted Jacobian is also used to estimate local covariance.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="588" rx="10" fill="#ffffff" stroke="#ccd8e1"/>
+<text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#193047" text-anchor="start" font-weight="bold">From a parameter guess to a calibrated diffusion model</text>
+<text x="32" y="81" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#536879" text-anchor="start" font-weight="normal">ForwardDiff carries parameter sensitivities through the same forward calculation.</text>
+<rect x="35" y="128" width="280" height="146" rx="10" fill="#eaf3fb" stroke="#216baf"/>
+<text x="175" y="165" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#216baf" text-anchor="middle" font-weight="bold">Trial parameters</text>
+<text x="175" y="209" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">θ₁ = D / D*</text>
+<text x="175" y="243" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">θ₂ = c_in / c*</text>
+<rect x="360" y="128" width="280" height="146" rx="10" fill="#eaf3fb" stroke="#216baf"/>
+<text x="500" y="165" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#216baf" text-anchor="middle" font-weight="bold">Forward model</text>
+<text x="500" y="209" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">Finite volumes + time solve</text>
+<text x="500" y="243" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">Sample at depths and ages</text>
+<rect x="685" y="128" width="280" height="146" rx="10" fill="#eaf3fb" stroke="#216baf"/>
+<text x="825" y="165" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#216baf" text-anchor="middle" font-weight="bold">Compare with data</text>
+<text x="825" y="209" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">r = prediction − observation</text>
+<text x="825" y="243" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#193047" text-anchor="middle" font-weight="normal">J = ∂ prediction / ∂θ</text>
+<path d="M316 198L356 198" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<path d="M641 198L681 198" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<path d="M825 276L825 329" fill="none" stroke="#c65a24" stroke-width="3" marker-end="url(#orange)"/>
+<rect x="360" y="337" width="605" height="126" rx="10" fill="#fff3e5" stroke="#c65a24"/>
+<text x="662" y="370" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#c65a24" text-anchor="middle" font-weight="bold">Damped least-squares update</text>
+<text x="662" y="406" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#193047" text-anchor="middle" font-weight="normal">[JᵀJ + λ diag(JᵀJ)] δ = −Jᵀr</text>
+<text x="662" y="441" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="middle" font-weight="normal">Accept positive parameters only when cost decreases.</text>
+<path d="M360 402L176 402" fill="none" stroke="#c65a24" stroke-width="3"/>
+<path d="M176 402L176 279" fill="none" stroke="#c65a24" stroke-width="3" marker-end="url(#orange)"/>
+<text x="176" y="438" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#c65a24" text-anchor="middle" font-weight="normal">Next trial</text>
+<rect x="35" y="498" width="930" height="62" rx="10" fill="#e4eeec" stroke="#19796d"/>
+<text x="500" y="537" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#19796d" text-anchor="middle" font-weight="normal">At the fit: inspect residuals, rank of J, local uncertainty, and mesh bias.</text>
+</svg>

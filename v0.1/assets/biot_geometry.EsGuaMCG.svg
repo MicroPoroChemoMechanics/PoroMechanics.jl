@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 665" width="1000" height="665" role="img" aria-labelledby="title description">
+<title id="title">A saturated dam on a permeable foundation</title><desc id="description">Cross-section of the supplied mesh. Reservoir water acts on the upstream concrete and rock. Downstream pressure is zero. Foundation sides prevent horizontal displacement; the base is fixed. The reservoir is outside the computational domain.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="663" rx="10" fill="#ffffff" stroke="#ccd8e1"/>
+<text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#193047" text-anchor="start" font-weight="bold">A saturated dam on a permeable foundation</text>
+<text x="32" y="74" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#536879" text-anchor="start" font-weight="normal">Mesh outline to scale · boundary arrows are schematic</text>
+<polygon points="69.2,112.0 200.87,112.0 200.87,254.38000000000014 194.885,290.0379999999999 176.3,357.7 170.0,357.7 170.0,370.3 69.2,370.3" fill="#e3f2ff" stroke="#216baf" stroke-width="2"/>
+<polygon points="69.2,370.3 440.9,370.3 440.9,502.59999999999997 69.2,502.59999999999997" fill="#e4eeec" stroke="#19796d" stroke-width="2"/>
+<polygon points="170.0,370.3 170.0,357.7 176.3,357.7 194.885,290.0379999999999 200.87,254.38000000000014 200.87,112.0 221.03,112.0 221.03,140.35 225.44,140.35 287.18,301.0 331.90999999999997,357.7 340.1,357.7 340.1,370.3" fill="#f6ddc2" stroke="#c65a24" stroke-width="2"/>
+<text x="87" y="154" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#216baf" text-anchor="start" font-weight="normal">Water</text>
+<text x="218" y="282" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#c65a24" text-anchor="start" font-weight="normal">Concrete</text>
+<text x="250" y="426" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#19796d" text-anchor="middle" font-weight="bold">Rock</text>
+<path d="M145.87 168.7L197.87 168.7" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<path d="M145.87 244.29999999999998L197.87 244.29999999999998" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<path d="M130.12 319.9L182.12 319.9" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<path d="M100.7 325.3L100.7 366.3" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<path d="M138.5 325.3L138.5 366.3" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<circle cx="61.2" cy="395.5" r="5" fill="white" stroke="#536879"/>
+<circle cx="61.2" cy="439.59999999999997" r="5" fill="white" stroke="#536879"/>
+<circle cx="61.2" cy="483.7" r="5" fill="white" stroke="#536879"/>
+<circle cx="448.9" cy="395.5" r="5" fill="white" stroke="#536879"/>
+<circle cx="448.9" cy="439.59999999999997" r="5" fill="white" stroke="#536879"/>
+<circle cx="448.9" cy="483.7" r="5" fill="white" stroke="#536879"/>
+<path d="M69.2 505.59999999999997L440.9 505.59999999999997" fill="none" stroke="#536879" stroke-width="3"/>
+<path d="M79 505.59999999999997L69 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M95 505.59999999999997L85 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M111 505.59999999999997L101 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M127 505.59999999999997L117 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M143 505.59999999999997L133 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M159 505.59999999999997L149 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M175 505.59999999999997L165 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M191 505.59999999999997L181 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M207 505.59999999999997L197 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M223 505.59999999999997L213 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M239 505.59999999999997L229 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M255 505.59999999999997L245 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M271 505.59999999999997L261 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M287 505.59999999999997L277 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M303 505.59999999999997L293 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M319 505.59999999999997L309 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M335 505.59999999999997L325 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M351 505.59999999999997L341 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M367 505.59999999999997L357 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M383 505.59999999999997L373 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M399 505.59999999999997L389 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M415 505.59999999999997L405 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M431 505.59999999999997L421 516.5999999999999" fill="none" stroke="#536879" stroke-width="2"/>
+<text x="250" y="546" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#536879" text-anchor="middle" font-weight="normal">Fixed base: u₁ = u₂ = 0</text>
+<text x="250" y="575" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#536879" text-anchor="middle" font-weight="normal">Sides: u₁ = 0; base and sides: no flow</text>
+<path d="M69.2 112.0L440.9 112.0" fill="none" stroke="#216baf" stroke-width="1"/>
+<text x="447" y="118" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#216baf" text-anchor="start" font-weight="normal">517 m</text>
+<text x="447" y="376" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#536879" text-anchor="start" font-weight="normal">476 m</text>
+<text x="447" y="508" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="#536879" text-anchor="start" font-weight="normal">455 m</text>
+<rect x="550" y="106" width="415" height="153" rx="10" fill="#eaf3fb" stroke="none"/>
+<text x="570" y="138" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#216baf" text-anchor="start" font-weight="bold">UPSTREAM: reservoir loading</text>
+<text x="570" y="174" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">Pore pressure: p = ρg(H − y)</text>
+<text x="570" y="207" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">Surface traction: t = −p n</text>
+<text x="570" y="240" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="start" font-weight="normal">At y = 476 m: p = 0.41 MPa</text>
+<rect x="550" y="285" width="415" height="115" rx="10" fill="#fff3e5" stroke="none"/>
+<text x="570" y="320" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#c65a24" text-anchor="start" font-weight="bold">DOWNSTREAM: drained surface</text>
+<text x="570" y="355" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="normal">p = 0 (reference pressure)</text>
+<text x="570" y="385" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="start" font-weight="normal">No applied surface traction</text>
+<text x="550" y="449" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="start" font-weight="bold">Water-filled pores in both materials.</text>
+<text x="550" y="484" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="start" font-weight="normal">Zero pressure does not mean dry pores.</text>
+<text x="550" y="523" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="start" font-weight="normal">Shared interface: continuous u and p.</text>
+<text x="32" y="629" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#536879" text-anchor="start" font-weight="normal">2D plane strain · small deformation · no body gravity or self-weight in the equations</text>
+</svg>

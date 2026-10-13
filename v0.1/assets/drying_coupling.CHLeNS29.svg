@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 545" width="1000" height="545" role="img" aria-labelledby="title description">
+<title id="title">How heat and moisture influence one another</title><desc id="description">The three unknowns determine vapor pressure, capillary pressure, saturation, and dissolved air. These determine stored amounts and transport fluxes. The balances update the unknowns, closing the coupling loop.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#19796d"/></marker>
+<marker id="muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="543" rx="16" fill="#ffffff" stroke="#ccd8e1" stroke-width="1.5"/>
+<text x="35" y="43" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="bold" text-anchor="start" fill="#193047">How heat and moisture influence one another</text>
+<text x="35" y="79" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="start" fill="#536879">All arrows belong to one coupled solve at each time step.</text>
+<rect x="40" y="145" width="240" height="230" rx="12" fill="#eaf3fb" stroke="#216baf" stroke-width="1.5"/>
+<rect x="375" y="125" width="255" height="270" rx="12" fill="#fff3e5" stroke="#c65a24" stroke-width="1.5"/>
+<rect x="725" y="145" width="235" height="230" rx="12" fill="#e9f5f1" stroke="#19796d" stroke-width="1.5"/>
+<text x="160" y="181" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" text-anchor="middle" fill="#216baf">UNKNOWN STATE</text>
+<text x="160" y="228" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" text-anchor="middle" fill="#193047">Liquid pressure p_l</text>
+<text x="160" y="273" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" text-anchor="middle" fill="#193047">Air pressure p_a</text>
+<text x="160" y="318" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" text-anchor="middle" fill="#193047">Temperature T</text>
+<text x="502" y="161" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" text-anchor="middle" fill="#c65a24">LOCAL PHYSICS</text>
+<text x="502" y="209" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" text-anchor="middle" fill="#193047">Vapor equilibrium</text>
+<text x="502" y="253" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" text-anchor="middle" fill="#193047">Capillary pressure</text>
+<text x="502" y="297" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" text-anchor="middle" fill="#193047">Liquid saturation</text>
+<text x="502" y="341" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="normal" text-anchor="middle" fill="#193047">Dissolved air</text>
+<text x="842" y="181" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" text-anchor="middle" fill="#19796d">STORAGE + FLUX</text>
+<text x="842" y="228" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">Water and air mass</text>
+<text x="842" y="273" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">Flow and diffusion</text>
+<text x="842" y="318" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#193047">Entropy transport</text>
+<path d="M282 260L372 260" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<path d="M632 260L722 260" fill="none" stroke="#c65a24" stroke-width="3" marker-end="url(#orange)"/>
+<path d="M842 377V451H160V378" fill="none" stroke="#19796d" stroke-width="3" marker-end="url(#teal)"/>
+<rect x="300" y="428" width="400" height="43" rx="0" fill="#ffffff" stroke="none" stroke-width="1.5"/>
+<text x="500" y="455" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" text-anchor="middle" fill="#19796d">Balances update the unknown state</text>
+<text x="500" y="510" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="normal" text-anchor="middle" fill="#536879">Example: less liquid → lower thermal conductivity → a different temperature field</text>
+</svg>
