@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 625" width="1000" height="625" role="img" aria-labelledby="title description">
+<title id="title">Infer diffusivity from concentrations at several depths and ages</title><desc id="description">A saturated one-meter specimen has a fixed-concentration inlet at x equals zero and a sealed far end. Six point measurements at depths from 0.02 to 0.30 meters are taken at two ages, producing twelve observations. The near-inlet region is enlarged below.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="623" rx="10" fill="#ffffff" stroke="#ccd8e1"/>
+<text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#193047" text-anchor="start" font-weight="bold">Infer diffusivity from concentrations at several depths and ages</text>
+<text x="32" y="80" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#536879" text-anchor="start" font-weight="normal">One solute · constant porosity · no advection, reaction, or sorption</text>
+<rect x="38" y="127" width="148" height="150" rx="10" fill="#e3f2ff" stroke="#216baf"/>
+<text x="112" y="170" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#216baf" text-anchor="middle" font-weight="bold">Reservoir</text>
+<text x="112" y="208" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#216baf" text-anchor="middle" font-weight="normal">c = c_in</text>
+<text x="112" y="248" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#216baf" text-anchor="middle" font-weight="normal">region 1</text>
+<rect x="199" y="148" width="741" height="108" rx="10" fill="#e4eeec" stroke="#19796d"/>
+<text x="560" y="194" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#19796d" text-anchor="middle" font-weight="normal">Initially tracer-free: c(x, 0) = 0 inside</text>
+<text x="560" y="231" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#19796d" text-anchor="middle" font-weight="normal">Stored solute per bulk volume = φ c</text>
+<path d="M940 137L940 266" fill="none" stroke="#536879" stroke-width="5"/>
+<text x="936" y="117" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#193047" text-anchor="end" font-weight="normal">Sealed: j = 0</text>
+<path d="M206 290L938 290" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#gray)"/>
+<text x="206" y="319" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="start" font-weight="normal">x = 0</text>
+<text x="938" y="319" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="end" font-weight="normal">x = 1 m</text>
+<path d="M218 120L412 120" fill="none" stroke="#216baf" stroke-width="3" marker-end="url(#blue)"/>
+<text x="428" y="125" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#216baf" text-anchor="start" font-weight="normal">solute enters: j &gt; 0</text>
+<text x="38" y="363" font-family="Arial, Helvetica, sans-serif" font-size="22" fill="#193047" text-anchor="start" font-weight="bold">Sampling region enlarged: 0 to 0.30 m</text>
+<path d="M120 419L922 419" fill="none" stroke="#536879" stroke-width="2"/>
+<path d="M172.0 401L172.0 433" fill="none" stroke="#c65a24" stroke-width="3"/>
+<circle cx="172.0" cy="419" r="6" fill="#c65a24"/>
+<text x="172.0" y="463" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">0.02</text>
+<path d="M250.0 401L250.0 433" fill="none" stroke="#c65a24" stroke-width="3"/>
+<circle cx="250.0" cy="419" r="6" fill="#c65a24"/>
+<text x="250.0" y="463" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">0.05</text>
+<path d="M380.0 401L380.0 433" fill="none" stroke="#c65a24" stroke-width="3"/>
+<circle cx="380.0" cy="419" r="6" fill="#c65a24"/>
+<text x="380.0" y="463" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">0.10</text>
+<path d="M510.0 401L510.0 433" fill="none" stroke="#c65a24" stroke-width="3"/>
+<circle cx="510.0" cy="419" r="6" fill="#c65a24"/>
+<text x="510.0" y="463" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">0.15</text>
+<path d="M640.0 401L640.0 433" fill="none" stroke="#c65a24" stroke-width="3"/>
+<circle cx="640.0" cy="419" r="6" fill="#c65a24"/>
+<text x="640.0" y="463" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">0.20</text>
+<path d="M900.0 401L900.0 433" fill="none" stroke="#c65a24" stroke-width="3"/>
+<circle cx="900.0" cy="419" r="6" fill="#c65a24"/>
+<text x="900.0" y="463" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#193047" text-anchor="middle" font-weight="normal">0.30</text>
+<rect x="38" y="501" width="924" height="94" rx="10" fill="#eaf3fb" stroke="#216baf"/>
+<text x="500" y="535" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#216baf" text-anchor="middle" font-weight="bold">6 depths × 2 ages = 12 concentration observations</text>
+<text x="500" y="571" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#193047" text-anchor="middle" font-weight="normal">Ages: 2 × 10⁷ s and 10⁸ s · noise standard deviation: 0.005 mol/m³</text>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 570" width="1000" height="570" role="img" aria-labelledby="title description">
+<title id="title">Pressure storage and two shared interface fluxes</title><desc id="description">The control volume around an interior pressure node extends halfway to its neighbors. Fluxes are oriented toward increasing x. Backward Euler balances the increment of stored fluid with the net new-time outflow.</desc>
+<defs>
+<marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#216baf"/></marker>
+<marker id="orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#c65a24"/></marker>
+<marker id="gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#536879"/></marker>
+</defs>
+<rect x="1" y="1" width="998" height="568" rx="10" fill="#ffffff" stroke="#ccd8e1"/>
+<text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#193047" text-anchor="start" font-weight="bold">Pressure storage and two shared interface fluxes</text>
+<text x="32" y="81" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#536879" text-anchor="start" font-weight="normal">100 intervals · 101 pressure nodes · h = 0.01 m · unit cross-sectional area</text>
+<rect x="370" y="152" width="260" height="147" rx="10" fill="#eaf3fb" stroke="#216baf"/>
+<text x="500" y="182" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#216baf" text-anchor="middle" font-weight="bold">Stored increment: S pᵢ ℓᵢ</text>
+<path d="M100 253L900 253" fill="none" stroke="#536879" stroke-width="2" marker-end="url(#gray)"/>
+<circle cx="240" cy="253" r="7" fill="#216baf"/>
+<text x="240" y="285" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#193047" text-anchor="middle" font-weight="normal">pᵢ₋₁</text>
+<circle cx="500" cy="253" r="7" fill="#216baf"/>
+<text x="500" y="285" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#193047" text-anchor="middle" font-weight="normal">pᵢ</text>
+<circle cx="760" cy="253" r="7" fill="#216baf"/>
+<text x="760" y="285" font-family="Arial, Helvetica, sans-serif" font-size="23" fill="#193047" text-anchor="middle" font-weight="normal">pᵢ₊₁</text>
+<path d="M370 194L370 305" fill="none" stroke="#216baf" stroke-width="2"/>
+<path d="M630 194L630 305" fill="none" stroke="#216baf" stroke-width="2"/>
+<path d="M323 213L415 213" fill="none" stroke="#c65a24" stroke-width="3" marker-end="url(#orange)"/>
+<path d="M583 213L675 213" fill="none" stroke="#c65a24" stroke-width="3" marker-end="url(#orange)"/>
+<text x="312" y="137" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#c65a24" text-anchor="middle" font-weight="normal">q(left)</text>
+<text x="693" y="137" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#c65a24" text-anchor="middle" font-weight="normal">q(right)</text>
+<text x="500" y="341" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#536879" text-anchor="middle" font-weight="normal">Both face fluxes use the positive-x orientation.</text>
+<rect x="45" y="368" width="910" height="77" rx="10" fill="#fff3e5" stroke="#c65a24"/>
+<text x="500" y="399" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#c65a24" text-anchor="middle" font-weight="bold">Stored-volume change + net outflow = 0</text>
+<text x="500" y="430" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#193047" text-anchor="middle" font-weight="normal">ℓᵢ S [p(new) − p(old)] / Δt + q(right,new) − q(left,new) = 0</text>
+<text x="50" y="490" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#19796d" text-anchor="start" font-weight="normal">Model: S p and (k/μ) (pᵢ − pⱼ)</text>
+<text x="50" y="530" font-family="Arial, Helvetica, sans-serif" font-size="21" fill="#216baf" text-anchor="start" font-weight="normal">VoronoiFVM: volume weights + edge lengths + boundary constraints + solve</text>
+</svg>
