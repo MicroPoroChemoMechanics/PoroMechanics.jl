@@ -118,6 +118,57 @@ end
     @test gas_relative_permeability(1.0) == 0.0
     @test gas_relative_permeability(0.0) ≈ 1.0
     @test 0 < gas_relative_permeability(0.5) < 1
+
+    ## The promoting constructor, so an integer exponent does not need a decimal point.
+    @test PowerLawKrl(3.0e6, 2, 0.5) isa PowerLawKrl{Float64}
+end
+
+@testset "Retention — Gardner" begin
+    g = Gardner(2.0e-5)
+    @test saturation(g, -1.0) == 1.0
+    @test dsaturation_dpc(g, -1.0) == 0.0
+    for pc in (1.0e3, 5.0e4, 2.0e5)
+        @test saturation(g, pc) ≈ exp(-2.0e-5 * pc)
+        @test dsaturation_dpc(g, pc) ≈ -2.0e-5 * exp(-2.0e-5 * pc)
+        @test ForwardDiff.derivative(p -> saturation(g, p), pc) ≈ dsaturation_dpc(g, pc)
+    end
+    @test_derivative α -> saturation(Gardner(α), 5.0e4) 2.0e-5
+end
+
+@testset "Tabulated laws" begin
+    pc = [0.0, 1.0e4, 1.0e5, 1.0e6]
+    sl = [1.0, 0.9, 0.5, 0.1]
+    kr = [1.0, 0.6, 0.1, 1.0e-4]
+    tab = Tabulated(pc, sl)
+    tkr = TabulatedKrl(pc, kr)
+
+    ## Through the points, linear between them, clamped outside.
+    @test [saturation(tab, p) for p in pc] == sl
+    @test saturation(tab, 5.5e4) ≈ 0.7
+    @test saturation(tab, -1.0e3) == 1.0
+    @test saturation(tab, 1.0e7) == 0.1
+    @test [relative_permeability(tkr, p) for p in pc] == kr
+    @test relative_permeability(tkr, 5.5e4) ≈ 0.35
+
+    ## The slope is the segment's, and zero where the curve is clamped.
+    @test dsaturation_dpc(tab, 5.5e4) ≈ (0.5 - 0.9) / (1.0e5 - 1.0e4)
+    @test dsaturation_dpc(tab, -1.0e3) == 0
+    @test dsaturation_dpc(tab, 1.0e7) == 0
+    @test ForwardDiff.derivative(p -> saturation(tab, p), 5.5e4) ≈ dsaturation_dpc(tab, 5.5e4)
+
+    ## A clamped branch must still return a `Dual`, or the derivative is lost silently.
+    @test ForwardDiff.derivative(p -> saturation(tab, p), 1.0e7) == 0
+
+    ## The values of a measured curve are parameters too: differentiate through one.
+    @test ForwardDiff.derivative(s -> saturation(Tabulated(pc, [1.0, s, 0.5, 0.1]), 5.5e4), 0.9) ≈ 0.5
+
+    ## Malformed tables are refused rather than interpolated.
+    for T in (Tabulated, TabulatedKrl)
+        @test_throws ArgumentError T(pc, sl[1:3])
+        @test_throws ArgumentError T([0.0], [1.0])
+        @test_throws ArgumentError T([0.0, 2.0, 1.0], [1.0, 0.5, 0.2])
+        @test_throws ArgumentError T([0.0, 1.0, 1.0], [1.0, 0.5, 0.2])
+    end
 end
 
 @testset "Tortuosity — OhJang" begin
@@ -329,6 +380,12 @@ end
 # ── The stress–strain interface ───────────────────────────────────────────────
 
 @testset "Material interface — LinearElastic" begin
+    ## The defaults a material inherits: no internal variables, and a response that must
+    ## be written rather than silently assumed.
+    struct _BareMaterial <: AbstractMaterial end
+    @test initial_state(_BareMaterial()) isa NoState
+    @test_throws ErrorException material_response(_BareMaterial(), zero(SymmetricTensor{2, 3}), NoState(), 1.0)
+
     mat = LinearElastic(; E = 1.0e8, nu = 0.2)
     ε = SymmetricTensor{2, 2}((1.0e-3, 2.0e-4, -5.0e-4))
     σ, C, st = material_response(mat, ε, initial_state(mat), 1.0)

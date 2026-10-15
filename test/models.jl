@@ -25,6 +25,38 @@ using VoronoiFVM: VoronoiFVM, unknowns, solve
         @test FickModel(0.3, 1.0e-10, ()) isa FickModel{Float64, Float64}
         @test DarcyModel(1.0e-12, 1.0e-3, 1.0e-8, ()) isa DarcyModel{Float64, Float64, Float64}
         @test FickModel(; phi = 0.3, D = 1) isa FickModel{Float64, Float64}
+
+        richards = RichardsModel()
+        @test PoroMechanics.nspecies(richards) == 1
+        @test PoroMechanics.species_names(richards) == [:p_l]
+
+        ## An integer density and a `Dual` porosity: the scalars are promoted together, the
+        ## gravity axis and the permeability stay what they were given as.
+        @test RichardsModel(; rho_l = 1000, gravity = -9.81) isa RichardsModel{Float64}
+        d = ForwardDiff.Dual(0.3, 1.0)
+        dual = RichardsModel(; phi = d)
+        @test dual.rho_l isa typeof(d)
+        @test dual.gravity_axis isa Int
+        @test dual.k_int isa Float64
+
+        layered = RichardsModel(; k_int = [8.9e-12, 8.9e-13])
+        @test intrinsic_permeability(layered, 2) == 8.9e-13
+        @test intrinsic_permeability(richards, 2) == richards.k_int
+    end
+
+    @testset "boundary data in any collection" begin
+        ## A tuple is unrolled through `Base.tail` so that it does not box; any other
+        ## collection takes the plain loop. Both must impose the same values; solved to
+        ## steady state, the profile between them is linear.
+        grid = simplexgrid(range(0.0, 1.0; length = 21))
+        profile(dirichlet) = begin
+            sys = PoroMechanics.fvm_system(FickModel(; phi = 0.3, D = 1.0e-9, dirichlet), grid)
+            solve(sys; inival = unknowns(sys; inival = 0.0))[1, :]
+        end
+        as_tuple = profile(((1, 1.0), (2, t -> 0.5)))
+        as_vector = profile(Any[(1, 1.0), (2, t -> 0.5)])
+        @test as_vector == as_tuple
+        @test as_vector ≈ 1.0 .- 0.5 .* grid[Coordinates][1, :]
     end
 
     @testset "coefficients per cell region" begin
@@ -41,6 +73,8 @@ using VoronoiFVM: VoronoiFVM, unknowns, solve
         @test PoroMechanics.intrinsic_permeability(column, 2) == 1.0e-14
         @test PoroMechanics.mobility(column, 2) == 1.0e-14 / 1.0e-3
         @test PoroMechanics.storativity(column, 1) == 1.0e-8
+        layers = DarcyModel(; k_int = 1.0e-12, mu_l = 1.0e-3, storativity = [1.0e-8, 1.0e-9])
+        @test PoroMechanics.storativity(layers, 2) == 1.0e-9
     end
 
     @testset "boundary values that depend on time" begin

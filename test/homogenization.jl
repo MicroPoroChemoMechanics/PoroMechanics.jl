@@ -184,4 +184,21 @@ using Tensors: Tensors, SymmetricTensor
         ## And the checkerboard is symmetric under x ↔ y, so the diagonal terms match too.
         @test isapprox(σ1[1, 1], σ2[2, 2]; rtol = 1.0e-8)
     end
+
+    @testset "the stiffness at rest, and a stress control that gives up loudly" begin
+        ## Homogeneous again, so the in-plane stiffness is known: λ + 2μ on the normal
+        ## diagonal, λ between the two normal components, in plane strain. The order of
+        ## the components is (11, 12, 22).
+        mat = LinearElastic(; E = 3.0e9, nu = 0.25)
+        nodes, cells, regions = square_cell(4)
+        cell = periodic_cell(nodes, cells, regions, Dict(1 => mat, 2 => mat))
+        C = homogenized_stiffness(cell)
+        @test C[1, 1] ≈ mat.λ + 2mat.μ rtol = 1.0e-6
+        @test C[3, 3] ≈ mat.λ + 2mat.μ rtol = 1.0e-6
+        @test C[1, 3] ≈ mat.λ rtol = 1.0e-6
+
+        ## Out of iterations, it must raise rather than return the last iterate.
+        σ = SymmetricTensor{2, 2}((-1.0e6, 0.0, -1.0e6))
+        @test_throws ErrorException homogenize_to_stress(cell, σ; maxiter = 0)
+    end
 end
