@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Move to ChemistryLab 0.38.2 and OptimaSolver 0.8.6 (0.8.7 in the manifests), and bring
+  every other dependency to its latest version within its bound: Ferrite 1.7, VoronoiFVM
+  3.5.4, LinearSolve 5.18, FerriteGmsh 1.5. No source change was needed; all 1034 tests
+  pass. MeanFieldHomogenization stays at 0.7 in `docs/` and `examples/`, as its note
+  there requires. The chloride signature moves by 3.0e-4 (tolerance 1e-3), in the pore
+  solution and the adsorbed amounts rather than the solids, every other case staying
+  under 1e-10; the reference is regenerated, as for 0.28.2.
+
 - Move to ChemistryLab 0.31.0 and OptimaSolver 0.8.0, which migrate as a pair: from 0.30
   ChemistryLab's OptimaSolver extension requires 0.8. No source change was needed. Since
   0.31 `equilibrate(state, solver)` returns the composition the dual Newton certifies from

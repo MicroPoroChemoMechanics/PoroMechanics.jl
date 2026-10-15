@@ -153,6 +153,17 @@ strict mode. That is three orders of magnitude inside the 1e-3 tolerance and wel
 upstream: 0.31 polishes every back end's answer by the dual Newton, and OptimaSolver 0.8
 judges each balance row relative to what it holds.
 
+ChemistryLab 0.38.2 with OptimaSolver 0.8.7 moved it by 3.0e-4 on the same Mac (largest
+entry, the frozen OH⁻ at the second save, 297.572 → 298.527), every other case staying
+under 1e-10 in strict mode. The deviation sits in the pore solution and the DLM: up to
+3.2e-3 relative on OH⁻, 4.4e-3 on adsorbed K, 1.4e-3 on the concentrations and 1.8e-3 on
+ettringite and Friedel's salt, against at most 6e-6 on portlandite, monosulphate and
+porosity. No source changed here; seven ChemistryLab releases did, and the cause is not
+isolated between them — 0.34 refits the chloride end member of CSHQ, 0.37 makes the
+seventeen Cemdata18 substances defined by a reaction follow it. As for 0.28.2, a margin
+of 3.3 under the 1e-3 tolerance against a platform spread of 1.0e-4 is too thin to keep,
+so the reference was regenerated.
+
 To reproduce the reference and checks from the repository root:
 
 ```sh
