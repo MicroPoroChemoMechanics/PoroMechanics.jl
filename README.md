@@ -13,6 +13,7 @@
 [![codecov](https://codecov.io/gh/MicroPoroChemoMechanics/PoroMechanics.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/MicroPoroChemoMechanics/PoroMechanics.jl)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl/blob/main/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23342764.svg)](https://doi.org/10.5281/zenodo.23342764)
 [![code style: runic](https://img.shields.io/badge/code_style-%E1%9A%B1%E1%9A%A2%E1%9A%BE%E1%9B%81%E1%9A%B2-pink)](https://github.com/fredrikekre/Runic.jl)
 
 ## Introduction
@@ -253,13 +254,16 @@ If you use PoroMechanics.jl in your research, please cite it:
   author    = {Soive, Anthony and Barth{\'e}l{\'e}my, Jean-Fran{\c{c}}ois},
   title     = {{PoroMechanics.jl}: Reactive transport and poromechanics of porous media},
   version   = {0.1.0},
+  doi       = {10.5281/zenodo.23342765},
   url       = {https://github.com/MicroPoroChemoMechanics/PoroMechanics.jl},
 }
 ```
 
 The [CITATION.cff](CITATION.cff) file is also available for tools such as
-[Zenodo](https://zenodo.org/) and [citeas.org](https://citeas.org/). A DOI will be minted
-with the first tagged release.
+[Zenodo](https://zenodo.org/) and [citeas.org](https://citeas.org/). Each tagged release is
+archived on Zenodo: the DOI above, [10.5281/zenodo.23342764](https://doi.org/10.5281/zenodo.23342764),
+names every version and resolves to the latest; cite
+[10.5281/zenodo.23342765](https://doi.org/10.5281/zenodo.23342765) for version 0.1.0 itself.
 
 ## Authors
 
