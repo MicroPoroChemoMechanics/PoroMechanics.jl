@@ -7,6 +7,10 @@
   `^2.0.0-alpha.20`, so `^2.18.2` beside `vitepress = "^1.6.4"` made `npm install` fail with
   `ERESOLVE` and the documentation build with it. 2.18.2 is the last release accepting
   VitePress 1; DocumenterVitepress pinned its own template the same way (LuxDL/DocumenterVitepress.jl#400).
+  `@nolebase/ui`, which the plugin pulls in with a caret range of its own, is held at
+  `~2.18.2` as well: its 2.21.1 asks for VitePress 2 too, and npm only warned about it
+  where it could have refused. The tree now resolves to VitePress 1.6.4 without a warning,
+  as in DECUHR.jl.
 
 - Move to ChemistryLab 0.38.2 and OptimaSolver 0.8.6 (0.8.7 in the manifests), and bring
   every other dependency to its latest version within its bound: Ferrite 1.7, VoronoiFVM
