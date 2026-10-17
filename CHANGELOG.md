@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Pin `@nolebase/vitepress-plugin-enhanced-readabilities` to `~2.18.2` in
+  `docs/package.json`. Its 2.21.0 and 2.21.1 (2026-10-13 and 14) require VitePress
+  `^2.0.0-alpha.20`, so `^2.18.2` beside `vitepress = "^1.6.4"` made `npm install` fail with
+  `ERESOLVE` and the documentation build with it. 2.18.2 is the last release accepting
+  VitePress 1; DocumenterVitepress pinned its own template the same way (LuxDL/DocumenterVitepress.jl#400).
+
 - Move to ChemistryLab 0.38.2 and OptimaSolver 0.8.6 (0.8.7 in the manifests), and bring
   every other dependency to its latest version within its bound: Ferrite 1.7, VoronoiFVM
   3.5.4, LinearSolve 5.18, FerriteGmsh 1.5. No source change was needed; all 1034 tests
