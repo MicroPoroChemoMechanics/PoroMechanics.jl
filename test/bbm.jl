@@ -302,3 +302,23 @@ end
     @test all(nr -> last(nr) < 1.0e-8, hist_c)
     @test sum(length, hist_c) > 3 * sum(length, hist)
 end
+
+@testset "BBM wrappers: the suction passed or read from the state" begin
+    ## Each tangent variant has two entry points, one reading the suction off the state and
+    ## one taking it as a loading variable. At the state's own suction they must agree, and
+    ## the wrapper must start from the model's own initial state.
+    m = BBM()
+    σ0, pc0, s = -1.0e4 * I3, 4.0e4, 1.0e5
+    st = initial_state(m, σ0, pc0; suction = s)
+    ε = SymmetricTensor{2, 3}((i, j) -> i == j ? -2.0e-3 : 0.0)
+    for w in (ContinuumTangent(m), ExplicitPredictor(m))
+        @test initial_state(w, σ0, pc0; suction = s).σ == st.σ
+        σ4, _, st4 = material_response(w, ε, st, 1.0)
+        σ5, _, st5 = material_response(w, ε, s, st, 1.0)
+        @test σ5 == σ4
+        @test st5.pc_star == st4.pc_star
+    end
+
+    ## A BBM state needs an in-situ stress and a preconsolidation: there is no default.
+    @test_throws ErrorException initial_state(m)
+end

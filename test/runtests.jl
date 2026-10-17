@@ -27,8 +27,14 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
         @test_throws ErrorException flux!(zeros(1), zeros(2), nothing, m, nothing)
         @test_throws ErrorException assemble_element!(zeros(2, 2), zeros(2), nothing, zeros(2), m, nothing, 1.0)
 
-        # bcondition! default is a no-op (no error)
+        @test_throws ErrorException element_matrices!(zeros(2, 2), zeros(2, 2), nothing, m, nothing, nothing)
+        @test_throws ErrorException PoroMechanics.nspecies(m)
+        @test_throws ErrorException PoroMechanics.species_names(m)
+
+        # bcondition!, reaction! and facet_load! default to a no-op (no error)
         @test isnothing(bcondition!(zeros(1), zeros(1), nothing, m, nothing))
+        @test isnothing(reaction!(zeros(1), zeros(1), nothing, m, nothing))
+        @test isnothing(facet_load!(zeros(2), nothing, m, nothing))
     end
 
     # ── Constitutive layer: values and differentiability ──────────────────────
@@ -41,6 +47,9 @@ issubset(TEST_GROUPS, Set(["core", "validation", "regression", "chemistry", "bil
 
         # ── Drucker-Prager ─────────────────────────────────────────────────────────
         include("druckerprager.jl")
+
+        # ── Poroplasticity on a radius, against closed forms ───────────────────────
+        include("poroplast.jl")
 
         # ── Computational homogenization on a periodic cell ────────────────────────
         include("homogenization.jl")

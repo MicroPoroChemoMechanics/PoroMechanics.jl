@@ -283,4 +283,29 @@ end
         ## σ = σ' - b p I, and σ' does not depend on b here, so ∂p̄/∂b is exactly -p.
         @test g[1] ≈ -4.7e6 rtol = 1.0e-8
     end
+
+    @testset "stress control inverts the elastic branch" begin
+        E, ν = 5.8e9, 0.3
+        m = DruckerPrager(; E = E, nu = ν, cohesion = 1.0e6, friction = deg2rad(25), dilatancy = deg2rad(25))
+        I3 = one(SymmetricTensor{2, 3})
+        ## Inside the cone the law is linear, so the strain that produces an isotropic
+        ## stress is that stress over 3K on each axis.
+        st = initial_state(m, zero(SymmetricTensor{2, 3}))
+        σ_target = -2.0e6 * I3
+        ε, σ, _, _ = stress_controlled_response(m, σ_target, st, 1.0)
+        K = E / (3 * (1 - 2ν))
+        @test σ ≈ σ_target rtol = 1.0e-10
+        @test ε ≈ σ_target / (3K) rtol = 1.0e-8
+
+        ## A state built without a prestress starts from zero.
+        z = zero(SymmetricTensor{2, 3})
+        @test DruckerPragerState(z, z, z, 0.0).σ0 == z
+    end
+
+    @testset "BiotPlastic exposes its skeleton" begin
+        m = DruckerPrager(; E = 5.8e9, nu = 0.3, cohesion = 1.0e6, friction = 0.4, dilatancy = 0.4)
+        bp = BiotPlastic(m, 0.8, 0.8, 0, 1.0e-19, 1.0e-3)      # an integer N is promoted
+        @test skeleton(bp) === m
+        @test eltype(bp) == Float64
+    end
 end
