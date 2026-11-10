@@ -5,7 +5,7 @@ Regenerate a reference only for an intentional change, and document the reason.
 
 ## Where the numbers are asserted
 
-`Manifest.toml` and `test/Manifest.toml` are committed as a pair, and the Julia 1.12 CI
+`Manifest.toml` and `test/Manifest.toml` are committed as a pair, and the Julia 1.13 CI
 jobs instantiate them with `allow_reresolve: false`. This is the one environment in which
 the references are compared. The pair matters: Pkg builds the test sandbox from both
 manifests, so pinning only the test one leaves CI resolving the root afresh and then
@@ -90,9 +90,9 @@ tolerance is selected by OS.
 ![Corrected drying temperature and saturation profiles](../../docs/src/assets/nonisothermal_drying_corrected.png)
 
 ```sh
-GKSwstype=100 julia +1.12 --project=examples examples/nonisothermal_drying/run.jl
-julia +1.12 --project=examples test/regression/generate.jl nonisothermal_drying
-julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["core", "regression"])'
+GKSwstype=100 julia +1.13 --project=examples examples/nonisothermal_drying/run.jl
+julia +1.13 --project=examples test/regression/generate.jl nonisothermal_drying
+julia +1.13 --project -e 'using Pkg; Pkg.test(test_args=["core", "regression"])'
 ```
 
 ## Certified chloride chemistry
@@ -167,9 +167,9 @@ so the reference was regenerated.
 To reproduce the reference and checks from the repository root:
 
 ```sh
-julia +1.12 --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
-julia +1.12 --project=examples test/regression/generate.jl chloride_ingress
-julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["regression", "chemistry"])'
+julia +1.13 --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+julia +1.13 --project=examples test/regression/generate.jl chloride_ingress
+julia +1.13 --project -e 'using Pkg; Pkg.test(test_args=["regression", "chemistry"])'
 ```
 
 The initial interior-point *guess* can still emit `MaxIters`; the initialization

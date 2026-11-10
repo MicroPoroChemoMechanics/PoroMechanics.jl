@@ -1,6 +1,6 @@
 # Reproduce and check the local equilibrium used by reduced-Newton transport.
 # Run from the repository root:
-# julia +1.12 --project=examples examples/chloride_ingress/repro_equilibrated_transport.jl
+# julia +1.13 --project=examples examples/chloride_ingress/repro_equilibrated_transport.jl
 using LinearAlgebra
 using PoroMechanics, ChemistryLab, DynamicQuantities, ForwardDiff, OptimaSolver
 include("element_balance.jl")

@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.12'      # minimum supported, and the pinned environment: carries the numeric assertions
+          - '1.13'      # minimum supported, and the pinned environment: carries the numeric assertions
           - '1'         # latest stable, resolved from scratch: carries the API-drift check
         os:
           - ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
       # XML2_jll 2.15.3 there against Hwloc_jll 2.14.0 here, with no version left.
       # `allow_reresolve: false` makes the pin fail loudly rather than drift silently.
       - name: Test the pinned environment — every group
-        if: matrix.version == '1.12'
+        if: matrix.version == '1.13'
         uses: julia-actions/julia-runtest@v1
         with:
           allow_reresolve: false
@@ -75,9 +75,9 @@ jobs:
           test_args: 'core validation chemistry'
 
       - uses: julia-actions/julia-processcoverage@v1
-        if: matrix.version == '1.12' && matrix.os == 'ubuntu-latest'
+        if: matrix.version == '1.13' && matrix.os == 'ubuntu-latest'
       - uses: codecov/codecov-action@v7
-        if: matrix.version == '1.12' && matrix.os == 'ubuntu-latest'
+        if: matrix.version == '1.13' && matrix.os == 'ubuntu-latest'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info

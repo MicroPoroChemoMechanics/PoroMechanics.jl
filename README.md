@@ -72,7 +72,7 @@ publisher, so it needs the network once (or `CHEMISTRYLAB_DATABASE_DIR`, or a co
 installed with `install_database`).
 
 ```sh
-julia +1.12 --project=examples -e 'using Pkg; Pkg.instantiate()'
+julia +1.13 --project=examples -e 'using Pkg; Pkg.instantiate()'
 ```
 
 The example `examples/chloride_ingress/repro_equilibrated_transport.jl` checks a
@@ -144,7 +144,7 @@ depend on — a model is handed a grid, it does not construct one:
 Pkg.add("ExtendableGrids")
 ```
 
-Julia 1.12 or later. The package's own dependencies do not force that floor any more, but
+Julia 1.13 or later. The package's own dependencies do not force that floor any more, but
 it is the only version the project is tested on: `examples/` and the test suite pull
 `ChemistryLab.jl` and `OptimaSolver.jl`, which require it, and CI runs nothing below it.
 
@@ -224,13 +224,13 @@ importing them together leaves the name ambiguous.
 julia --project -e 'using Pkg; Pkg.test()'
 ```
 
-With Juliaup, use `julia +1.12` to select the supported version without changing the
+With Juliaup, use `julia +1.13` to select the supported version without changing the
 default used by other projects. Test groups can be run separately:
 
 ```sh
-julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["core"])'
-julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["validation", "regression"])'
-julia +1.12 --project -e 'using Pkg; Pkg.test(test_args=["chemistry"])'
+julia +1.13 --project -e 'using Pkg; Pkg.test(test_args=["core"])'
+julia +1.13 --project -e 'using Pkg; Pkg.test(test_args=["validation", "regression"])'
+julia +1.13 --project -e 'using Pkg; Pkg.test(test_args=["chemistry"])'
 ```
 
 With no arguments, all groups run, including `bil` when its inputs are available. Group
@@ -239,7 +239,7 @@ Regression tolerances are case-specific: `1e-10` except for Richards 1D (`1e-3`,
 measured adaptive-step drift across platforms). Set `POROMECHANICS_STRICT_REGRESSION=true`
 for `1e-10` on every case when comparing within a controlled numerical environment.
 
-CI runs Julia 1.12 (minimum supported) and stable on Ubuntu and Windows.
+CI runs Julia 1.13 (minimum supported) and stable on Ubuntu and Windows.
 
 ## Release notes
 

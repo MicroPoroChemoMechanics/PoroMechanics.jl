@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- Move to ChemistryLab 0.42.2 and OptimaSolver 0.11.0 (`[compat]` `"0.42.2"` and
+  `"0.11"`). OptimaSolver 0.11 makes the active-set iteration of Optima the default back
+  end of `OptimaOptimizer()` in place of the interior point; ChemistryLab 0.42.1 and
+  0.42.2 fix the search on a zero-budget acid–base row and hand the solver the Gibbs
+  Hessian. Every equilibrium here is still certified by the dual Newton, and the code
+  passes only `tol` and `verbose`, so no source change was needed. Only those two
+  packages move in `test/Manifest.toml`; the root manifest is unchanged (ChemistryLab is
+  a weak dependency). All 1034 tests pass; in strict mode every regression case stays
+  under 1e-10 except drying, 1.35e-7 as before (tolerance 1e-5); no reference is
+  regenerated.
+
+- Move to ChemistryLab 0.42.0 and OptimaSolver 0.10.0, which raises the Julia floor to
+  **1.13** (`julia = "1.13"` in every `Project.toml`; CI's pinned job moves from 1.12 to
+  1.13). ChemistryLab 0.42 changes no code relative to 0.41.3 — its only content is the
+  Julia 1.13 requirement, shared by OptimaSolver 0.10 — so the chemistry is that of 0.41
+  (OptimaSolver 0.9 dual Newton, runs resumed from the previous solve). `Manifest.toml`
+  and `test/Manifest.toml` are regenerated under Julia 1.13.3 (manifest format 2.1, not
+  readable by 1.12), changing only ChemistryLab, OptimaSolver, the four packages they add
+  (HTTP, Malt, Reseau, URIs) and the standard libraries. No source change was needed; all
+  1034 tests pass. Regression deviations against the existing references: chloride
+  4.0e-12, drying 1.35e-7 (tolerance 1e-5), Biot 1.1e-15, the others 0; no reference is
+  regenerated. On windows-latest Gmsh does not initialize under Julia 1.13, so
+  `biot_consolidation` is reported as skipped there, as already handled in
+  `test/regression/cases.jl`.
+
 - Pin `@nolebase/vitepress-plugin-enhanced-readabilities` to `~2.18.2` in
   `docs/package.json`. Its 2.21.0 and 2.21.1 (2026-10-13 and 14) require VitePress
   `^2.0.0-alpha.20`, so `^2.18.2` beside `vitepress = "^1.6.4"` made `npm install` fail with
