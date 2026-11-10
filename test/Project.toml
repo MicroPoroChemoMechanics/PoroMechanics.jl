@@ -22,7 +22,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 VoronoiFVM = "82b139dc-5afc-11e9-35da-9b9bdfd336f3"
 
 [compat]
-ChemistryLab = "0.42.2"
-OptimaSolver = "0.11"
+ChemistryLab = "0.43"
+OptimaSolver = "0.12"
 OrdinaryDiffEq = "7"
 julia = "1.13"

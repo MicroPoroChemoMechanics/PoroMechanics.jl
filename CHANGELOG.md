@@ -2,16 +2,20 @@
 
 ## Unreleased
 
-- Move to ChemistryLab 0.42.2 and OptimaSolver 0.11.0 (`[compat]` `"0.42.2"` and
-  `"0.11"`). OptimaSolver 0.11 makes the active-set iteration of Optima the default back
-  end of `OptimaOptimizer()` in place of the interior point; ChemistryLab 0.42.1 and
-  0.42.2 fix the search on a zero-budget acid–base row and hand the solver the Gibbs
-  Hessian. Every equilibrium here is still certified by the dual Newton, and the code
-  passes only `tol` and `verbose`, so no source change was needed. Only those two
-  packages move in `test/Manifest.toml`; the root manifest is unchanged (ChemistryLab is
-  a weak dependency). All 1034 tests pass; in strict mode every regression case stays
-  under 1e-10 except drying, 1.35e-7 as before (tolerance 1e-5); no reference is
-  regenerated.
+- Move to ChemistryLab 0.43.0 and OptimaSolver 0.12.0 (`[compat]` `"0.43"` and
+  `"0.12"`, in `test/`, `examples/` and the package weakdeps). On the way, OptimaSolver
+  0.11 made the active-set iteration of Optima the default back end of
+  `OptimaOptimizer()` in place of the interior point, and ChemistryLab 0.42.1–0.42.2
+  fixed the search on a zero-budget acid–base row and handed the solver the Gibbs
+  Hessian; 0.43 makes `kinetic_step` throw instead of returning an uncertified step, and
+  OptimaSolver 0.12 adds parametric unknowns and a basis of the active set the matrix
+  supports. Every equilibrium here is still certified by the dual Newton, the code
+  passes only `tol` and `verbose` and calls no kinetic step, so no source change was
+  needed. Only those two packages move in `test/Manifest.toml`; the root manifest is
+  unchanged (ChemistryLab is a weak dependency). All 1034 tests pass under 0.42.2 /
+  0.11, and the chemistry and regression groups again under 0.43.0 / 0.12.0; in strict
+  mode every regression case stays under 1e-10 except drying, 1.35e-7 as before
+  (tolerance 1e-5); no reference is regenerated.
 
 - Move to ChemistryLab 0.42.0 and OptimaSolver 0.10.0, which raises the Julia floor to
   **1.13** (`julia = "1.13"` in every `Project.toml`; CI's pinned job moves from 1.12 to
