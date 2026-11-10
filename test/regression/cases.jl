@@ -63,7 +63,7 @@ end
 ## equilibrium and Friedel sensitivity must now be certified. The reference was renewed
 ## after replacing the unconverged interior-point path; see `README.md` in this folder.
 ##
-## Regenerate with `julia +1.12 --project=examples test/regression/generate.jl
+## Regenerate with `julia +1.13 --project=examples test/regression/generate.jl
 ## chloride_ingress` — **not** the `--project` of the header the reference file carries,
 ## since the root environment has neither ChemistryLab nor OptimaSolver.
 module _ChlorideIngress

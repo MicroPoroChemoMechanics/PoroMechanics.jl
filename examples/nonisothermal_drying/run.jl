@@ -843,10 +843,10 @@ p_sl
 
 # ## 11. Run, inspect, and modify the example
 #
-# From the repository root, with Julia 1.12 or newer and the examples environment prepared:
+# From the repository root, with Julia 1.13 or newer and the examples environment prepared:
 #
 # ```sh
-# julia +1.12 --project=examples examples/nonisothermal_drying/run.jl
+# julia +1.13 --project=examples examples/nonisothermal_drying/run.jl
 # ```
 #
 # The first execution can spend time compiling Julia methods before printing results.
@@ -858,12 +858,12 @@ p_sl
 #     ChemistryLab even though this particular model has no chemistry reactions:
 #
 #     ```sh
-#     julia +1.12 --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
+#     julia +1.13 --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'
 #     ```
 #
 # ### Inspect the returned arrays
 #
-# Start an interactive Julia session with `julia +1.12 --project=examples`, then run:
+# Start an interactive Julia session with `julia +1.13 --project=examples`, then run:
 #
 # ```julia
 # include("examples/nonisothermal_drying/run.jl")  # computes the default case once

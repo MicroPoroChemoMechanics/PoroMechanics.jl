@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+- Add `benchmarks/equilibrated_transport_cost.jl`, the cost bench of the fully coupled
+  chemistry: a 50 mm OPC column, 41 nodes, NaCl boundary, run with
+  `julia +1.13 --project=examples benchmarks/equilibrated_transport_cost.jl days=365`.
+  It counts the equilibria the solve asks for, times them apart from the rest, and
+  checks conservation through the test-function identity, so that an optimisation of the
+  coupling is measured against the same case. Measured on 2026-11-10 (ChemistryLab
+  0.43.0, OptimaSolver 0.12.0, arm64-apple-darwin, one thread): one year in **58 s**,
+  99 % of it in the chemistry; 86 steps, 3.2 Newton iterations each; 21 920 equilibria
+  at 2.6 ms, exactly two per node and per Newton iteration — one per edge end, which
+  is what `flux!` asks for; conservation defect 2.5e-11. In the node count alone that
+  is 9 min for 400 nodes and 4 h for a 10 000-node 2D case; a paste with a C-S-H
+  surface costs some seven times more per equilibrium.
+
+- Move to ChemistryLab 0.43.0 and OptimaSolver 0.12.0 (`[compat]` `"0.43"` and
+  `"0.12"` in `test/` and `examples/`, `"0.42.2, 0.43"` in the package weakdeps). On the way, OptimaSolver
+  0.11 made the active-set iteration of Optima the default back end of
+  `OptimaOptimizer()` in place of the interior point, and ChemistryLab 0.42.1–0.42.2
+  fixed the search on a zero-budget acid–base row and handed the solver the Gibbs
+  Hessian; 0.43 makes `kinetic_step` throw instead of returning an uncertified step, and
+  OptimaSolver 0.12 adds parametric unknowns and a basis of the active set the matrix
+  supports. Every equilibrium here is still certified by the dual Newton, the code
+  passes only `tol` and `verbose` and calls no kinetic step, so no source change was
+  needed. Only those two packages move in `test/Manifest.toml`; the root manifest is
+  unchanged (ChemistryLab is a weak dependency). All 1034 tests pass under 0.42.2 /
+  0.11, and the chemistry and regression groups again under 0.43.0 / 0.12.0; in strict
+  mode every regression case stays under 1e-10 except drying, 1.35e-7 as before
+  (tolerance 1e-5); no reference is regenerated.
+
+- Move to ChemistryLab 0.42.0 and OptimaSolver 0.10.0, which raises the Julia floor to
+  **1.13** (`julia = "1.13"` in every `Project.toml`; CI's pinned job moves from 1.12 to
+  1.13). ChemistryLab 0.42 changes no code relative to 0.41.3 — its only content is the
+  Julia 1.13 requirement, shared by OptimaSolver 0.10 — so the chemistry is that of 0.41
+  (OptimaSolver 0.9 dual Newton, runs resumed from the previous solve). `Manifest.toml`
+  and `test/Manifest.toml` are regenerated under Julia 1.13.3 (manifest format 2.1, not
+  readable by 1.12), changing only ChemistryLab, OptimaSolver, the four packages they add
+  (HTTP, Malt, Reseau, URIs) and the standard libraries. No source change was needed; all
+  1034 tests pass. Regression deviations against the existing references: chloride
+  4.0e-12, drying 1.35e-7 (tolerance 1e-5), Biot 1.1e-15, the others 0; no reference is
+  regenerated. On windows-latest Gmsh does not initialize under Julia 1.13, so
+  `biot_consolidation` is reported as skipped there, as already handled in
+  `test/regression/cases.jl`.
+
 - Pin `@nolebase/vitepress-plugin-enhanced-readabilities` to `~2.18.2` in
   `docs/package.json`. Its 2.21.0 and 2.21.1 (2026-10-13 and 14) require VitePress
   `^2.0.0-alpha.20`, so `^2.18.2` beside `vitepress = "^1.6.4"` made `npm install` fail with

@@ -335,7 +335,7 @@
 # julia --project=examples examples/biot_consolidation/run.jl
 # ```
 #
-# Use Julia 1.12 or newer. The script needs Ferrite, FerriteGmsh, and the supplied
+# Use Julia 1.13 or newer. The script needs Ferrite, FerriteGmsh, and the supplied
 # `ternay.msh`; run it in the `examples` environment, which declares these dependencies.
 # The mesh path is relative to this script, so it does not depend on the working
 # directory. The documentation displays this example without executing it during

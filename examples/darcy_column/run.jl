@@ -317,7 +317,7 @@ p
 # by 500 s. For a transient convergence study, compare common physical times while
 # refining the grid and reducing the time-step limits separately.
 #
-# From the repository root, with Julia 1.12 or newer and the examples environment
+# From the repository root, with Julia 1.13 or newer and the examples environment
 # prepared, run `julia --project=examples examples/darcy_column/run.jl`. In a Julia
 # session started with `julia --project=examples`:
 #

@@ -298,7 +298,7 @@
 #
 # ## 5. Run the example and identify the library's role
 #
-# From the repository root, using Julia 1.12 or newer:
+# From the repository root, using Julia 1.13 or newer:
 #
 # ```sh
 # julia --project=examples -e 'using Pkg; Pkg.develop(path="."); Pkg.instantiate()'

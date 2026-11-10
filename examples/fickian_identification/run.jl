@@ -28,7 +28,7 @@
 #
 # Basic derivatives and matrix algebra are enough to follow the derivations below.
 # The dual-number examples introduce automatic differentiation from first principles.
-# Run the whole script from the repository root with Julia 1.12 or newer:
+# Run the whole script from the repository root with Julia 1.13 or newer:
 # `julia --project=examples examples/fickian_identification/run.jl`, after preparing
 # the examples environment. It prints sensitivity, calibration, and refinement
 # tables and creates a plot of the fitted profiles.

@@ -7,7 +7,7 @@ The site is emitted as Markdown by Documenter and rendered by VitePress
 From the repository root:
 
 ```
-julia +1.12 --project=docs docs/make.jl
+julia +1.13 --project=docs docs/make.jl
 ```
 
 That runs every `@example` block on the site, so it is not quick. The result
