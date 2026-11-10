@@ -2,8 +2,21 @@
 
 ## Unreleased
 
+- Add `benchmarks/equilibrated_transport_cost.jl`, the cost bench of the fully coupled
+  chemistry: a 50 mm OPC column, 41 nodes, NaCl boundary, run with
+  `julia +1.13 --project=examples benchmarks/equilibrated_transport_cost.jl days=365`.
+  It counts the equilibria the solve asks for, times them apart from the rest, and
+  checks conservation through the test-function identity, so that an optimisation of the
+  coupling is measured against the same case. Measured on 2026-11-10 (ChemistryLab
+  0.43.0, OptimaSolver 0.12.0, arm64-apple-darwin, one thread): one year in **58 s**,
+  99 % of it in the chemistry; 86 steps, 3.2 Newton iterations each; 21 920 equilibria
+  at 2.6 ms, exactly two per node and per Newton iteration — one per edge end, which
+  is what `flux!` asks for; conservation defect 2.5e-11. In the node count alone that
+  is 9 min for 400 nodes and 4 h for a 10 000-node 2D case; a paste with a C-S-H
+  surface costs some seven times more per equilibrium.
+
 - Move to ChemistryLab 0.43.0 and OptimaSolver 0.12.0 (`[compat]` `"0.43"` and
-  `"0.12"`, in `test/`, `examples/` and the package weakdeps). On the way, OptimaSolver
+  `"0.12"` in `test/` and `examples/`, `"0.42.2, 0.43"` in the package weakdeps). On the way, OptimaSolver
   0.11 made the active-set iteration of Optima the default back end of
   `OptimaOptimizer()` in place of the interior point, and ChemistryLab 0.42.1–0.42.2
   fixed the search on a zero-budget acid–base row and handed the solver the Gibbs
